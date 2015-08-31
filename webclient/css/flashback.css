@@ -1,0 +1,16 @@
+ul.login {
+    list-style-type: none;
+}
+
+.login img {
+    max-width: 50%;
+    max-height: 48px;
+}
+
+ul.login li {
+    display: none;
+}
+
+.hide-until-load {
+    display: none;
+}
