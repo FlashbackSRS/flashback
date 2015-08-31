@@ -15,7 +15,7 @@
     "browser": {
         "jquery-mobile": "./webclient/vendor/jquery.mobile-1.4.5/jquery.mobile-1.4.5.js",
         "jquery": "./webclient/vendor/jquery-2.1.4/jquery-2.1.4.js",
-        "main": "./webclient/main.js"
+        "main": "./main.js"
     },
     "browserify": {
         "transform": [ "browserify-shim" ]

@@ -7,6 +7,9 @@ WEBP_FILES = $(shell find webclient/images/ -type f -name '*.webp')
 # anyone else is using this, we can find a better solution
 FLASHBACK_API_BASEURI = https://$(shell ip -f inet addr show wlan0 | tr -s ' ' | egrep '^\s*inet' | cut -d' ' -f3 | cut -d'/' -f1):4002/
 
+server: www
+	go run ./server/*
+
 plugins: www .phonegap-facebook-plugin
 	mkdir -p plugins
 	cordova plugin add https://git-wip-us.apache.org/repos/asf/cordova-plugin-console.git
