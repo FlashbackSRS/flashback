@@ -29,7 +29,10 @@ android: cordova-init cordova-www
 	cordova run android
 
 go-test:
-	go test ./api/client
+	go test
+	gopherjs test
+# This is currently broken. See https://github.com/gopherjs/gopherjs/issues/302
+#	gopherjs test ./webclient/pages/all/
 # 	go test
 
 test: go-test
