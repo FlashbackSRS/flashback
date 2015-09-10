@@ -2,6 +2,7 @@ package login_page
 
 import (
 	"github.com/gopherjs/gopherjs/js"
+	"github.com/gopherjs/jsbuiltin"
 	"github.com/gopherjs/jquery"
 	"golang.org/x/net/context"
 	"honnef.co/go/js/console"
@@ -31,7 +32,7 @@ func BeforeTransition(ctx context.Context, event *jquery.Event, ui *js.Object) p
 				console.Log("Setting on click event")
 				a.On("click", func() { CordovaLogin(ctx) })
 			} else {
-				a.SetAttr("href", href)
+				a.SetAttr("href", href + "?return=" + jsbuiltin.EncodeURIComponent( js.Global.Get("location").Get("href").String() ) )
 			}
 		}
 		jQuery(".show-until-load", container).Hide()

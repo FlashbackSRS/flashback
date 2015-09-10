@@ -5,7 +5,7 @@ WEBP_FILES = $(shell find webclient/images/ -type f -name '*.webp')
 
 # I know this is an ugly hack, but it works on my dev machine. If ever
 # anyone else is using this, we can find a better solution
-FLASHBACK_API_BASEURI = https://$(shell ip -f inet addr show wlan0 | tr -s ' ' | egrep '^\s*inet' | cut -d' ' -f3 | cut -d'/' -f1):4002/
+#FLASHBACK_API_BASEURI = https://$(shell ip -f inet addr show wlan0 | tr -s ' ' | egrep '^\s*inet' | cut -d' ' -f3 | cut -d'/' -f1):4002/
 
 server: www
 	go run ./server/*
@@ -29,7 +29,10 @@ android: cordova-init cordova-www
 	cordova run android
 
 go-test:
-	go test ./api/client
+	go test
+	gopherjs test
+# This is currently broken. See https://github.com/gopherjs/gopherjs/issues/302
+#	gopherjs test ./webclient/pages/all/
 # 	go test
 
 test: go-test
