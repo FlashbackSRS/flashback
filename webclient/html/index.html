@@ -21,15 +21,28 @@
     <script src="js/flashback.js"></script>
 </head>
 <body>
-    <div data-role="page">
+
+    <div data-role="panel" data-theme="a" id="menu">
+        <ul data-role="listview" data-theme="a" class="nav">
+            <li><h1>Logged in as John Jacob Jingleheimerschmidt</h1></li>
+            <li><a href="#study">Study</a></li>
+            <li><a href="#stats">Statistics</a></li>
+            <li><a href="#sync">Sync</a></li>
+            <li><a href="#config">Configure</a></li>
+            <li><a href="#about">About</a><li>
+            <li><a href="logout.html">Log Out / Switch User</a></li>
+        </ul>
+    </div><!-- /panel -->
+
+    <div data-role="page" class="ui-responsive-panel">
  
         <div data-role="header">
+            <a href="#menu" data-icon="bars" data-iconpos="notext">Menu</a>
             <h1>Flashback</h1>
         </div><!-- /header -->
  
         <div data-role="content">
             <p>Hello world</p>
-            <a href="login.html">Log In Page</a>
         </div><!-- /content -->
  
         <div data-role="footer">

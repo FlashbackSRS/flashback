@@ -1,12 +1,14 @@
 package pages
 
 import (
+	"net/url"
+	"strings"
+
 	"github.com/flimzy/flashback/clientstate"
 	"github.com/gopherjs/gopherjs/js"
 	"github.com/gopherjs/jquery"
 	"golang.org/x/net/context"
 	"honnef.co/go/js/console"
-	"regexp"
 )
 
 var jQuery = jquery.NewJQuery
@@ -75,14 +77,17 @@ func (r *Router) Init(ctx context.Context) {
 	}
 }
 
-var pageRE = regexp.MustCompile("^(https?://[^/]+|/android_asset/www)")
-
 func pageName(ui *js.Object) string {
-	page := ui.Get("toPage").String()
-	if page == "[object Object]" {
-		page = ui.Get("toPage").Call("jqmData", "url").String()
+	rawUrl := ui.Get("toPage").String()
+	if rawUrl == "[object Object]" {
+		rawUrl = ui.Get("toPage").Call("jqmData", "url").String()
 	}
-	return pageRE.ReplaceAllString(page, "")
+	pageUrl, _ := url.Parse(rawUrl)
+	path := strings.TrimPrefix(pageUrl.Path, "/android_asset/www")
+	if len(pageUrl.Fragment) > 0 {
+		return path + "#" + pageUrl.Fragment
+	}
+	return path
 }
 
 func (r *Router) EventRouter(ctx context.Context, eventName string, event *jquery.Event, ui *js.Object) {
@@ -103,12 +108,18 @@ func (r *Router) EventRouter(ctx context.Context, eventName string, event *jquer
 }
 
 func (r *Router) BeforeChangeRouter(ctx context.Context, event *jquery.Event, ui *js.Object) {
-	page := pageName(ui)
 	if ui.Get("_pbc").Bool() {
 		console.Log("pagecontainerbeforechange already ran. Skipping")
 		return
 	}
 	ui.Set("_pbc", true)
+	page := pageName(ui)
+	if strings.HasSuffix(page, "#_=_") {
+		// This happens after a redirect from FaceBook login
+		page = strings.TrimSuffix(page, "#_=_")
+		ui.Set("toPage", page)
+		js.Global.Get("location").Set("hash", "")
+	}
 
 	console.Log("Routing %s", page)
 
@@ -145,7 +156,7 @@ func (r *Router) BeforeChangeRouter(ctx context.Context, event *jquery.Event, ui
 				console.Log("Event target: %s", event.Target)
 				event.StopImmediatePropagation()
 				console.Log("Attempting to re-trigger the event")
-				jquery.NewJQuery("body.ui-mobile-viewport").Trigger("pagecontainerbeforechange", ui)
+				jQuery("body.ui-mobile-viewport").Trigger("pagecontainerbeforechange", ui)
 				return
 			}
 			if result.Action == "return" {

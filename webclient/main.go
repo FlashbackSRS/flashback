@@ -18,8 +18,9 @@ import (
 	//    "github.com/flimzy/flashback/user"
 	"github.com/flimzy/flashback/webclient/pages"
 	"github.com/flimzy/flashback/webclient/pages/all"
+	"github.com/flimzy/flashback/webclient/pages/index"
 	"github.com/flimzy/flashback/webclient/pages/login"
-	//     "github.com/flimzy/flashback/webclient/pages/index"
+	"github.com/flimzy/flashback/webclient/pages/logout"
 )
 
 // Some spiffy shortcuts
@@ -35,6 +36,7 @@ func main() {
 	var wg sync.WaitGroup
 
 	initPouchDB(&wg, db)
+	initjQuery(&wg)
 	cordova := initCordova(&wg)
 	router := initRoutes(&wg)
 
@@ -52,6 +54,14 @@ func main() {
 	initjQueryMobile(ctx, router)
 }
 
+func initjQuery(wg *sync.WaitGroup) {
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		js.Global.Get("jQuery").Set("cors", true)
+	}()
+}
+
 func initRoutes(wg *sync.WaitGroup) *pages.Router {
 	wg.Add(1)
 	p := pages.NewRouter()
@@ -60,6 +70,8 @@ func initRoutes(wg *sync.WaitGroup) *pages.Router {
 		p.Register("BEFORE", "pagecontainerbeforechange", all_pages.BeforeChange)
 		//         p.RegisterBeforeChangeFunc( "index", index_page.BeforeChange )
 		p.Register("/login.html", "pagecontainerbeforetransition", login_page.BeforeTransition)
+		p.Register("/logout.html", "pagecontainerbeforetransition", logout_page.BeforeTransition)
+		p.Register("/index.html", "pagecontainerbeforetransition", index_page.BeforeTransition)
 		console.Log("Done setting up routes")
 	}()
 	return p
@@ -116,6 +128,15 @@ func MobileInit(ctx context.Context, router *pages.Router) {
 	jQuery(document).On("pagecontainerbeforechange", func(event *jquery.Event, ui *js.Object) {
 		console.Log("last beforechange event handler")
 	})
+	jQuery(document).One("pagecreate", func(event *jquery.Event) {
+		console.Log("Enhancing the panel")
+		// This should only be executed once, to initialize our "external"
+		// panel. This is the kind of thing that should go in document.ready,
+		// but I don't have any guarantee that document.ready will run after
+		// mobileinit
+		jQuery("body>[data-role='panel']").Underlying().Call("panel").Call("enhanceWithin")
+	})
+	console.Log("Done with MobileInit()")
 }
 
 func MobileGlobal() *js.Object {
@@ -150,8 +171,6 @@ func ConsoleEvent(name string, event *jquery.Event, data *js.Object) {
 	if page == "[object Object]" {
 		page = data.Get("toPage").Call("jqmData", "url").String()
 	}
-	//     ui.Get("toPage").String()
-	//    page := jQMobile.Get("pageContainer").Call("pagecontainer", "getActivePage").Get("id").String()
 	console.Log("Event: %s, Current page: %s", name, page)
 }
 
