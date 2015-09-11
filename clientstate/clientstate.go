@@ -5,8 +5,8 @@ import (
 )
 
 type State struct {
-	CurrentUser		string
-	Stack			[]context.Context
+	CurrentUser string
+	Stack       []context.Context
 }
 
 func New() *State {
@@ -14,4 +14,9 @@ func New() *State {
 		"",
 		make([]context.Context, 0, 5),
 	}
+}
+
+func (s *State) Reset() {
+	s.CurrentUser = ""
+	s.Stack = make([]context.Context, 0, 5)
 }

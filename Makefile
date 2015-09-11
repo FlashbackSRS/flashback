@@ -1,6 +1,7 @@
 HTML_FILES = $(shell find webclient/html/ -type f -name '*.html')
 CSS_FILES = $(shell find webclient/css/ -type f -name '*.css')
 PNG_FILES = $(shell find webclient/images/ -type f -name '*.png')
+SVG_FILES = $(shell find webclient/images/ -type f -name '*.svg')
 WEBP_FILES = $(shell find webclient/images/ -type f -name '*.webp')
 
 # I know this is an ugly hack, but it works on my dev machine. If ever
@@ -31,8 +32,7 @@ android: cordova-init cordova-www
 go-test:
 	go test
 	gopherjs test
-# This is currently broken. See https://github.com/gopherjs/gopherjs/issues/302
-#	gopherjs test ./webclient/pages/all/
+	gopherjs test github.com/flimzy/flashback/webclient/pages/all/
 # 	go test
 
 test: go-test
@@ -72,10 +72,11 @@ css: webclient/vendor/jquery.mobile-1.4.5/jquery.mobile.inline-svg-1.4.5.min.css
 #	cp -a vendor/jquery.mobile-1.4.5/images www/css
 	cp webclient/css/*.css www/css
 
-images: $(PNG_FILES) $(WEBP_FILES) webclient/images/favicon.ico
+images: $(PNG_FILES) $(WEBP_FILES) $(SVG_FILES) webclient/images/favicon.ico
 	mkdir -p www/images
 	cp $(PNG_FILES) www/images
 	cp $(WEBP_FILES) www/images
+	cp $(SVG_FILES) www/images
 	cp webclient/images/favicon.ico www
 
 .PHONY: www

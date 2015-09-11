@@ -14,3 +14,12 @@ ul.login li {
 .hide-until-load {
     display: none;
 }
+
+/*
+    A workaround for an apparent bug in jQuery Mobile that setting
+    class="ui-responsive-panel" doesn't hide the invisible dismiss
+    div over the content
+*/
+@media (min-width:35em){
+    .ui-panel-dismiss { display: none !important; }
+}
