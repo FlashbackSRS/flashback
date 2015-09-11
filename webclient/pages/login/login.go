@@ -38,7 +38,6 @@ func BeforeTransition(ctx context.Context, event *jquery.Event, ui *js.Object) p
 		jQuery(".show-until-load", container).Hide()
 		jQuery(".hide-until-load", container).Show()
 		// Remove hidden elements to save a little memory
-		jQuery(":hidden", container).Remove()
 	}()
 
 	return pages.Return()

@@ -31,7 +31,7 @@ func BeforeTransition(ctx context.Context, event *jquery.Event, ui *js.Object) p
 		state := ctx.Value("AppState").(*clientstate.State)
 		state.Reset()
 		js.Global.Get("document").Set("cookie", emptyCookie.String())
-		jQuery(":mobile-pagecontainer").Call("pagecontainer", "change", "/index.html")
+		jQuery(":mobile-pagecontainer").Call("pagecontainer", "change", "/")
 	})
 	return pages.Return()
 }
