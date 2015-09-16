@@ -4,6 +4,8 @@ PNG_FILES = $(shell find webclient/images/ -type f -name '*.png')
 SVG_FILES = $(shell find webclient/images/ -type f -name '*.svg')
 WEBP_FILES = $(shell find webclient/images/ -type f -name '*.webp')
 
+COUCH_SERVER = $(shell echo $$FLASHBACK_COUCH_URL | sed -e 's|//.*@|//|')
+
 # I know this is an ugly hack, but it works on my dev machine. If ever
 # anyone else is using this, we can find a better solution
 #FLASHBACK_API_BASEURI = https://$(shell ip -f inet addr show wlan0 | tr -s ' ' | egrep '^\s*inet' | cut -d' ' -f3 | cut -d'/' -f1):4002/
@@ -84,6 +86,7 @@ www: javascript css images $(HTML_FILES)
 	mkdir -p www
 	cp $(HTML_FILES) www
 	sed -i -e 's|__API_SERVER__|$(FLASHBACK_API_BASEURI)|g' www/index.html
+	sed -i -e 's|__COUCH_SERVER__|$(COUCH_SERVER)|g' www/index.html
 
 cordova-www: www
 	cat www/index.html | sed -e 's/<!-- Cordova Here -->/<script src="cordova.js"><\/script>/' > www/cordova.html
