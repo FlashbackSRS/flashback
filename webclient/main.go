@@ -21,6 +21,7 @@ import (
 	"github.com/flimzy/flashback/webclient/pages/index"
 	"github.com/flimzy/flashback/webclient/pages/login"
 	"github.com/flimzy/flashback/webclient/pages/logout"
+	"github.com/flimzy/flashback/webclient/pages/sync"
 )
 
 // Some spiffy shortcuts
@@ -72,6 +73,7 @@ func initRoutes(wg *sync.WaitGroup) *pages.Router {
 		p.Register("/login.html", "pagecontainerbeforetransition", login_page.BeforeTransition)
 		p.Register("/logout.html", "pagecontainerbeforetransition", logout_page.BeforeTransition)
 		p.Register("/index.html", "pagecontainerbeforetransition", index_page.BeforeTransition)
+		p.Register("/sync.html", "pagecontainerbeforetransition", sync_page.BeforeTransition)
 		console.Log("Done setting up routes")
 	}()
 	return p
@@ -87,7 +89,7 @@ func initPouchDB(wg *sync.WaitGroup, db *pouchdb.PouchDB) {
 		if err != nil {
 			console.Log("Found an error: " + err.Error())
 		}
-		console.Log("PouchDB connected to " + info.Get("db_name").String())
+		console.Log("PouchDB connected to " + info["db_name"].(string))
 	}()
 }
 
