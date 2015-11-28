@@ -22,6 +22,7 @@ import (
 	"github.com/flimzy/flashback/webclient/pages/login"
 	"github.com/flimzy/flashback/webclient/pages/logout"
 	"github.com/flimzy/flashback/webclient/pages/sync"
+	"github.com/flimzy/flashback/webclient/pages/debug"
 )
 
 // Some spiffy shortcuts
@@ -40,7 +41,6 @@ func main() {
 	initjQuery(&wg)
 	cordova := initCordova(&wg)
 	router := initRoutes(&wg)
-
 	state := clientstate.New()
 	api := flashback.New(jQuery("link[rel=flashback]").Get(0).Get("href").String())
 	ctx := context.Background()
@@ -74,6 +74,7 @@ func initRoutes(wg *sync.WaitGroup) *pages.Router {
 		p.Register("/logout.html", "pagecontainerbeforetransition", logout_page.BeforeTransition)
 		p.Register("/index.html", "pagecontainerbeforetransition", index_page.BeforeTransition)
 		p.Register("/sync.html", "pagecontainerbeforetransition", sync_page.BeforeTransition)
+		p.Register("/debug.html", "pagecontainerbeforetransition", debug_page.BeforeTransition)
 		console.Log("Done setting up routes")
 	}()
 	return p
