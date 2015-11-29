@@ -48,6 +48,7 @@ func main() {
 	ctx = context.WithValue(ctx, "AppState", state)
 	ctx = context.WithValue(ctx, "db", db)
 	ctx = context.WithValue(ctx, "api", api)
+	ctx = context.WithValue(ctx, "couchhost", jQuery("link[rel=flashbackdb]").Get(0).Get("href").String())
 
 	// Wait for the above modules to initialize before we initialize jQuery Mobile
 	wg.Wait()
