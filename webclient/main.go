@@ -3,7 +3,6 @@
 package main
 
 import (
-	"github.com/flimzy/go-pouchdb"
 	"github.com/gopherjs/gopherjs/js"
 	"github.com/gopherjs/jquery"
 	"honnef.co/go/js/console"
@@ -33,11 +32,8 @@ var document *js.Object = js.Global.Get("document")
 func main() {
 	console.Log("in main()")
 
-	var db *pouchdb.PouchDB
-
 	var wg sync.WaitGroup
 
-	initPouchDB(&wg, db)
 	initjQuery(&wg)
 	cordova := initCordova(&wg)
 	state := clientstate.New()
@@ -45,7 +41,6 @@ func main() {
 	ctx := context.Background()
 	ctx = context.WithValue(ctx, "cordova", cordova)
 	ctx = context.WithValue(ctx, "AppState", state)
-	ctx = context.WithValue(ctx, "db", db)
 	ctx = context.WithValue(ctx, "api", api)
 	ctx = context.WithValue(ctx, "couchhost", jQuery("link[rel=flashbackdb]").Get(0).Get("href").String())
 
@@ -60,20 +55,6 @@ func initjQuery(wg *sync.WaitGroup) {
 	go func() {
 		defer wg.Done()
 		js.Global.Get("jQuery").Set("cors", true)
-	}()
-}
-
-func initPouchDB(wg *sync.WaitGroup, db *pouchdb.PouchDB) {
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		db = pouchdb.New("flashback")
-		// Then make sure we actually connected successfully
-		info, err := db.Info()
-		if err != nil {
-			console.Log("Found an error: " + err.Error())
-		}
-		console.Log("PouchDB connected to " + info["db_name"].(string))
 	}()
 }
 
