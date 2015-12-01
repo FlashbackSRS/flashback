@@ -16,6 +16,10 @@ var jQuery = jquery.NewJQuery
 var jQMobile *js.Object
 var document *js.Object = js.Global.Get("document")
 
+func init() {
+	pages.Register("/login.html", "pagecontainerbeforetransition", BeforeTransition)
+}
+
 func BeforeTransition(ctx context.Context, event *jquery.Event, ui *js.Object) pages.Action {
 	console.Log("login BEFORE")
 	api := ctx.Value("api").(*flashback.FlashbackClient)

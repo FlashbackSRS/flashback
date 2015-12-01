@@ -38,13 +38,18 @@ type Router struct {
 	handlers map[string]map[string]HandlerFunc
 }
 
-func NewRouter() *Router {
-	return &Router{
-		make(map[string]map[string]HandlerFunc),
-	}
+// Router singleton
+var routerSingleton *Router
+
+func init() {
+	routerSingleton = &Router{
+			make(map[string]map[string]HandlerFunc),
+		}
 }
 
-func (r *Router) Register(target, event string, pageHandler HandlerFunc) {
+func Register(target, event string, pageHandler HandlerFunc) {
+	r := routerSingleton
+console.Log("Register: %s", target)
 	if _, ok := r.handlers[event]; !ok {
 		r.handlers[event] = make(map[string]HandlerFunc)
 	}
@@ -54,7 +59,8 @@ func (r *Router) Register(target, event string, pageHandler HandlerFunc) {
 	r.handlers[event][target] = pageHandler
 }
 
-func (r *Router) Init(ctx context.Context) {
+func Init(ctx context.Context) {
+	r := routerSingleton
 	jQMobile = js.Global.Get("jQuery").Get("mobile")
 
 	for event, _ := range r.handlers {

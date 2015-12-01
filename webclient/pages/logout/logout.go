@@ -16,6 +16,10 @@ import (
 
 var jQuery = jquery.NewJQuery
 
+func init() {
+	pages.Register("/logout.html", "pagecontainerbeforetransition", BeforeTransition)
+}
+
 func BeforeTransition(ctx context.Context, event *jquery.Event, ui *js.Object) pages.Action {
 	console.Log("logout BEFORE")
 
