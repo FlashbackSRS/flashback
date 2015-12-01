@@ -16,6 +16,10 @@ import (
 	"github.com/flimzy/flashback/webclient/pages"
 )
 
+func init() {
+	pages.Register("BEFORE", "pagecontainerbeforechange", BeforeChange)
+}
+
 func BeforeChange(ctx context.Context, event *jquery.Event, ui *js.Object) pages.Action {
 	console.Log("ALL BEFORE")
 	state := ctx.Value("AppState").(*clientstate.State)

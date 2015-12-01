@@ -17,12 +17,12 @@ import (
 	"github.com/flimzy/flashback/clientstate"
 	//    "github.com/flimzy/flashback/user"
 	"github.com/flimzy/flashback/webclient/pages"
-	"github.com/flimzy/flashback/webclient/pages/all"
-	"github.com/flimzy/flashback/webclient/pages/index"
-	"github.com/flimzy/flashback/webclient/pages/login"
-	"github.com/flimzy/flashback/webclient/pages/logout"
-	"github.com/flimzy/flashback/webclient/pages/sync"
-	"github.com/flimzy/flashback/webclient/pages/debug"
+	_ "github.com/flimzy/flashback/webclient/pages/all"
+	_ "github.com/flimzy/flashback/webclient/pages/index"
+	_ "github.com/flimzy/flashback/webclient/pages/login"
+	_ "github.com/flimzy/flashback/webclient/pages/logout"
+	_ "github.com/flimzy/flashback/webclient/pages/sync"
+	_ "github.com/flimzy/flashback/webclient/pages/debug"
 )
 
 // Some spiffy shortcuts
@@ -40,7 +40,6 @@ func main() {
 	initPouchDB(&wg, db)
 	initjQuery(&wg)
 	cordova := initCordova(&wg)
-	router := initRoutes(&wg)
 	state := clientstate.New()
 	api := flashback.New(jQuery("link[rel=flashback]").Get(0).Get("href").String())
 	ctx := context.Background()
@@ -52,7 +51,7 @@ func main() {
 	// Wait for the above modules to initialize before we initialize jQuery Mobile
 	wg.Wait()
 	console.Log("Done with main()")
-	initjQueryMobile(ctx, router)
+	initjQueryMobile(ctx)
 }
 
 func initjQuery(wg *sync.WaitGroup) {
@@ -61,23 +60,6 @@ func initjQuery(wg *sync.WaitGroup) {
 		defer wg.Done()
 		js.Global.Get("jQuery").Set("cors", true)
 	}()
-}
-
-func initRoutes(wg *sync.WaitGroup) *pages.Router {
-	wg.Add(1)
-	p := pages.NewRouter()
-	go func() {
-		defer wg.Done()
-		p.Register("BEFORE", "pagecontainerbeforechange", all_pages.BeforeChange)
-		//         p.RegisterBeforeChangeFunc( "index", index_page.BeforeChange )
-		p.Register("/login.html", "pagecontainerbeforetransition", login_page.BeforeTransition)
-		p.Register("/logout.html", "pagecontainerbeforetransition", logout_page.BeforeTransition)
-		p.Register("/index.html", "pagecontainerbeforetransition", index_page.BeforeTransition)
-		p.Register("/sync.html", "pagecontainerbeforetransition", sync_page.BeforeTransition)
-		p.Register("/debug.html", "pagecontainerbeforetransition", debug_page.BeforeTransition)
-		console.Log("Done setting up routes")
-	}()
-	return p
 }
 
 func initPouchDB(wg *sync.WaitGroup, db *pouchdb.PouchDB) {
@@ -107,17 +89,17 @@ func initCordova(wg *sync.WaitGroup) *js.Object {
 	return mobile
 }
 
-func initjQueryMobile(ctx context.Context, router *pages.Router) {
+func initjQueryMobile(ctx context.Context) {
 	jQuery(document).On("mobileinit", func() {
 		console.Log("mobileinit")
-		MobileInit(ctx, router)
+		MobileInit(ctx)
 	})
 	// This is what actually loads jQuery Mobile. We have to register our 'mobileinit'
 	// event handler above first, though.
 	js.Global.Call("postInit")
 }
 
-func MobileInit(ctx context.Context, router *pages.Router) {
+func MobileInit(ctx context.Context) {
 	jQMobile = js.Global.Get("jQuery").Get("mobile")
 
 	// Disable hash features
@@ -127,7 +109,7 @@ func MobileInit(ctx context.Context, router *pages.Router) {
 
 	//    DebugEvents()
 
-	router.Init(ctx)
+	pages.Init(ctx)
 	jQuery(document).On("pagecontainerbeforechange", func(event *jquery.Event, ui *js.Object) {
 		console.Log("last beforechange event handler")
 	})

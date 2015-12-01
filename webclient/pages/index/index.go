@@ -9,6 +9,10 @@ import (
 	"github.com/flimzy/flashback/webclient/pages"
 )
 
+func init() {
+	pages.Register("/index.html", "pagecontainerbeforetransition", BeforeTransition)
+}
+
 func BeforeTransition(ctx context.Context, event *jquery.Event, ui *js.Object) pages.Action {
 	console.Log("index BEFORE")
 
