@@ -6,22 +6,24 @@ import (
 	"github.com/gopherjs/gopherjs/js"
 	"github.com/gopherjs/jquery"
 	"honnef.co/go/js/console"
-	"strings"
 	"sync"
 
-	"golang.org/x/net/context"
+// 	"golang.org/x/net/context"
 
-	"github.com/flimzy/flashback"
+// 	"github.com/flimzy/flashback"
 
-	"github.com/flimzy/flashback/clientstate"
+// 	"github.com/flimzy/flashback/clientstate"
+	"github.com/flimzy/go-cordova"
+	"github.com/flimzy/eventrouter"
 	//    "github.com/flimzy/flashback/user"
-	"github.com/flimzy/flashback/webclient/pages"
-	_ "github.com/flimzy/flashback/webclient/pages/all"
-	_ "github.com/flimzy/flashback/webclient/pages/index"
-	_ "github.com/flimzy/flashback/webclient/pages/login"
-	_ "github.com/flimzy/flashback/webclient/pages/logout"
-	_ "github.com/flimzy/flashback/webclient/pages/sync"
-	_ "github.com/flimzy/flashback/webclient/pages/debug"
+// 	"github.com/flimzy/flashback/webclient/pages"
+// 	_ "github.com/flimzy/flashback/webclient/pages/all"
+// 	_ "github.com/flimzy/flashback/webclient/pages/index"
+// 	_ "github.com/flimzy/flashback/webclient/pages/login"
+// 	_ "github.com/flimzy/flashback/webclient/pages/logout"
+// 	_ "github.com/flimzy/flashback/webclient/pages/sync"
+// 	_ "github.com/flimzy/flashback/webclient/pages/debug"
+	"github.com/flimzy/flashback/webclient/controllers/login"
 )
 
 // Some spiffy shortcuts
@@ -35,19 +37,19 @@ func main() {
 	var wg sync.WaitGroup
 
 	initjQuery(&wg)
-	cordova := initCordova(&wg)
-	state := clientstate.New()
-	api := flashback.New(jQuery("link[rel=flashback]").Get(0).Get("href").String())
-	ctx := context.Background()
-	ctx = context.WithValue(ctx, "cordova", cordova)
-	ctx = context.WithValue(ctx, "AppState", state)
-	ctx = context.WithValue(ctx, "api", api)
-	ctx = context.WithValue(ctx, "couchhost", jQuery("link[rel=flashbackdb]").Get(0).Get("href").String())
+	initCordova(&wg)
+// 	state := clientstate.New()
+// 	api := flashback.New(jQuery("link[rel=flashback]").Get(0).Get("href").String())
+// 	ctx := context.Background()
+//	ctx = context.WithValue(ctx, "cordova", cordova)
+// 	ctx = context.WithValue(ctx, "AppState", state)
+// 	ctx = context.WithValue(ctx, "api", api)
+// 	ctx = context.WithValue(ctx, "couchhost", jQuery("link[rel=flashbackdb]").Get(0).Get("href").String())
 
 	// Wait for the above modules to initialize before we initialize jQuery Mobile
 	wg.Wait()
 	console.Log("Done with main()")
-	initjQueryMobile(ctx)
+	initjQueryMobile()
 }
 
 func initjQuery(wg *sync.WaitGroup) {
@@ -58,40 +60,45 @@ func initjQuery(wg *sync.WaitGroup) {
 	}()
 }
 
-func initCordova(wg *sync.WaitGroup) *js.Object {
-	mobile := isMobile()
-	if mobile == nil {
-		return nil
+func initCordova(wg *sync.WaitGroup) {
+	if ! cordova.IsMobile() {
+		return
 	}
 	wg.Add(1)
 	document.Call("addEventListener", "deviceready", func() {
 		defer wg.Done()
 		console.Log("Cordova device ready")
 	}, false)
-	return mobile
 }
 
-func initjQueryMobile(ctx context.Context) {
+func initjQueryMobile() {
 	jQuery(document).On("mobileinit", func() {
 		console.Log("mobileinit")
-		MobileInit(ctx)
+		MobileInit()
 	})
 	// This is what actually loads jQuery Mobile. We have to register our 'mobileinit'
 	// event handler above first, though.
 	js.Global.Call("postInit")
 }
 
-func MobileInit(ctx context.Context) {
+func RouterInit() {
+	mux := eventrouter.NewEventMux()
+	mux.HandleFunc("/login.html", login.BeforeTransition)
+	mux.Listen( "pagecontainerbeforetransition" )
+}
+
+// MobileInit is run after jQuery Mobile's 'mobileinit' event has fired
+func MobileInit() {
 	jQMobile = js.Global.Get("jQuery").Get("mobile")
 
-	// Disable hash features
-	jQMobile.Set("hashListeningEnabled", false)
-	jQMobile.Set("pushStateEnabled", false)
-	jQMobile.Get("changePage").Get("defaults").Set("changeHash", false)
+// 	// Disable hash features
+// 	jQMobile.Set("hashListeningEnabled", false)
+// 	jQMobile.Set("pushStateEnabled", false)
+// 	jQMobile.Get("changePage").Get("defaults").Set("changeHash", false)
 
 	//    DebugEvents()
+	RouterInit()
 
-	pages.Init(ctx)
 	jQuery(document).On("pagecontainerbeforechange", func(event *jquery.Event, ui *js.Object) {
 		console.Log("last beforechange event handler")
 	})
@@ -104,33 +111,6 @@ func MobileInit(ctx context.Context) {
 		jQuery("body>[data-role='panel']").Underlying().Call("panel").Call("enhanceWithin")
 	})
 	console.Log("Done with MobileInit()")
-}
-
-func MobileGlobal() *js.Object {
-	if m := js.Global.Get("cordova"); m != nil {
-		return m
-	}
-	if m := js.Global.Get("PhoneGap"); m != nil {
-		return m
-	}
-	if m := js.Global.Get("phonegap"); m != nil {
-		return m
-	}
-	return nil
-}
-
-func isMobile() *js.Object {
-	mobile := MobileGlobal()
-	if mobile == nil {
-		return nil
-	}
-	ua := strings.ToLower(js.Global.Get("navigator").Get("userAgent").String())
-
-	if strings.HasPrefix(strings.ToLower(js.Global.Get("location").Get("href").String()), "file:///") &&
-		(strings.Contains(ua, "ios") || strings.Contains(ua, "iphone") || strings.Contains(ua, "ipad") || strings.Contains(ua, "android")) {
-		return mobile
-	}
-	return nil
 }
 
 func ConsoleEvent(name string, event *jquery.Event, data *js.Object) {

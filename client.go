@@ -1,23 +1,43 @@
 package flashback
 
 import (
-	"golang.org/x/net/html"
-
 	"io"
 	"regexp"
+	"fmt"
 	"strings"
+
+	"golang.org/x/net/html"
+
+	"github.com/gopherjs/gopherjs/js"
 )
 
 type FlashbackClient struct {
 	URIs map[string]string
 }
 
-func New(baseURI string) *FlashbackClient {
+func findRelURI() string {
+	links := js.Global.Call("getElementByTagName", "link")
+	for i := 0; i < links.Length(); i++ {
+		fmt.Printf("%d. %s\n", i, links.Index(i))
+	}
+	return ""
+}
+
+var defaultFbClient *FlashbackClient
+func NewWithURI(uri string) *FlashbackClient {
 	return &FlashbackClient{
 		map[string]string{
-			"index": strings.TrimRight(baseURI, "/") + "/",
+			"index": strings.TrimRight(uri, "/") + "/",
 		},
 	}
+}
+
+func New() *FlashbackClient {
+	if defaultFbClient == nil {
+		uri := findRelURI()
+		defaultFbClient = NewWithURI(uri)
+	}
+	return defaultFbClient
 }
 
 var recognizedRels = []string{
