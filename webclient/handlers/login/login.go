@@ -12,7 +12,7 @@ import (
 
 var jQuery = jquery.NewJQuery
 
-func BeforeTransition(event *js.Object) bool {
+func BeforeTransition(event *jquery.Event, ui *js.Object) bool {
 	console.Log("login BEFORE")
 	api := flashback.New()
 

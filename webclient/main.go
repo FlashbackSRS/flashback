@@ -12,9 +12,11 @@ import (
 
 // 	"github.com/flimzy/flashback"
 
+	"github.com/flimzy/flashback/util"
 // 	"github.com/flimzy/flashback/clientstate"
+	"github.com/flimzy/flashback/state"
 	"github.com/flimzy/go-cordova"
-	"github.com/flimzy/eventrouter"
+	"github.com/flimzy/jqeventrouter"
 	//    "github.com/flimzy/flashback/user"
 // 	"github.com/flimzy/flashback/webclient/pages"
 // 	_ "github.com/flimzy/flashback/webclient/pages/all"
@@ -23,7 +25,8 @@ import (
 // 	_ "github.com/flimzy/flashback/webclient/pages/logout"
 // 	_ "github.com/flimzy/flashback/webclient/pages/sync"
 // 	_ "github.com/flimzy/flashback/webclient/pages/debug"
-	"github.com/flimzy/flashback/webclient/controllers/login"
+	"github.com/flimzy/flashback/webclient/handlers/auth"
+	"github.com/flimzy/flashback/webclient/handlers/login"
 )
 
 // Some spiffy shortcuts
@@ -38,6 +41,7 @@ func main() {
 
 	initjQuery(&wg)
 	initCordova(&wg)
+	initState(&wg)
 // 	state := clientstate.New()
 // 	api := flashback.New(jQuery("link[rel=flashback]").Get(0).Get("href").String())
 // 	ctx := context.Background()
@@ -57,6 +61,14 @@ func initjQuery(wg *sync.WaitGroup) {
 	go func() {
 		defer wg.Done()
 		js.Global.Get("jQuery").Set("cors", true)
+	}()
+}
+
+func initState(wg *sync.WaitGroup) {
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		state.Read()
 	}()
 }
 
@@ -82,21 +94,28 @@ func initjQueryMobile() {
 }
 
 func RouterInit() {
-	mux := eventrouter.NewEventMux()
-	mux.HandleFunc("/login.html", login.BeforeTransition)
-	mux.Listen( "pagecontainerbeforetransition" )
+	// beforechange -- Just check auth
+	jqeventrouter.Listen( "pagecontainerbeforechange", auth.CheckAuth(jqeventrouter.NullHandler()) )
+
+	// beforetransition
+	beforeTxn := jqeventrouter.NewEventMux()
+	beforeTxn.SetUriFunc( func(_ *jquery.Event, ui *js.Object) string {
+		return util.JqmTargetUri(ui)
+	})
+	beforeTxn.HandleFunc("/login.html", login.BeforeTransition)
+	jqeventrouter.Listen( "pagecontainerbeforetransition", beforeTxn )
 }
 
 // MobileInit is run after jQuery Mobile's 'mobileinit' event has fired
 func MobileInit() {
 	jQMobile = js.Global.Get("jQuery").Get("mobile")
 
-// 	// Disable hash features
-// 	jQMobile.Set("hashListeningEnabled", false)
-// 	jQMobile.Set("pushStateEnabled", false)
-// 	jQMobile.Get("changePage").Get("defaults").Set("changeHash", false)
+	// Disable hash features
+	jQMobile.Set("hashListeningEnabled", false)
+	jQMobile.Set("pushStateEnabled", false)
+	jQMobile.Get("changePage").Get("defaults").Set("changeHash", false)
 
-	//    DebugEvents()
+	DebugEvents()
 	RouterInit()
 
 	jQuery(document).On("pagecontainerbeforechange", func(event *jquery.Event, ui *js.Object) {
