@@ -1,29 +1,21 @@
-package login_page
+package login
 
 import (
 	"github.com/gopherjs/gopherjs/js"
 	"github.com/gopherjs/jquery"
 	"github.com/gopherjs/jsbuiltin"
-	"golang.org/x/net/context"
 	"honnef.co/go/js/console"
 
-	"github.com/flimzy/flashback/webclient/pages"
-
 	"github.com/flimzy/flashback"
+// 	"github.com/flimzy/flashback/state"
+	"github.com/flimzy/go-cordova"
 )
 
 var jQuery = jquery.NewJQuery
-var jQMobile *js.Object
-var document *js.Object = js.Global.Get("document")
 
-func init() {
-	pages.Register("/login.html", "pagecontainerbeforetransition", BeforeTransition)
-}
-
-func BeforeTransition(ctx context.Context, event *jquery.Event, ui *js.Object) pages.Action {
+func BeforeTransition(event *jquery.Event, ui *js.Object) bool {
 	console.Log("login BEFORE")
-	api := ctx.Value("api").(*flashback.FlashbackClient)
-	cordova := ctx.Value("cordova").(*js.Object)
+	api := flashback.New()
 
 	go func() {
 		providers := api.GetLoginProviders()
@@ -32,9 +24,9 @@ func BeforeTransition(ctx context.Context, event *jquery.Event, ui *js.Object) p
 			li := jQuery("li."+rel, container)
 			li.Show()
 			a := jQuery("a", li)
-			if cordova != nil {
+			if cordova.IsMobile() {
 				console.Log("Setting on click event")
-				a.On("click", func() { CordovaLogin(ctx) })
+				a.On("click", CordovaLogin )
 			} else {
 				a.SetAttr("href", href+"?return="+jsbuiltin.EncodeURIComponent(js.Global.Get("location").Get("href").String()))
 			}
@@ -43,10 +35,10 @@ func BeforeTransition(ctx context.Context, event *jquery.Event, ui *js.Object) p
 		jQuery(".hide-until-load", container).Show()
 	}()
 
-	return pages.Return()
+	return true
 }
 
-func CordovaLogin(ctx context.Context) bool {
+func CordovaLogin() bool {
 	console.Log("CordovaLogin()")
 	js.Global.Get("facebookConnectPlugin").Call("login", []string{}, func() {
 		console.Log("Success logging in")

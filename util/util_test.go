@@ -1,6 +1,6 @@
 // +build js
 
-package all_pages
+package util
 
 import (
 	"testing"

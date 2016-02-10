@@ -1,23 +1,35 @@
 package flashback
 
 import (
-	"golang.org/x/net/html"
-
+	"fmt"
 	"io"
 	"regexp"
 	"strings"
+
+	"golang.org/x/net/html"
+
+	"github.com/flimzy/flashback/util"
 )
 
 type FlashbackClient struct {
 	URIs map[string]string
 }
 
-func New(baseURI string) *FlashbackClient {
+var defaultFbClient *FlashbackClient
+func NewWithURI(uri string) *FlashbackClient {
 	return &FlashbackClient{
 		map[string]string{
-			"index": strings.TrimRight(baseURI, "/") + "/",
+			"index": strings.TrimRight(uri, "/") + "/",
 		},
 	}
+}
+
+func New() *FlashbackClient {
+	if defaultFbClient == nil {
+		uri := util.FlashbackHost()
+		defaultFbClient = NewWithURI(uri)
+	}
+	return defaultFbClient
 }
 
 var recognizedRels = []string{
@@ -47,17 +59,27 @@ func (c *FlashbackClient) GetURI(rel string) string {
 	if rel == "index" {
 		panic("fbclient index not set !!?!?!")
 	}
-	c.ReadRels("index")
+	err := c.ReadRels("index")
+	if err != nil {
+		fmt.Printf("Error reading index: %s", err)
+	}
 	return c.URIs[rel]
 }
 
-func (c *FlashbackClient) ReadRels(url string) {
+func (c *FlashbackClient) ReadRels(url string) (err error) {
+	defer func() {
+		// Certain failures, especially security violations, result in a panic
+		if r := recover(); r != nil {
+			err = r.(error)
+			return
+		}
+	}()
 	doc, err := c.Get(c.GetURI("index"))
 	if err != nil {
-		Console("Error reading index: %s", err)
 		return
 	}
 	c.ExtractLinks(strings.NewReader(doc))
+	return nil
 }
 
 var absoluteURI = regexp.MustCompile("^https?://")
