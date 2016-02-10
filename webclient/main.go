@@ -19,16 +19,13 @@ import (
 	"github.com/flimzy/jqeventrouter"
 	//    "github.com/flimzy/flashback/user"
 // 	"github.com/flimzy/flashback/webclient/pages"
-// 	_ "github.com/flimzy/flashback/webclient/pages/all"
 // 	_ "github.com/flimzy/flashback/webclient/pages/index"
-// 	_ "github.com/flimzy/flashback/webclient/pages/login"
-// 	_ "github.com/flimzy/flashback/webclient/pages/logout"
-// 	_ "github.com/flimzy/flashback/webclient/pages/sync"
 // 	_ "github.com/flimzy/flashback/webclient/pages/debug"
 	"github.com/flimzy/flashback/webclient/handlers/auth"
 	"github.com/flimzy/flashback/webclient/handlers/general"
 	"github.com/flimzy/flashback/webclient/handlers/login"
 	"github.com/flimzy/flashback/webclient/handlers/logout"
+	sync_handler "github.com/flimzy/flashback/webclient/handlers/sync"
 )
 
 // Some spiffy shortcuts
@@ -98,6 +95,7 @@ func RouterInit() {
 	})
 	beforeTransition.HandleFunc("/login.html", login.BeforeTransition)
 	beforeTransition.HandleFunc("/logout.html", logout.BeforeTransition)
+	beforeTransition.HandleFunc("/sync.html", sync_handler.BeforeTransition)
 	jqeventrouter.Listen( "pagecontainerbeforetransition", beforeTransition )
 }
 

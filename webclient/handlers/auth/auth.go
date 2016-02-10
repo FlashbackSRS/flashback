@@ -15,7 +15,7 @@ func CheckAuth(h jqeventrouter.Handler) jqeventrouter.Handler {
 		console.Log("CheckAuth")
 		uri := util.JqmTargetUri(ui)
 		console.Log("Auth URI = %s", uri)
-		if uri != "/login.html" && util.GetUserFromCookie() == "" {
+		if uri != "/login.html" && util.CurrentUser() == "" {
 			console.Log("nobody's logged in")
 			// Nobody's logged in
 			ui.Set("toPage","login.html")

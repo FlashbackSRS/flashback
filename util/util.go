@@ -24,7 +24,7 @@ func JqmTargetUri(ui *js.Object) string {
 
 // UserFromCookie extracts a user name from the CouchDB cookie, which is set
 // during the authentication phase
-func GetUserFromCookie() string {
+func CurrentUser() string {
 	value := GetCouchCookie(js.Global.Get("document").Get("cookie").String())
 	userid := ExtractUserID(value)
 	return userid
@@ -46,4 +46,23 @@ func ExtractUserID(cookieValue string) string {
 	decoded, _ := base64.StdEncoding.DecodeString(cookieValue)
 	values := strings.Split(string(decoded), ":")
 	return values[0]
+}
+
+func CouchHost() string {
+	return findLink("flashbackdb")
+}
+
+func FlashbackHost() string {
+	return findLink("flashback")
+}
+
+func findLink(rel string) string {
+	links := js.Global.Get("document").Call("getElementsByTagName", "head").Index(0).Call("getElementsByTagName", "link")
+	for i := 0; i < links.Length(); i++ {
+		link := links.Index(i)
+		if link.Get("rel").String() == rel {
+			return link.Get("href").String()
+		}
+	}
+	return ""
 }

@@ -8,23 +8,11 @@ import (
 
 	"golang.org/x/net/html"
 
-	"github.com/gopherjs/gopherjs/js"
-// 	"honnef.co/go/js/console"
+	"github.com/flimzy/flashback/util"
 )
 
 type FlashbackClient struct {
 	URIs map[string]string
-}
-
-func findRelURI() string {
-	links := js.Global.Get("document").Call("getElementsByTagName", "head").Index(0).Call("getElementsByTagName", "link")
-	for i := 0; i < links.Length(); i++ {
-		l := links.Index(i)
-		if l.Get("rel").String() == "flashback" {
-			return l.Get("href").String()
-		}
-	}
-	return ""
 }
 
 var defaultFbClient *FlashbackClient
@@ -38,7 +26,7 @@ func NewWithURI(uri string) *FlashbackClient {
 
 func New() *FlashbackClient {
 	if defaultFbClient == nil {
-		uri := findRelURI()
+		uri := util.FlashbackHost()
 		defaultFbClient = NewWithURI(uri)
 	}
 	return defaultFbClient
