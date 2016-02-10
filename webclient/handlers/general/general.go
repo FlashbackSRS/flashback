@@ -14,9 +14,16 @@ func CleanFacebookURI(h jqeventrouter.Handler) jqeventrouter.Handler {
 	// This handler cleans up the URL after a redirect from a Facebook login
 	return jqeventrouter.HandlerFunc(func(event *jquery.Event, ui *js.Object) bool {
 		uri := util.JqmTargetUri(ui)
+		// Having '#_=_' in the URL can mess up our routing
 		if strings.HasSuffix(uri, "#_=_") {
-			ui.Set("toPage", strings.TrimSuffix(uri, "#_=_"))
-			js.Global.Get("location").Set("hash", "")
+			uri = strings.TrimSuffix(uri, "#_=_")
+			ui.Set("toPage", uri)
+		}
+		// It's also ugly, so remove it from the visible location bar
+		location := js.Global.Get("location")
+		href := location.Get("href").String()
+		if strings.HasSuffix(href, "#_=_") {
+			location.Set("href", strings.TrimSuffix(href, "#_=_"))
 		}
 		return h.HandleEvent(event, ui)
 	})

@@ -28,6 +28,7 @@ import (
 	"github.com/flimzy/flashback/webclient/handlers/auth"
 	"github.com/flimzy/flashback/webclient/handlers/general"
 	"github.com/flimzy/flashback/webclient/handlers/login"
+	"github.com/flimzy/flashback/webclient/handlers/logout"
 )
 
 // Some spiffy shortcuts
@@ -87,15 +88,17 @@ func initjQueryMobile() {
 
 func RouterInit() {
 	// beforechange -- Just check auth
-	jqeventrouter.Listen( "pagecontainerbeforechange", general.JQMRouteOnce(general.CleanFacebookURI(auth.CheckAuth(jqeventrouter.NullHandler()))) )
+	beforeChange := jqeventrouter.NullHandler()
+	jqeventrouter.Listen( "pagecontainerbeforechange", general.JQMRouteOnce(general.CleanFacebookURI(auth.CheckAuth(beforeChange))) )
 
 	// beforetransition
-	beforeTxn := jqeventrouter.NewEventMux()
-	beforeTxn.SetUriFunc( func(_ *jquery.Event, ui *js.Object) string {
+	beforeTransition := jqeventrouter.NewEventMux()
+	beforeTransition.SetUriFunc( func(_ *jquery.Event, ui *js.Object) string {
 		return util.JqmTargetUri(ui)
 	})
-	beforeTxn.HandleFunc("/login.html", login.BeforeTransition)
-	jqeventrouter.Listen( "pagecontainerbeforetransition", beforeTxn )
+	beforeTransition.HandleFunc("/login.html", login.BeforeTransition)
+	beforeTransition.HandleFunc("/logout.html", logout.BeforeTransition)
+	jqeventrouter.Listen( "pagecontainerbeforetransition", beforeTransition )
 }
 
 // MobileInit is run after jQuery Mobile's 'mobileinit' event has fired
