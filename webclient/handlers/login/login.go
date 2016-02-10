@@ -7,6 +7,7 @@ import (
 	"honnef.co/go/js/console"
 
 	"github.com/flimzy/flashback"
+// 	"github.com/flimzy/flashback/state"
 	"github.com/flimzy/go-cordova"
 )
 

@@ -6,7 +6,6 @@ import (
 
 // 	"github.com/flimzy/go-pouchdb"
 	"github.com/flimzy/jqeventrouter"
-	"github.com/flimzy/flashback/state"
 	"github.com/flimzy/flashback/util"
 	"honnef.co/go/js/console"
 )
@@ -16,7 +15,7 @@ func CheckAuth(h jqeventrouter.Handler) jqeventrouter.Handler {
 		console.Log("CheckAuth")
 		uri := util.JqmTargetUri(ui)
 		console.Log("Auth URI = %s", uri)
-		if uri != "/login.html" && state.GetCurrentUser() == "" {
+		if uri != "/login.html" && util.GetUserFromCookie() == "" {
 			console.Log("nobody's logged in")
 			// Nobody's logged in
 			ui.Set("toPage","login.html")

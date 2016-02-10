@@ -14,7 +14,7 @@ import (
 
 	"github.com/flimzy/flashback/util"
 // 	"github.com/flimzy/flashback/clientstate"
-	"github.com/flimzy/flashback/state"
+// 	"github.com/flimzy/flashback/state"
 	"github.com/flimzy/go-cordova"
 	"github.com/flimzy/jqeventrouter"
 	//    "github.com/flimzy/flashback/user"
@@ -26,6 +26,7 @@ import (
 // 	_ "github.com/flimzy/flashback/webclient/pages/sync"
 // 	_ "github.com/flimzy/flashback/webclient/pages/debug"
 	"github.com/flimzy/flashback/webclient/handlers/auth"
+	"github.com/flimzy/flashback/webclient/handlers/general"
 	"github.com/flimzy/flashback/webclient/handlers/login"
 )
 
@@ -41,7 +42,6 @@ func main() {
 
 	initjQuery(&wg)
 	initCordova(&wg)
-	initState(&wg)
 // 	state := clientstate.New()
 // 	api := flashback.New(jQuery("link[rel=flashback]").Get(0).Get("href").String())
 // 	ctx := context.Background()
@@ -61,14 +61,6 @@ func initjQuery(wg *sync.WaitGroup) {
 	go func() {
 		defer wg.Done()
 		js.Global.Get("jQuery").Set("cors", true)
-	}()
-}
-
-func initState(wg *sync.WaitGroup) {
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		state.Read()
 	}()
 }
 
@@ -95,7 +87,7 @@ func initjQueryMobile() {
 
 func RouterInit() {
 	// beforechange -- Just check auth
-	jqeventrouter.Listen( "pagecontainerbeforechange", auth.CheckAuth(jqeventrouter.NullHandler()) )
+	jqeventrouter.Listen( "pagecontainerbeforechange", general.JQMRouteOnce(general.CleanFacebookURI(auth.CheckAuth(jqeventrouter.NullHandler()))) )
 
 	// beforetransition
 	beforeTxn := jqeventrouter.NewEventMux()
