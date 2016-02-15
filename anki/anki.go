@@ -1,5 +1,25 @@
 package anki
 
+import (
+	"time"
+)
+
+type CardType uint8
+
+const (
+	CardTypeNew CardType = iota
+	CardTypeLearning
+	CardTypeDue
+)
+
+type QueueType int8
+
+const (
+	QueueTypeSuspended QueueType = iota * -1
+	QueueTypeUserBuried
+	QueueTypeSchedBuried
+)
+
 type Database struct {
 	Collections []*Collection
 	Notes       []*Note
@@ -30,36 +50,36 @@ type Database struct {
 // );
 
 type Collection struct {
-	Id     int
-	Crt    int
-	Mod    int
-	Scm    int
-	Ver    int
-	Dty    int
-	Usn    int
-	Ls     int
-	Conf   string
-	Models string
-	Decks  string
-	Dconf  string
-	Tags   string
+	Id       int
+	Created  time.Time
+	Modified time.Time
+	Scm      int
+	Ver      int
+	Dty      int
+	Usn      int
+	LastSync time.Time
+	Conf     string
+	Models   string
+	Decks    string
+	Dconf    string
+	Tags     string
 }
 
 func SqliteToCollection(row map[string]interface{}) *Collection {
 	return &Collection{
-		Id:     int(row["id"].(float64)),
-		Crt:    int(row["crt"].(float64)),
-		Mod:    int(row["mod"].(float64)),
-		Scm:    int(row["scm"].(float64)),
-		Ver:    int(row["ver"].(float64)),
-		Dty:    int(row["dty"].(float64)),
-		Usn:    int(row["usn"].(float64)),
-		Ls:     int(row["ls"].(float64)),
-		Conf:   row["conf"].(string),
-		Models: row["models"].(string),
-		Decks:  row["decks"].(string),
-		Dconf:  row["dconf"].(string),
-		Tags:   row["tags"].(string),
+		Id:       int(row["id"].(float64)),
+		Created:  time.Unix(int64(row["crt"].(float64)), 0),
+		Modified: time.Unix(int64(row["mod"].(float64)), 0),
+		Scm:      int(row["scm"].(float64)),
+		Ver:      int(row["ver"].(float64)),
+		Dty:      int(row["dty"].(float64)),
+		Usn:      int(row["usn"].(float64)),
+		LastSync: time.Unix(int64(row["ls"].(float64)), 0),
+		Conf:     row["conf"].(string),
+		Models:   row["models"].(string),
+		Decks:    row["decks"].(string),
+		Dconf:    row["dconf"].(string),
+		Tags:     row["tags"].(string),
 	}
 }
 
@@ -88,46 +108,46 @@ func SqliteToCollection(row map[string]interface{}) *Collection {
 // CREATE INDEX ix_cards_sched on cards (did, queue, due);
 
 type Card struct {
-	Id     int
-	Nid    int
-	Did    int
-	Ord    int
-	Mod    int
-	Usn    int
-	Type   int
-	Queue  int
-	Due    int
-	Ivl    int
-	Factor int
-	Reps   int
-	Lapses int
-	Left   int
-	Odue   int
-	Odid   int
-	Flags  int
-	Data   string
+	Id       uint64
+	Nid      uint64
+	Did      uint64
+	Ord      int
+	Modified time.Time
+	Usn      int
+	Type     CardType
+	Queue    QueueType
+	Due      int
+	Interval int
+	Factor   int
+	Reps     int
+	Lapses   int
+	Left     int
+	// 	Odue     int
+	// 	Odid     int
+	// 	Flags    int
+	Data string
 }
 
 func SqliteToCard(row map[string]interface{}) *Card {
 	return &Card{
-		Id:     int(row["id"].(float64)),
-		Nid:    int(row["nid"].(float64)),
-		Did:    int(row["did"].(float64)),
-		Ord:    int(row["ord"].(float64)),
-		Mod:    int(row["ord"].(float64)),
-		Usn:    int(row["usn"].(float64)),
-		Type:   int(row["type"].(float64)),
-		Queue:  int(row["queue"].(float64)),
-		Due:    int(row["due"].(float64)),
-		Ivl:    int(row["ivl"].(float64)),
-		Factor: int(row["factor"].(float64)),
-		Reps:   int(row["reps"].(float64)),
-		Lapses: int(row["lapses"].(float64)),
-		Left:   int(row["left"].(float64)),
-		Odue:   int(row["odue"].(float64)),
-		Odid:   int(row["odid"].(float64)),
-		Flags:  int(row["flags"].(float64)),
-		Data:   row["data"].(string),
+		Id:       uint64(row["id"].(float64)),
+		Nid:      uint64(row["nid"].(float64)),
+		Did:      uint64(row["did"].(float64)),
+		Ord:      int(row["ord"].(float64)),
+		Modified: time.Unix(int64(row["ord"].(float64)), 0),
+		Usn:      int(row["usn"].(float64)),
+		Type:     CardType(row["type"].(float64)),
+		Queue:    int(row["queue"].(float64)),
+		Due:      int(row["due"].(float64)),
+		Interval: int(row["ivl"].(float64)),
+		Factor:   int(row["factor"].(float64)),
+		Reps:     int(row["reps"].(float64)),
+		Lapses:   int(row["lapses"].(float64)),
+		Left:     int(row["left"].(float64)),
+		// 		Odue:     int(row["odue"].(float64)),
+		// 		Odid:     int(row["odid"].(float64)),
+		// 		Flags:    int(row["flags"].(float64)),
+		Data: row["data"].(string),
 	}
 }
 
@@ -137,16 +157,24 @@ func SqliteToCard(row map[string]interface{}) *Card {
 //     type            integer not null
 // );
 
+type GraveType uint8
+
+const (
+	GraveTypeCard GraveType = 0
+	GraveTypeNote GraveType = 1
+	GraveTypeDeck GraveType = 2
+)
+
 type Grave struct {
 	Usn  int
-	Oid  int
+	Oid  uint64
 	Type int
 }
 
 func SqliteToGrave(row map[string]interface{}) *Grave {
 	return &Grave{
 		Usn:  int(row["usn"].(float64)),
-		Oid:  int(row["oid"].(float64)),
+		Oid:  uint64(row["oid"].(float64)),
 		Type: int(row["type"].(float64)),
 	}
 }
@@ -168,32 +196,32 @@ func SqliteToGrave(row map[string]interface{}) *Grave {
 // CREATE INDEX ix_notes_csum on notes (csum);
 
 type Note struct {
-	Id    int
-	Guid  string
-	Mid   int
-	Mod   int
-	Usn   int
-	Tags  string
-	Flds  int
-	Sfld  string
-	Csum  int
-	Flags int
-	Data  string
+	Id       uint64
+	Guid     string
+	Mid      uint64
+	Modified time.Time
+	Usn      int
+	Tags     string
+	Flds     int
+	Sfld     string
+	Csum     uint64
+// 	Flags    int
+// 	Data     string
 }
 
 func SqliteToNote(row map[string]interface{}) *Note {
 	return &Note{
-		Id:    int(row["id"].(float64)),
-		Guid:  row["guid"].(string),
-		Mid:   int(row["mid"].(float64)),
-		Mod:   int(row["mod"].(float64)),
-		Usn:   int(row["usn"].(float64)),
-		Tags:  row["tags"].(string),
-		Flds:  int(row["flags"].(float64)),
-		Sfld:  row["sfld"].(string),
-		Csum:  int(row["csum"].(float64)),
-		Flags: int(row["flags"].(float64)),
-		Data:  row["data"].(string),
+		Id:       uint64(row["id"].(float64)),
+		Guid:     row["guid"].(string),
+		Mid:      uint64(row["mid"].(float64)),
+		Modified: time.Unix(int64(row["mod"].(float64)), 0),
+		Usn:      int(row["usn"].(float64)),
+		Tags:     row["tags"].(string),
+		Flds:     int(row["flags"].(float64)),
+		Sfld:     row["sfld"].(string),
+		Csum:     uint64(row["csum"].(float64)),
+// 		Flags:    int(row["flags"].(float64)),
+// 		Data:     row["data"].(string),
 	}
 }
 
@@ -211,13 +239,21 @@ func SqliteToNote(row map[string]interface{}) *Note {
 // CREATE INDEX ix_revlog_usn on revlog (usn);
 // CREATE INDEX ix_revlog_cid on revlog (cid);
 
+type Ease uint8
+const (
+	EaseWrong Ease = iota
+	EaseHard
+	EaseOK
+	EaseEasy
+)
+
 type Revlog struct {
-	Id      int
-	Cid     int
+	Id      uint
+	Cid     uint64
 	Usn     int
 	Ease    int
-	Ivl     int
-	LastIvl int
+	Interval     int
+	LastInterval int
 	Factor  int
 	Time    int
 	Type    int
@@ -225,14 +261,14 @@ type Revlog struct {
 
 func SqliteToRevlog(row map[string]interface{}) *Revlog {
 	return &Revlog{
-		Id:      int(row["id"].(float64)),
-		Cid:     int(row["cid"].(float64)),
+		Id:      uint(row["id"].(float64)),
+		Cid:     uint64(row["cid"].(float64)),
 		Usn:     int(row["usn"].(float64)),
-		Ease:    int(row["ease"].(float64)),
-		Ivl:     int(row["ivl"].(float64)),
-		LastIvl: int(row["lastIvl"].(float64)),
+		Ease:    Ease(row["ease"].(float64)),
+		Interval:     int(row["ivl"].(float64)),
+		LastInterval: int(row["lastIvl"].(float64)),
 		Factor:  int(row["factor"].(float64)),
-		Time:    int(row["time"].(float64)),
+		Time:    time.Duration( int(row["time"].(float64)) * time.Millisecond),
 		Type:    int(row["type"].(float64)),
 	}
 }

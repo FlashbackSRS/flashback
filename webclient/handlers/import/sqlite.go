@@ -48,10 +48,15 @@ func readSQLite(dbbuf []byte) error {
 	if err != nil {
 		return err
 	}
+	console.Log("collections")
 	console.Log(collections)
+	console.Log("cards")
 	console.Log(cards)
+	console.Log("graves")
 	console.Log(graves)
+	console.Log("notes")
 	console.Log(notes)
+	console.Log("revlog")
 	console.Log(revlog)
 	return nil
 }
