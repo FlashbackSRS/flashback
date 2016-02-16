@@ -32,36 +32,39 @@ func readSQLite(dbbuf []byte) error {
 	if err != nil {
 		return err
 	}
-	if err := readCards(w, collection); err != nil {
-		return err
-	}
-	if err := readNotes(w, collection); err != nil {
-		return err
-	}
-	if err := readRevlog(w, collection); err != nil {
-		return err
-	}
-	if err := readGraves(w, collection); err != nil {
-		return err
-	}
-	console.Log("collections")
+// 	if err := readCards(w, collection); err != nil {
+// 		return err
+// 	}
+// 	if err := readNotes(w, collection); err != nil {
+// 		return err
+// 	}
+// 	if err := readRevlog(w, collection); err != nil {
+// 		return err
+// 	}
+// 	if err := readGraves(w, collection); err != nil {
+// 		return err
+// 	}
 	console.Log(collection)
 	return nil
 }
 
 type rowFunc func(map[string]interface{})
 
-func readCollections(w *worker.Worker) (*anki.Collection, error) {
-	var collections []*anki.Collection
+func readCollections(w *worker.Worker) (c *anki.Collection, err error) {
+	var read bool
 	rowFn := func(row map[string]interface{}) {
-		collections = append( collections, anki.SqliteToCollection( row ) )
+		if read {
+			err = errors.New("Read more than one collection. This shouldn't happen")
+		} else {
+			c, err = anki.SqliteToCollection( row )
+			read = true
+		}
 	}
-	err := readX(w, "SELECT * FROM col", rowFn)
-	if len(collections) > 1 {
-		return nil, errors.New("Read more than one collection. This shouldn't happen")
+	err2 := readX(w, "SELECT * FROM col", rowFn)
+	if err == nil {
+		err = err2
 	}
-	c := collections[0]
-	return c, err
+	return
 }
 
 func readCards(w *worker.Worker, c *anki.Collection) error {
