@@ -28,84 +28,87 @@ func readSQLite(dbbuf []byte) error {
 		return errors.New("Ready status not true")
 	}
 	
-	collections, err := readCollections(w)
+	collection, err := readCollections(w)
 	if err != nil {
 		return err
 	}
-	cards, err := readCards(w)
-	if err != nil {
+	if err := readCards(w, collection); err != nil {
 		return err
 	}
-	graves, err := readGraves(w)
-	if err != nil {
+	if err := readNotes(w, collection); err != nil {
 		return err
 	}
-	notes, err := readNotes(w)
-	if err != nil {
+	if err := readRevlog(w, collection); err != nil {
 		return err
 	}
-	revlog, err := readRevlog(w)
-	if err != nil {
+	if err := readGraves(w, collection); err != nil {
 		return err
 	}
 	console.Log("collections")
-	console.Log(collections)
-	console.Log("cards")
-	console.Log(cards)
-	console.Log("graves")
-	console.Log(graves)
-	console.Log("notes")
-	console.Log(notes)
-	console.Log("revlog")
-	console.Log(revlog)
+	console.Log(collection)
 	return nil
 }
 
 type rowFunc func(map[string]interface{})
 
-func readCollections(w *worker.Worker) (*[]*anki.Collection, error) {
+func readCollections(w *worker.Worker) (*anki.Collection, error) {
 	var collections []*anki.Collection
 	rowFn := func(row map[string]interface{}) {
 		collections = append( collections, anki.SqliteToCollection( row ) )
 	}
 	err := readX(w, "SELECT * FROM col", rowFn)
-	return &collections, err
+	if len(collections) > 1 {
+		return nil, errors.New("Read more than one collection. This shouldn't happen")
+	}
+	c := collections[0]
+	return c, err
 }
 
-func readCards(w *worker.Worker) (*[]*anki.Card, error) {
-	var cards []*anki.Card
+func readCards(w *worker.Worker, c *anki.Collection) error {
 	rowFn := func(row map[string]interface{}) {
-		cards = append( cards, anki.SqliteToCard( row ) )
+		c.AddCardFromSqlite( row )
 	}
-	err := readX(w, "SELECT * FROM cards", rowFn)
-	return &cards, err
+	return readX(w, `
+		SELECT c.*
+		FROM cards c
+		LEFT JOIN graves g ON g.type=0 AND g.oid=c.id
+		WHERE g.oid IS NULL
+	`, rowFn)
 }
 
-func readGraves(w *worker.Worker) (*[]*anki.Grave, error) {
-	var graves []*anki.Grave
+func readNotes(w *worker.Worker, c *anki.Collection) error {
 	rowFn := func(row map[string]interface{}) {
-		graves = append( graves, anki.SqliteToGrave( row ) )
+		c.AddNoteFromSqlite( row )
 	}
-	err := readX(w, "SELECT * FROM graves", rowFn)
-	return &graves, err
+	return readX(w, `
+		SELECT n.*
+		FROM notes n
+		LEFT JOIN graves g ON g.type=1 AND g.oid=n.id
+		WHERE g.oid IS NULL
+	`, rowFn)
 }
 
-func readNotes(w *worker.Worker) (*[]*anki.Note, error) {
-	var notes []*anki.Note
+func readRevlog(w *worker.Worker, c *anki.Collection) error {
 	rowFn := func(row map[string]interface{}) {
-		notes = append( notes, anki.SqliteToNote( row ) )
+		c.AddReviewFromSqlite( row )
 	}
-	err := readX(w, "SELECT * FROM notes", rowFn)
-	return &notes, err
+	return readX(w, `
+		SELECT r.*
+		FROM revlog r
+		LEFT JOIN graves g ON g.type=1 AND g.oid=r.cid
+		WHERE g.oid IS NULL
+	`, rowFn)
 }
 
-func readRevlog(w *worker.Worker) (*[]*anki.Revlog, error) {
-	var revlog []*anki.Revlog
+func readGraves(w *worker.Worker, c *anki.Collection) error {
 	rowFn := func(row map[string]interface{}) {
-		revlog = append( revlog, anki.SqliteToRevlog( row ) )
+		c.DeleteDeck( uint64(row["oid"].(float64)) )
 	}
-	err := readX(w, "SELECT * FROM revlog", rowFn)
-	return &revlog, err
+	return readX(w, `
+		SELECT oid
+		FROM graves
+		WHERE type=2
+	`, rowFn)
 }
 
 func readX(w *worker.Worker, query string, fn rowFunc) error {

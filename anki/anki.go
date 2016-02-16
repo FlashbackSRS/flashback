@@ -20,26 +20,18 @@ const (
 	QueueTypeSchedBuried
 )
 
-type Database struct {
-	Collections []*Collection
-	Notes       []*Note
-	Cards       []*Card
-	Revlog      []*Revlog
-	Grave       []*Grave
-}
-
 /*
  * https://gist.github.com/sartak/3921255
  * https://github.com/ankidroid/Anki-Android/wiki/Database-Structure
  */
 
 // CREATE TABLE col (
-//     id              integer primary key,
+//     id              integer primary key, -- Arbitrary number, since there's only one row
 //     crt             integer not null,
 //     mod             integer not null,
 //     scm             integer not null,
 //     ver             integer not null,
-//     dty             integer not null,
+//     dty             integer not null, -- No longer used: https://github.com/dae/anki/blob/master/anki/collection.py#L90
 //     usn             integer not null,
 //     ls              integer not null,
 //     conf            text not null,
@@ -50,12 +42,10 @@ type Database struct {
 // );
 
 type Collection struct {
-	Id       int
-	Created  time.Time
-	Modified time.Time
-	Scm      int
-	Ver      int
-	Dty      int
+	Created        time.Time
+	Modified       time.Time
+	SchemaModified time.Time
+	Ver            int
 	Usn      int
 	LastSync time.Time
 	Conf     string
@@ -63,16 +53,17 @@ type Collection struct {
 	Decks    string
 	Dconf    string
 	Tags     string
+	Cards    []Card
+	Notes    []Note
+	Revlog   []Review
 }
 
 func SqliteToCollection(row map[string]interface{}) *Collection {
 	return &Collection{
-		Id:       int(row["id"].(float64)),
-		Created:  time.Unix(int64(row["crt"].(float64)), 0),
-		Modified: time.Unix(int64(row["mod"].(float64)), 0),
-		Scm:      int(row["scm"].(float64)),
-		Ver:      int(row["ver"].(float64)),
-		Dty:      int(row["dty"].(float64)),
+		Created:        time.Unix(int64(row["crt"].(float64)), 0),
+		Modified:       time.Unix(int64(row["mod"].(float64)), 0),
+		SchemaModified: time.Unix(int64(row["scm"].(float64)), 0),
+		Ver:            int(row["ver"].(float64)),
 		Usn:      int(row["usn"].(float64)),
 		LastSync: time.Unix(int64(row["ls"].(float64)), 0),
 		Conf:     row["conf"].(string),
@@ -128,8 +119,8 @@ type Card struct {
 	Data string
 }
 
-func SqliteToCard(row map[string]interface{}) *Card {
-	return &Card{
+func (c *Collection) AddCardFromSqlite(row map[string]interface{}) {
+	c.Cards = append(c.Cards, Card{
 		Id:       uint64(row["id"].(float64)),
 		Nid:      uint64(row["nid"].(float64)),
 		Did:      uint64(row["did"].(float64)),
@@ -137,7 +128,7 @@ func SqliteToCard(row map[string]interface{}) *Card {
 		Modified: time.Unix(int64(row["ord"].(float64)), 0),
 		Usn:      int(row["usn"].(float64)),
 		Type:     CardType(row["type"].(float64)),
-		Queue:    int(row["queue"].(float64)),
+		Queue:    QueueType(row["queue"].(float64)),
 		Due:      int(row["due"].(float64)),
 		Interval: int(row["ivl"].(float64)),
 		Factor:   int(row["factor"].(float64)),
@@ -148,35 +139,7 @@ func SqliteToCard(row map[string]interface{}) *Card {
 		// 		Odid:     int(row["odid"].(float64)),
 		// 		Flags:    int(row["flags"].(float64)),
 		Data: row["data"].(string),
-	}
-}
-
-// CREATE TABLE graves (
-//     usn             integer not null,
-//     oid             integer not null,
-//     type            integer not null
-// );
-
-type GraveType uint8
-
-const (
-	GraveTypeCard GraveType = 0
-	GraveTypeNote GraveType = 1
-	GraveTypeDeck GraveType = 2
-)
-
-type Grave struct {
-	Usn  int
-	Oid  uint64
-	Type int
-}
-
-func SqliteToGrave(row map[string]interface{}) *Grave {
-	return &Grave{
-		Usn:  int(row["usn"].(float64)),
-		Oid:  uint64(row["oid"].(float64)),
-		Type: int(row["type"].(float64)),
-	}
+	})
 }
 
 // CREATE TABLE notes (
@@ -205,12 +168,12 @@ type Note struct {
 	Flds     int
 	Sfld     string
 	Csum     uint64
-// 	Flags    int
-// 	Data     string
+	// 	Flags    int
+	// 	Data     string
 }
 
-func SqliteToNote(row map[string]interface{}) *Note {
-	return &Note{
+func (c *Collection) AddNoteFromSqlite(row map[string]interface{}) {
+	c.Notes = append( c.Notes, Note{
 		Id:       uint64(row["id"].(float64)),
 		Guid:     row["guid"].(string),
 		Mid:      uint64(row["mid"].(float64)),
@@ -220,9 +183,9 @@ func SqliteToNote(row map[string]interface{}) *Note {
 		Flds:     int(row["flags"].(float64)),
 		Sfld:     row["sfld"].(string),
 		Csum:     uint64(row["csum"].(float64)),
-// 		Flags:    int(row["flags"].(float64)),
-// 		Data:     row["data"].(string),
-	}
+		// 		Flags:    int(row["flags"].(float64)),
+		// 		Data:     row["data"].(string),
+	})
 }
 
 // CREATE TABLE revlog (
@@ -240,6 +203,7 @@ func SqliteToNote(row map[string]interface{}) *Note {
 // CREATE INDEX ix_revlog_cid on revlog (cid);
 
 type Ease uint8
+
 const (
 	EaseWrong Ease = iota
 	EaseHard
@@ -247,28 +211,31 @@ const (
 	EaseEasy
 )
 
-type Revlog struct {
-	Id      uint
-	Cid     uint64
-	Usn     int
-	Ease    int
+type Review struct {
+	Id           uint
+	Cid          uint64
+	Usn          int
+	Ease         Ease
 	Interval     int
 	LastInterval int
-	Factor  int
-	Time    int
-	Type    int
+	Factor       int
+	Time         time.Duration
+	Type         int
 }
 
-func SqliteToRevlog(row map[string]interface{}) *Revlog {
-	return &Revlog{
-		Id:      uint(row["id"].(float64)),
-		Cid:     uint64(row["cid"].(float64)),
-		Usn:     int(row["usn"].(float64)),
-		Ease:    Ease(row["ease"].(float64)),
+func (c *Collection) AddReviewFromSqlite(row map[string]interface{}) {
+	c.Revlog = append( c.Revlog, Review{
+		Id:           uint(row["id"].(float64)),
+		Cid:          uint64(row["cid"].(float64)),
+		Usn:          int(row["usn"].(float64)),
+		Ease:         Ease(row["ease"].(float64)),
 		Interval:     int(row["ivl"].(float64)),
 		LastInterval: int(row["lastIvl"].(float64)),
-		Factor:  int(row["factor"].(float64)),
-		Time:    time.Duration( int(row["time"].(float64)) * time.Millisecond),
-		Type:    int(row["type"].(float64)),
-	}
+		Factor:       int(row["factor"].(float64)),
+		Time:         time.Duration(row["time"].(float64)) * time.Millisecond,
+		Type:         int(row["type"].(float64)),
+	})
+}
+
+func (c *Collection) DeleteDeck(id uint64) {
 }
