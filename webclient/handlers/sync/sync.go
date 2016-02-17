@@ -1,23 +1,21 @@
 package sync
 
 import (
+	"fmt"
 	"github.com/flimzy/go-pouchdb"
 
+	"github.com/flimzy/flashback/util"
 	"github.com/gopherjs/gopherjs/js"
 	"github.com/gopherjs/jquery"
-	"honnef.co/go/js/console"
-	"github.com/flimzy/flashback/util"
 )
 
 var jQuery = jquery.NewJQuery
 
 func BeforeTransition(event *jquery.Event, ui *js.Object) bool {
-	console.Log("sync BEFORE")
 
 	go func() {
 		container := jQuery(":mobile-pagecontainer")
 		jQuery("#syncnow", container).On("click", func() {
-			console.Log("Attempting to sync something...")
 			go DoSync()
 		})
 		jQuery(".show-until-load", container).Hide()
@@ -33,6 +31,14 @@ func DoSync() {
 	ldb := pouchdb.New(dbName)
 	rdb := pouchdb.New(host + "/" + dbName)
 	result, err := pouchdb.Replicate(rdb, ldb, pouchdb.Options{})
-	console.Log("error = %j", err)
-	console.Log("result = %j", result)
+	if err != nil {
+		fmt.Printf("Error syncing from server: %s\n", err)
+	}
+	docsRead := int(result["docs_written"].(float64))
+	result, err = pouchdb.Replicate(ldb, rdb, pouchdb.Options{})
+	if err != nil {
+		fmt.Printf("Error syncing from server: %s\n", err)
+	}
+	docsWritten := int(result["docs_written"].(float64))
+	fmt.Printf("Synced %d docs from server, and %d to server\n", docsRead, docsWritten)
 }
