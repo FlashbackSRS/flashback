@@ -4,8 +4,8 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"strconv"
 	"regexp"
+	"strconv"
 	"strings"
 	"time"
 	// 	"honnef.co/go/js/console"
@@ -127,32 +127,41 @@ func (c *Collection) parseConfig(jsonString string) error {
 	return json.Unmarshal([]byte(jsonString), &(c.Config))
 }
 
+type ModelType uint
+
+const (
+	ModelTypeStandard ModelType = iota
+	ModelTypeCloze
+)
+
+// AKA "Note Type"
 type Model struct {
-	Id        uint64     `json:"-"`
-	Name      string     `json:"name"`
-	Tags      []string   `json:"tags"`
-	DeckId    uint64     `json:"did"`
-	Fields    []Field    `json:"flds"`
-	SortField uint8      `json:"sortf"`
+	Id        uint64      `json:"-"`
+	Name      string      `json:"name"`
+	Tags      []string    `json:"tags"`
+	DeckId    uint64      `json:"did"`
+	Fields    []*Field    `json:"flds"`
+	SortField uint8       `json:"sortf"`
 	Templates []*Template `json:"tmpls"`
-	Type      uint8      `json:"type"`
-	LatexPre  string     `json:"latexPre"`
-	LatexPost string     `json:"latexPost"`
-	CSS       string     `json:"css"`
-	Mod       int64      `json:"mod"`
+	Type      ModelType   `json:"type"`
+	LatexPre  string      `json:"latexPre"`
+	LatexPost string      `json:"latexPost"`
+	CSS       string      `json:"css"`
+	Mod       int64       `json:"mod"`
 	Modified  time.Time
 	// Req string `json:"req"` -- Required fields? Possibly auto-generated after examining templates?
 }
 
 type Field struct {
-	Name   string `json:"name"`
-	Sticky bool   `json:"sticky"`
-	RTL    bool   `json:"rtl"`
-	Ord    int    `json:"ord"`
-	Font   string `json:"font"`
-	Size   int    `json:"size"`
+	Name     string `json:"name"`
+	Sticky   bool   `json:"sticky"`
+	RTL      bool   `json:"rtl"`
+	Ord      int    `json:"ord"`
+	Font     string `json:"font"`
+	FontSize int    `json:"size"`
 }
 
+// AKA "Card Type"
 type Template struct {
 	Name           string `json:"name"`
 	QuestionFormat string `json:"qfmt"`
@@ -171,7 +180,7 @@ func (c *Collection) parseModels(jsonString string) error {
 			m.Id = id
 		}
 		m.Modified = time.Unix(m.Mod, 0)
-		for _,t := range m.Templates {
+		for _, t := range m.Templates {
 			a, err := convertTemplate(t.AnswerFormat)
 			if err != nil {
 				return err
@@ -201,41 +210,40 @@ Anki templates may contian the following types of tags:
 
 var tagRe *regexp.Regexp = regexp.MustCompile("{{.*?}}")
 
-func convertTemplate(ankiTmpl string) (string,error) {
+func convertTemplate(ankiTmpl string) (string, error) {
 	var converted bytes.Buffer
 	var i = 0
-	
-	tags := tagRe.FindAllStringIndex( ankiTmpl, -1 )
-	
+
+	tags := tagRe.FindAllStringIndex(ankiTmpl, -1)
+
 	for _, tag := range tags {
 		content := strings.Trim(ankiTmpl[tag[0]:tag[1]], "{ }")
-		fmt.Printf("Found tag: {{%s}}\n", content)
 		if tag[0] > i {
-			converted.WriteString( ankiTmpl[i:tag[0]] )
+			converted.WriteString(ankiTmpl[i:tag[0]])
 		}
 		i = tag[1]
-		
+
 		switch {
-			case strings.HasPrefix(content,"type:"):
-				converted.WriteString("{{/* " + content + " */}}")
-			case strings.HasPrefix(content,"cloze:"):
-				converted.WriteString("{{/* " + content + " */}}")
-			case strings.HasPrefix(content,"hint:"):
-				converted.WriteString("{{/* " + content + " */}}")
-			case strings.HasPrefix(content,"text:"):
-				converted.WriteString("{{/* " + content + " */}}")
-			case strings.HasPrefix(content,"#"):
-				converted.WriteString("{{/* " + content + " */}}")
-			case strings.HasPrefix(content,"/"):
-				converted.WriteString("{{/* " + content + " */}}")
-			default:
-				converted.WriteString("{{ ." + content + " }}")
+		case strings.HasPrefix(content, "type:"):
+			converted.WriteString("{{/* " + content + " */}}")
+		case strings.HasPrefix(content, "cloze:"):
+			converted.WriteString("{{/* " + content + " */}}")
+		case strings.HasPrefix(content, "hint:"):
+			converted.WriteString("{{/* " + content + " */}}")
+		case strings.HasPrefix(content, "text:"):
+			converted.WriteString("{{/* " + content + " */}}")
+		case strings.HasPrefix(content, "#"):
+			converted.WriteString("{{/* " + content + " */}}")
+		case strings.HasPrefix(content, "/"):
+			converted.WriteString("{{/* " + content + " */}}")
+		default:
+			converted.WriteString("{{ ." + content + " }}")
 		}
 	}
 	if i < len(ankiTmpl) {
-		converted.WriteString( ankiTmpl[i:] )
+		converted.WriteString(ankiTmpl[i:])
 	}
-	
+
 	return string(converted.Bytes()), nil
 }
 

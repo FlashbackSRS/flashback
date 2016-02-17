@@ -32,18 +32,18 @@ func readSQLite(dbbuf []byte) (*anki.Collection, error) {
 	if err != nil {
 		return nil, err
 	}
-	if err := readCards(w, collection); err != nil {
-		return nil, err
-	}
-	if err := readNotes(w, collection); err != nil {
-		return nil, err
-	}
-	if err := readRevlog(w, collection); err != nil {
-		return nil, err
-	}
-	if err := readGraves(w, collection); err != nil {
-		return nil, err
-	}
+	// 	if err := readCards(w, collection); err != nil {
+	// 		return nil, err
+	// 	}
+	// 	if err := readNotes(w, collection); err != nil {
+	// 		return nil, err
+	// 	}
+	// 	if err := readRevlog(w, collection); err != nil {
+	// 		return nil, err
+	// 	}
+	// 	if err := readGraves(w, collection); err != nil {
+	// 		return nil, err
+	// 	}
 	return collection, err
 }
 

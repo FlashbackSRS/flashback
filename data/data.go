@@ -4,6 +4,21 @@ import (
 	"time"
 )
 
+const HTMLTemplateContentType = "text/html+flashbacktmpl"
+
+type Model struct {
+	Id          string   `json:"_id"`
+	Rev         string   `json:"_rev"`
+	Type        string   `json:"Type"`
+	Name        string   `json:"Name"`
+	Description string   `json:"Description"`
+	Fields      []*Field `json:"Fields"`
+}
+
+type Field struct {
+	Name string `json:"Name"`
+}
+
 type File struct {
 	Id          string // uuid
 	Filename    string
@@ -26,8 +41,7 @@ type Card struct {
 }
 
 type Target struct {
-	Id        string
-	
+	Id string
 }
 
 type CardStats struct {
@@ -39,18 +53,12 @@ type CardStats struct {
 }
 
 type Note struct {
-	Id               string // uuid
-	Fields           []Field
-	LearnableFields  []string
-// 	RelatedNotes     []int
-// 	RelatedCards     []int
-// 	NoteDependencies []int
-// 	CardDependencies []int
-	Tags             []string
-}
-
-type Field struct {
-	Id      int  // Counter which is never re-used in any given card
-	Name    string
-	Deleted bool
+	Id              string // uuid
+	Fields          []Field
+	LearnableFields []string
+	// 	RelatedNotes     []int
+	// 	RelatedCards     []int
+	// 	NoteDependencies []int
+	// 	CardDependencies []int
+	Tags []string
 }
