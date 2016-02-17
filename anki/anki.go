@@ -1,9 +1,11 @@
 package anki
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"strconv"
+	"regexp"
 	"strings"
 	"time"
 	// 	"honnef.co/go/js/console"
@@ -53,12 +55,12 @@ type Collection struct {
 	Ver            int
 	LastSync       time.Time
 	Config         Config
-	Models         []Model
-	Decks          []Deck
-	DeckConfig     []DeckConfig
-	Cards          []Card
-	Notes          []Note
-	Revlog         []Review
+	Models         []*Model
+	Decks          []*Deck
+	DeckConfig     []*DeckConfig
+	Cards          []*Card
+	Notes          []*Note
+	Revlog         []*Review
 }
 
 // defaultConf = {
@@ -132,7 +134,7 @@ type Model struct {
 	DeckId    uint64     `json:"did"`
 	Fields    []Field    `json:"flds"`
 	SortField uint8      `json:"sortf"`
-	Templates []Template `json:"tmpls"`
+	Templates []*Template `json:"tmpls"`
 	Type      uint8      `json:"type"`
 	LatexPre  string     `json:"latexPre"`
 	LatexPost string     `json:"latexPost"`
@@ -169,9 +171,72 @@ func (c *Collection) parseModels(jsonString string) error {
 			m.Id = id
 		}
 		m.Modified = time.Unix(m.Mod, 0)
-		c.Models = append(c.Models, m)
+		for _,t := range m.Templates {
+			a, err := convertTemplate(t.AnswerFormat)
+			if err != nil {
+				return err
+			}
+			q, err := convertTemplate(t.QuestionFormat)
+			if err != nil {
+				return err
+			}
+			t.AnswerFormat = a
+			t.QuestionFormat = q
+		}
+		c.Models = append(c.Models, &m)
 	}
 	return nil
+}
+
+/*
+Anki templates may contian the following types of tags:
+{{Name}} -- Simple variable substitution
+{{type:Name}} -- Typing dialog
+{{cloze:Name}} -- Cloze replacement
+{{hint:Name}} -- Hint field
+{{#Name}} -- "If defined"
+{{/Name}} -- End "if defined"
+{{text:Name}} -- Variable subsititution, removing HTML markup
+*/
+
+var tagRe *regexp.Regexp = regexp.MustCompile("{{.*?}}")
+
+func convertTemplate(ankiTmpl string) (string,error) {
+	var converted bytes.Buffer
+	var i = 0
+	
+	tags := tagRe.FindAllStringIndex( ankiTmpl, -1 )
+	
+	for _, tag := range tags {
+		content := strings.Trim(ankiTmpl[tag[0]:tag[1]], "{ }")
+		fmt.Printf("Found tag: {{%s}}\n", content)
+		if tag[0] > i {
+			converted.WriteString( ankiTmpl[i:tag[0]] )
+		}
+		i = tag[1]
+		
+		switch {
+			case strings.HasPrefix(content,"type:"):
+				converted.WriteString("{{/* " + content + " */}}")
+			case strings.HasPrefix(content,"cloze:"):
+				converted.WriteString("{{/* " + content + " */}}")
+			case strings.HasPrefix(content,"hint:"):
+				converted.WriteString("{{/* " + content + " */}}")
+			case strings.HasPrefix(content,"text:"):
+				converted.WriteString("{{/* " + content + " */}}")
+			case strings.HasPrefix(content,"#"):
+				converted.WriteString("{{/* " + content + " */}}")
+			case strings.HasPrefix(content,"/"):
+				converted.WriteString("{{/* " + content + " */}}")
+			default:
+				converted.WriteString("{{ ." + content + " }}")
+		}
+	}
+	if i < len(ankiTmpl) {
+		converted.WriteString( ankiTmpl[i:] )
+	}
+	
+	return string(converted.Bytes()), nil
 }
 
 type Deck struct {
@@ -213,7 +278,7 @@ func (c *Collection) parseDecks(jsonString string) error {
 			}
 		}
 		d.Modified = time.Unix(d.Mod, 0)
-		c.Decks = append(c.Decks, d)
+		c.Decks = append(c.Decks, &d)
 	}
 	return nil
 }
@@ -266,7 +331,7 @@ func (c *Collection) parseDeckConfig(jsonString string) error {
 			dc.Id = id
 		}
 		dc.Modified = time.Unix(dc.Mod, 0)
-		c.DeckConfig = append(c.DeckConfig, dc)
+		c.DeckConfig = append(c.DeckConfig, &dc)
 	}
 	return nil
 }
@@ -312,7 +377,7 @@ type Card struct {
 }
 
 func (c *Collection) AddCardFromSqlite(row map[string]interface{}) {
-	c.Cards = append(c.Cards, Card{
+	c.Cards = append(c.Cards, &Card{
 		Id:       uint64(row["id"].(float64)),
 		NoteId:   uint64(row["nid"].(float64)),
 		DeckId:   uint64(row["did"].(float64)),
@@ -357,7 +422,7 @@ type Note struct {
 }
 
 func (c *Collection) AddNoteFromSqlite(row map[string]interface{}) {
-	c.Notes = append(c.Notes, Note{
+	c.Notes = append(c.Notes, &Note{
 		Id:        uint64(row["id"].(float64)),
 		Guid:      row["guid"].(string),
 		ModelId:   uint64(row["mid"].(float64)),
@@ -404,7 +469,7 @@ type Review struct {
 }
 
 func (c *Collection) AddReviewFromSqlite(row map[string]interface{}) {
-	c.Revlog = append(c.Revlog, Review{
+	c.Revlog = append(c.Revlog, &Review{
 		Id:           uint(row["id"].(float64)),
 		CardId:       uint64(row["cid"].(float64)),
 		Ease:         Ease(row["ease"].(float64)),
