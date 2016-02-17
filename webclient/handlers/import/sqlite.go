@@ -1,15 +1,15 @@
 package import_handler
 
 import (
-	"fmt"
 	"errors"
-	"github.com/gopherjs/gopherjs/js"
-	"github.com/flimzy/web/worker"
+	"fmt"
 	"github.com/flimzy/flashback/anki"
-	"honnef.co/go/js/console"
+	"github.com/flimzy/web/worker"
+	"github.com/gopherjs/gopherjs/js"
+	// 	"honnef.co/go/js/console"
 )
 
-func readSQLite(dbbuf []byte) error {
+func readSQLite(dbbuf []byte) (*anki.Collection, error) {
 	fmt.Printf("Gonna pretend to read the SQLite data now...\n")
 
 	w := worker.New("js/worker.sql.js")
@@ -20,32 +20,31 @@ func readSQLite(dbbuf []byte) error {
 	})
 	response, err := w.Receive()
 	if err != nil {
-		return err
+		return nil, err
 	}
-	if msg, ok := response.(map[string]interface{}); ! ok {
-		return errors.New("Received unexpected response from sqlite")
-	} else if ready,ok := msg["ready"].(bool); !ok || !ready {
-		return errors.New("Ready status not true")
+	if msg, ok := response.(map[string]interface{}); !ok {
+		return nil, errors.New("Received unexpected response from sqlite")
+	} else if ready, ok := msg["ready"].(bool); !ok || !ready {
+		return nil, errors.New("Ready status not true")
 	}
-	
+
 	collection, err := readCollections(w)
 	if err != nil {
-		return err
+		return nil, err
 	}
-// 	if err := readCards(w, collection); err != nil {
-// 		return err
-// 	}
-// 	if err := readNotes(w, collection); err != nil {
-// 		return err
-// 	}
-// 	if err := readRevlog(w, collection); err != nil {
-// 		return err
-// 	}
-// 	if err := readGraves(w, collection); err != nil {
-// 		return err
-// 	}
-	console.Log(collection)
-	return nil
+	if err := readCards(w, collection); err != nil {
+		return nil, err
+	}
+	if err := readNotes(w, collection); err != nil {
+		return nil, err
+	}
+	if err := readRevlog(w, collection); err != nil {
+		return nil, err
+	}
+	if err := readGraves(w, collection); err != nil {
+		return nil, err
+	}
+	return collection, err
 }
 
 type rowFunc func(map[string]interface{})
@@ -56,7 +55,7 @@ func readCollections(w *worker.Worker) (c *anki.Collection, err error) {
 		if read {
 			err = errors.New("Read more than one collection. This shouldn't happen")
 		} else {
-			c, err = anki.SqliteToCollection( row )
+			c, err = anki.SqliteToCollection(row)
 			read = true
 		}
 	}
@@ -69,7 +68,7 @@ func readCollections(w *worker.Worker) (c *anki.Collection, err error) {
 
 func readCards(w *worker.Worker, c *anki.Collection) error {
 	rowFn := func(row map[string]interface{}) {
-		c.AddCardFromSqlite( row )
+		c.AddCardFromSqlite(row)
 	}
 	return readX(w, `
 		SELECT c.*
@@ -81,7 +80,7 @@ func readCards(w *worker.Worker, c *anki.Collection) error {
 
 func readNotes(w *worker.Worker, c *anki.Collection) error {
 	rowFn := func(row map[string]interface{}) {
-		c.AddNoteFromSqlite( row )
+		c.AddNoteFromSqlite(row)
 	}
 	return readX(w, `
 		SELECT n.*
@@ -93,7 +92,7 @@ func readNotes(w *worker.Worker, c *anki.Collection) error {
 
 func readRevlog(w *worker.Worker, c *anki.Collection) error {
 	rowFn := func(row map[string]interface{}) {
-		c.AddReviewFromSqlite( row )
+		c.AddReviewFromSqlite(row)
 	}
 	return readX(w, `
 		SELECT r.*
@@ -105,7 +104,7 @@ func readRevlog(w *worker.Worker, c *anki.Collection) error {
 
 func readGraves(w *worker.Worker, c *anki.Collection) error {
 	rowFn := func(row map[string]interface{}) {
-		c.DeleteDeck( uint64(row["oid"].(float64)) )
+		c.DeleteDeck(uint64(row["oid"].(float64)))
 	}
 	return readX(w, `
 		SELECT oid
@@ -117,7 +116,7 @@ func readGraves(w *worker.Worker, c *anki.Collection) error {
 func readX(w *worker.Worker, query string, fn rowFunc) error {
 	w.Send(map[string]string{
 		"action": "each",
-		"sql": query,
+		"sql":    query,
 	})
 	for {
 		response, err := w.Receive()
@@ -130,7 +129,6 @@ func readX(w *worker.Worker, query string, fn rowFunc) error {
 			return errors.New("Unable to convert response to map\n")
 		}
 		if val, ok := msg["finished"].(bool); val && ok {
-			console.Log("Finished\n");
 			return nil
 		}
 		if row, ok := msg["row"].(map[string]interface{}); ok {

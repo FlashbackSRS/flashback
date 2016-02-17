@@ -2,6 +2,7 @@ package anki
 
 import (
 	"encoding/json"
+	"fmt"
 	"strconv"
 	"strings"
 	"time"
@@ -53,6 +54,8 @@ type Collection struct {
 	LastSync       time.Time
 	Config         Config
 	Models         []Model
+	Decks          []Deck
+	DeckConfig     []DeckConfig
 	Cards          []Card
 	Notes          []Note
 	Revlog         []Review
@@ -77,38 +80,54 @@ type Collection struct {
 // # Also found
 // newBury -- not used?
 
+func jsTime(ms uint64) time.Time {
+	return time.Unix(int64(ms/1000), int64(ms%1000))
+}
+
+func SqliteToCollection(row map[string]interface{}) (*Collection, error) {
+	c := &Collection{
+		Created:        time.Unix(int64(row["crt"].(float64)), 0),
+		Modified:       jsTime(uint64(row["mod"].(float64))),
+		SchemaModified: jsTime(uint64(row["scm"].(float64))),
+		Ver:            int(row["ver"].(float64)),
+		LastSync:       jsTime(uint64(row["ls"].(float64))),
+	}
+	if err := c.parseConfig(row["conf"].(string)); err != nil {
+		return nil, fmt.Errorf("[conf] %s", err)
+	}
+	if err := c.parseModels(row["models"].(string)); err != nil {
+		return nil, fmt.Errorf("[models] %s", err)
+	}
+	if err := c.parseDecks(row["decks"].(string)); err != nil {
+		return nil, fmt.Errorf("[decks] %s", err)
+	}
+	if err := c.parseDeckConfig(row["dconf"].(string)); err != nil {
+		return nil, fmt.Errorf("[dconf] %s", err)
+	}
+	return c, nil
+}
+
 type Config struct {
-	ActiveDecks  []uint `json:"activeDecks"`
-	CurrentDeck  uint   `json:"curDeck"`
-	NewSpread    uint   `json:"newSpread"`
-	CollapseTime uint   `json:"collapseTime"`
-	TimeLimit    uint   `json:"timeLim"`
-	EstTimes     bool   `json:"estTimes"`
-	DueCounts    bool   `json:"dueCounts"`
-	// 	NextPos       uint   `json:"nextPos"`
-	// 	CurrentModel  uint   `json:"curModel"`
+	ActiveDecks   []uint `json:"activeDecks"`
+	CurrentDeck   uint   `json:"curDeck"`
+	NewSpread     uint   `json:"newSpread"`
+	CollapseTime  uint   `json:"collapseTime"`
+	TimeLimit     uint   `json:"timeLim"`
+	EstTimes      bool   `json:"estTimes"`
+	DueCounts     bool   `json:"dueCounts"`
 	SortType      string `json:"sortType"`
 	SortBackwards bool   `json:"sortBackwards"`
+	// 	NextPos       uint   `json:"nextPos"`
+	// 	CurrentModel  uint   `json:"curModel"`
+}
+
+func (c *Collection) parseConfig(jsonString string) error {
+	return json.Unmarshal([]byte(jsonString), &(c.Config))
 }
 
 type Model struct {
-	Name         string
-	Id           uint64
-	Tags         []string
-	DeckId       uint64
-	Fields       []Field
-	SortField    uint8
-	Templates    []Template
-	Type         uint8
-	LatexPre     string
-	LatexPost    string
-	CSS          string
-	ModifiedTime time.Time
-}
-
-type rawModel struct {
+	Id        uint64     `json:"-"`
 	Name      string     `json:"name"`
-	Id        string     `json:"id"`
 	Tags      []string   `json:"tags"`
 	DeckId    uint64     `json:"did"`
 	Fields    []Field    `json:"flds"`
@@ -118,8 +137,9 @@ type rawModel struct {
 	LatexPre  string     `json:"latexPre"`
 	LatexPost string     `json:"latexPost"`
 	CSS       string     `json:"css"`
-	// Req string `json:"req"`
-	Mod int64 `json:"mod"`
+	Mod       int64      `json:"mod"`
+	Modified  time.Time
+	// Req string `json:"req"` -- Required fields? Possibly auto-generated after examining templates?
 }
 
 type Field struct {
@@ -137,42 +157,118 @@ type Template struct {
 	AnswerFormat   string `json:"afmt"`
 }
 
-func SqliteToCollection(row map[string]interface{}) (*Collection, error) {
-	c := &Collection{
-		Created:        time.Unix(int64(row["crt"].(float64)), 0),
-		Modified:       time.Unix(int64(row["mod"].(float64)), 0),
-		SchemaModified: time.Unix(int64(row["scm"].(float64)), 0),
-		Ver:            int(row["ver"].(float64)),
-		LastSync:       time.Unix(int64(row["ls"].(float64)), 0),
+func (c *Collection) parseModels(jsonString string) error {
+	var models map[string]Model
+	if err := json.Unmarshal([]byte(jsonString), &models); err != nil {
+		return err
 	}
-	if err := json.Unmarshal([]byte(row["conf"].(string)), &(c.Config)); err != nil {
-		return nil, err
-	}
-	var rawModels map[string]rawModel
-	if err := json.Unmarshal([]byte(row["models"].(string)), &rawModels); err != nil {
-		return nil, err
-	} else {
-		for _, m := range rawModels {
-			id, err := strconv.ParseUint(m.Id, 10, 64)
-			if err != nil {
-				return nil, err
-			}
-			c.Models = append(c.Models, Model{
-				Name:         m.Name,
-				Id:           id,
-				Tags:         m.Tags,
-				DeckId:       m.DeckId,
-				Fields:       m.Fields,
-				SortField:    m.SortField,
-				Templates:    m.Templates,
-				LatexPre:     m.LatexPre,
-				LatexPost:    m.LatexPost,
-				CSS:          m.CSS,
-				ModifiedTime: time.Unix(m.Mod, 0),
-			})
+	for i, m := range models {
+		if id, err := strconv.ParseUint(i, 10, 64); err != nil {
+			return err
+		} else {
+			m.Id = id
 		}
+		m.Modified = time.Unix(m.Mod, 0)
+		c.Models = append(c.Models, m)
 	}
-	return c, nil
+	return nil
+}
+
+type Deck struct {
+	Id               uint64    `json:"-"`
+	Name             string    `json:"name"`
+	Mid              string    `json:"mid"`
+	ModelId          uint64    `json:"-"`
+	Description      string    `json:"descr"`
+	ExtendedRev      uint8     `json:"extendedRev"`
+	Collapsed        bool      `json:"collapsed"`
+	BrowserCollapsed bool      `json:"browserCollapsed"`
+	NewToday         []uint    `json:"newToday"`
+	timeToday        []uint    `json:"timeToday"`
+	Dyn              uint8     `json:"dyn"`
+	ExtendedNew      uint8     `json:"extendedNew"`
+	ConfigId         uint64    `json:"conf"`
+	ReviewToday      []uint    `json:"revToday"`
+	LearnToday       []uint    `json:"lrnToday"`
+	Mod              int64     `json:"mod"`
+	Modified         time.Time `json:"-"`
+}
+
+func (c *Collection) parseDecks(jsonString string) error {
+	var decks map[string]Deck
+	if err := json.Unmarshal([]byte(jsonString), &decks); err != nil {
+		return err
+	}
+	for i, d := range decks {
+		if id, err := strconv.ParseUint(i, 10, 64); err != nil {
+			return err
+		} else {
+			d.Id = id
+		}
+		if d.Mid != "" {
+			if mid, err := strconv.ParseUint(d.Mid, 10, 64); err != nil {
+				return err
+			} else {
+				d.ModelId = mid
+			}
+		}
+		d.Modified = time.Unix(d.Mod, 0)
+		c.Decks = append(c.Decks, d)
+	}
+	return nil
+}
+
+type DeckConfig struct {
+	Id       uint64    `json:"-"`
+	Name     string    `json:"name"`
+	ReplayQ  bool      `json:"replayq"`
+	Timer    uint8     `json:"timer"`
+	MaxTaken uint8     `json:"maxTaken"`
+	Mod      int64     `json:"mod"`
+	Modified time.Time `json:"-"`
+	Autoplay bool      `json:"autoplay"`
+	Lapse    struct {
+		LeechFails  uint   `json:"leechFails"`
+		MinInt      uint   `json:"minInt"`
+		Delays      []uint `json:"delays"`
+		LeechAction uint8  `json:"leechAction"`
+		Mult        uint   `json:"mult"`
+	} `json:"lapse"`
+	Rev struct {
+		PerDay      uint    `json:"perDay"`
+		Fuzz        float32 `json:"fuzz"`
+		IntervalFct uint    `json:"ivlFct"`
+		MaxInterval uint    `json:"maxIvl"`
+		Ease4       float32 `json:"ease4"`
+		Bury        bool    `json:"bury"`
+		MinSpace    uint    `json:"minSpace"`
+	} `json:"rev"`
+	New struct {
+		PerDay        uint   `json:"perDay"`
+		Delays        []uint `json:"delays"`
+		Separate      bool   `json:"separate"`
+		Intervals     []uint `json:"ints"`
+		InitialFactor uint   `json:"initialFactor"`
+		Bury          bool   `json:"bury"`
+		Order         uint   `json:"order"`
+	} `json:"new"`
+}
+
+func (c *Collection) parseDeckConfig(jsonString string) error {
+	var dconf map[string]DeckConfig
+	if err := json.Unmarshal([]byte(jsonString), &dconf); err != nil {
+		return err
+	}
+	for i, dc := range dconf {
+		if id, err := strconv.ParseUint(i, 10, 64); err != nil {
+			return err
+		} else {
+			dc.Id = id
+		}
+		dc.Modified = time.Unix(dc.Mod, 0)
+		c.DeckConfig = append(c.DeckConfig, dc)
+	}
+	return nil
 }
 
 // CREATE TABLE cards (

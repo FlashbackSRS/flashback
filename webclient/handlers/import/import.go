@@ -5,14 +5,14 @@ import (
 	"bytes"
 	"fmt"
 
-// 	"github.com/flimzy/go-pouchdb"
+	// 	"github.com/flimzy/go-pouchdb"
 
+	"github.com/flimzy/web/file"
 	"github.com/gopherjs/gopherjs/js"
 	"github.com/gopherjs/jquery"
-	"github.com/flimzy/web/file"
-// 	"github.com/flimzy/flashback/util"
-// 	"honnef.co/go/js/console"
-// 	"github.com/flimzy/web/worker"
+	// 	"github.com/flimzy/flashback/util"
+	"honnef.co/go/js/console"
+	// 	"github.com/flimzy/web/worker"
 )
 
 var jQuery = jquery.NewJQuery
@@ -35,7 +35,7 @@ func BeforeTransition(event *jquery.Event, ui *js.Object) bool {
 func DoImport() {
 	files := jQuery("#apkg", ":mobile-pagecontainer").Get(0).Get("files")
 	for i := 0; i < files.Length(); i++ {
-		err := importFile( file.Internalize( files.Index(i) ) )
+		err := importFile(file.Internalize(files.Index(i)))
 		if err != nil {
 			fmt.Printf("Error importing file: %s\n", err)
 		}
@@ -44,11 +44,11 @@ func DoImport() {
 
 func importFile(f file.File) error {
 	fmt.Printf("Gonna pretend to import %s now\n", f.Name())
-	z, err := zip.NewReader( bytes.NewReader( f.Bytes() ), f.Size() )
+	z, err := zip.NewReader(bytes.NewReader(f.Bytes()), f.Size())
 	if err != nil {
 		return err
 	}
-	for _,file := range z.File {
+	for _, file := range z.File {
 		fmt.Printf("Archive contains %s\n", file.FileHeader.Name)
 		if file.FileHeader.Name == "collection.anki2" {
 			// Found the SQLite database
@@ -58,10 +58,11 @@ func importFile(f file.File) error {
 			}
 			buf := new(bytes.Buffer)
 			buf.ReadFrom(rc)
-			err = readSQLite(buf.Bytes())
+			collection, err := readSQLite(buf.Bytes())
 			if err != nil {
 				return err
 			}
+			console.Log(collection)
 			return nil
 		}
 	}
