@@ -32,18 +32,18 @@ func readSQLite(dbbuf []byte) (*anki.Collection, error) {
 	if err != nil {
 		return nil, err
 	}
-	// 	if err := readCards(w, collection); err != nil {
-	// 		return nil, err
-	// 	}
-	// 	if err := readNotes(w, collection); err != nil {
-	// 		return nil, err
-	// 	}
-	// 	if err := readRevlog(w, collection); err != nil {
-	// 		return nil, err
-	// 	}
-	// 	if err := readGraves(w, collection); err != nil {
-	// 		return nil, err
-	// 	}
+	if err := readCards(w, collection); err != nil {
+		return nil, err
+	}
+	if err := readNotes(w, collection); err != nil {
+		return nil, err
+	}
+	if err := readRevlog(w, collection); err != nil {
+		return nil, err
+	}
+	if err := readGraves(w, collection); err != nil {
+		return nil, err
+	}
 	return collection, err
 }
 
@@ -104,7 +104,7 @@ func readRevlog(w *worker.Worker, c *anki.Collection) error {
 
 func readGraves(w *worker.Worker, c *anki.Collection) error {
 	rowFn := func(row map[string]interface{}) {
-		c.DeleteDeck(uint64(row["oid"].(float64)))
+		c.DeleteDeck(int64(row["oid"].(float64)))
 	}
 	return readX(w, `
 		SELECT oid

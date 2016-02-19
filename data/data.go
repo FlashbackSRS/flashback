@@ -7,58 +7,71 @@ import (
 const HTMLTemplateContentType = "text/html+flashbacktmpl"
 
 type Model struct {
-	Id          string   `json:"_id"`
-	Rev         string   `json:"_rev"`
-	Type        string   `json:"Type"`
-	Name        string   `json:"Name"`
-	Description string   `json:"Description"`
-	Fields      []*Field `json:"Fields"`
+	Id          string    `json:"_id"`
+	Rev         string    `json:"_rev"`
+	Type        string    `json:"$type"`
+	Name        string    `json:"Name,omitempty"`
+	Description string    `json:"Description,omitempty"`
+	Fields      []*Field  `json:"Fields"`
+	Created     time.Time `json:"$created,omitempty"`
+	Modified    time.Time `json:"$modified,omitempty"`
+	Comment     string    `json:"Comment,omitempty"`
 }
 
 type Field struct {
 	Name string `json:"Name"`
 }
 
-type File struct {
-	Id          string // uuid
-	Filename    string
-	ContentType string
-	Contents    string
+type Deck struct {
+	Id          string    `json:"_id"`
+	Rev         string    `json:"_rev"`
+	Type        string    `json:"$type"`
+	AnkiId      string    `json:"$ankiId"`
+	Name        string    `json:"Name,omitempty"`
+	Description string    `json:"Description,omitempty"`
+	Created     time.Time `json:"$created,omitempty"`
+	Modified    time.Time `json:"$modified,omitempty"`
+	Comment     string    `json:"Comment"`
 }
 
-type Template struct {
-	Id          string // uuid
-	Name        string
-	Attachments []File // Main file is index.html?
-}
-
-type Card struct {
-	Id           string // combination of Note.id and a counter
-	NoteId       string // References Note.Id
-	TemplateId   string // References Template.Id
-	RelatedCards []int
-	RelatedNotes []int
-}
-
-type Target struct {
-	Id string
-}
-
-type CardStats struct {
-	Id        string // References Card.Id
-	Due       time.Time
-	LastSeen  time.Time
-	Suspended bool
-	Notes     string
+type DeckConfig struct {
+	Id              string    `json:"_id"`
+	Rev             string    `json:"_rev"`
+	Type            string    `json:"$type"`
+	DeckId          string    `json:"$deckId"`
+	Created         time.Time `json:"$created,omitempty"`
+	Modified        time.Time `json:"$modified,omitempty"`
+	MaxDailyReviews uint16    `json:"MaxDailyReviews"`
+	MaxDailyNew     uint16    `json:"MaxDailyNew"`
 }
 
 type Note struct {
-	Id              string // uuid
-	Fields          []Field
-	LearnableFields []string
-	// 	RelatedNotes     []int
-	// 	RelatedCards     []int
-	// 	NoteDependencies []int
-	// 	CardDependencies []int
-	Tags []string
+	Id          string    `json:"_id"`
+	Rev         string    `json:"_rev"`
+	AnkiId      string    `json:"$ankiId"`
+	Type        string    `json:"$type"`
+	Created     time.Time `json:"$created,omitempty"`
+	Modified    time.Time `json:"$modified,omitempty"`
+	ModelId     string    `json:"$modelId"`
+	Tags        []string  `json:"Tags"`
+	FieldValues []string  `json:"FieldValues"`
+}
+
+type Card struct {
+	Id           string    `json:"_id"`
+	Rev          string    `json:"_rev"`
+	AnkiId       string    `json:"$ankiId"`
+	Type         string    `json:"$type"`
+	NoteId       string    `json:"$noteId"`
+	DeckId       string    `json:"$deckId"`
+	TemplateId   string    `json:"$templateId"`
+	Created      time.Time `json:"$created,omitempty"`
+	Modified     time.Time `json:"$modified,omitempty"`
+	Due          time.Time `json:"Due,omitempty"`
+	Reviews      int       `json:"Reviews"`
+	Lapses       int       `json:"Lapses"`
+	Interval     int       `json:"Interval"`
+	SRSFactor    float32   `json:"SRSFactor"`
+	Suspended    bool      `json:"Suspended"`
+	RelatedCards []string  `json:"Related"`
 }
