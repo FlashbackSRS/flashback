@@ -33,6 +33,7 @@ func DoSync() {
 	result, err := pouchdb.Replicate(rdb, ldb, pouchdb.Options{})
 	if err != nil {
 		fmt.Printf("Error syncing from server: %s\n", err)
+		return
 	}
 	docsRead := int(result["docs_written"].(float64))
 	result, err = pouchdb.Replicate(ldb, rdb, pouchdb.Options{})

@@ -3,9 +3,11 @@ package import_handler
 import (
 	"archive/zip"
 	"bytes"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"html/template"
+	"path/filepath"
 	"regexp"
 	"strings"
 	"time"
@@ -55,54 +57,81 @@ func importFile(f file.File) error {
 	if err != nil {
 		return err
 	}
+	zipMap := make(map[string]*zip.File)
 	for _, file := range z.File {
-		fmt.Printf("Archive contains %s\n", file.FileHeader.Name)
-		if file.FileHeader.Name == "collection.anki2" {
-			// Found the SQLite database
-			rc, err := file.Open()
-			if err != nil {
-				return err
-			}
-			buf := new(bytes.Buffer)
-			buf.ReadFrom(rc)
-			collection, err := readSQLite(buf.Bytes())
-			if err != nil {
-				return err
-			}
-			console.Log(collection)
-			modelMap, tmplMap, err := storeModels(collection)
-			if err != nil {
-				return err
-			}
-			noteMap, err := storeNotes(collection, modelMap)
-			if err != nil {
-				return err
-			}
-			deckMap, err := storeDecks(collection)
-			if err != nil {
-				return err
-			}
-			if err := storeCards(collection, deckMap, noteMap, tmplMap); err != nil {
-				return err
-			}
-			return nil
-		}
+		zipMap[ file.FileHeader.Name ] = file
+	}
+	mediaMap, err := extractMediaMap(zipMap)
+	if err != nil {
+		return err
+	}
+	collection, err := extractCollection(zipMap)
+	if err != nil {
+		return err
+	}
+	console.Log(collection)
+	modelMap, err := storeModels(collection)
+	if err != nil {
+		return err
+	}
+	noteMap, err := storeNotes(collection, modelMap, mediaMap)
+	if err != nil {
+		return err
+	}
+	deckMap, err := storeDecks(collection)
+	if err != nil {
+		return err
+	}
+	if err := storeCards(collection, deckMap, noteMap); err != nil {
+		return err
 	}
 	return nil
 }
 
-type idmap map[int64]string
-type tmplmap map[string][]string
-type templ struct {
-	Id   string
-	Name string
+func extractMediaMap(z map[string]*zip.File) (map[string]*zip.File, error) {
+	file, ok := z["media"]
+	if ! ok {
+		return nil, errors.New("Did not find 'media'. Invalid Anki package")
+	}
+	var fileMap map[string]string
+	rc, err := file.Open()
+	if err != nil {
+		return nil, err
+	}
+	defer rc.Close()
+	buf := new(bytes.Buffer)
+	buf.ReadFrom(rc)
+	if err := json.Unmarshal(buf.Bytes(), &fileMap); err != nil {
+		return nil, err
+	}
+	mediaMap := make(map[string]*zip.File)
+	for archiveName,fileName := range fileMap {
+		mediaMap[fileName] = z[archiveName]
+	}
+	return mediaMap, nil
 }
+
+func extractCollection(z map[string]*zip.File) (*anki.Collection, error) {
+	file, ok := z["collection.anki2"]
+	if ! ok {
+		return nil, errors.New("Did not find 'collection.anki2'. Invalid Anki package")
+	}
+	rc, err := file.Open()
+	if err != nil {
+		return nil, err
+	}
+	defer rc.Close()
+	buf := new(bytes.Buffer)
+	buf.ReadFrom(rc)
+	return readSQLite(buf.Bytes())
+}
+
+type idmap map[int64]string
 
 var nameToIdRE = regexp.MustCompile("[[:space:]]")
 
-func storeModels(c *anki.Collection) (idmap, tmplmap, error) {
+func storeModels(c *anki.Collection) (idmap, error) {
 	modelMap := make(idmap)
-	templateMap := make(tmplmap)
 	dbName := "user-" + util.CurrentUser()
 	db := pouchdb.New(dbName)
 	for _, m := range c.Models {
@@ -111,7 +140,13 @@ func storeModels(c *anki.Collection) (idmap, tmplmap, error) {
 			continue
 		}
 		modelUuid := m.AnkiId()
-		model := data.Model{
+		modelMap[m.Id] = modelUuid
+		var model data.Model
+		// Check for duplicates
+		if err := db.Get(modelUuid, &model, pouchdb.Options{}); err == nil {
+			continue
+		}
+		model = data.Model{
 			Id:          modelUuid,
 			Name:        m.Name,
 			Description: "Anki Model " + m.Name,
@@ -120,7 +155,6 @@ func storeModels(c *anki.Collection) (idmap, tmplmap, error) {
 			Created:     time.Now(),
 			Comment:     "Imported from Anki on " + time.Now().String(),
 		}
-		modelMap[m.Id] = model.Id
 		for _, f := range m.Fields {
 			model.Fields = append(model.Fields, &data.Field{
 				Name: f.Name,
@@ -133,8 +167,7 @@ func storeModels(c *anki.Collection) (idmap, tmplmap, error) {
 				Body: strings.NewReader(m.CSS),
 			},
 		}
-		tmpls := make([]templ, len(m.Templates))
-		templateMap[model.Id] = make([]string, len(m.Templates))
+		tmpls := make([]string, len(m.Templates))
 		for i, t := range m.Templates {
 			attachments = append(attachments, pouchdb.Attachment{
 				Name: t.Name + " front.html",
@@ -146,15 +179,11 @@ func storeModels(c *anki.Collection) (idmap, tmplmap, error) {
 				Type: data.HTMLTemplateContentType,
 				Body: strings.NewReader(t.AnswerFormat),
 			})
-			tmpls[i] = templ{
-				Id:   nameToIdRE.ReplaceAllString(t.Name, "_"),
-				Name: t.Name,
-			}
-			templateMap[model.Id][i] = tmpls[i].Id
+			tmpls[i] = t.Name
 		}
 		buf := new(bytes.Buffer)
 		if err := masterTmpl.Execute(buf, tmpls); err != nil {
-			return nil, nil, err
+			return nil, err
 		}
 		attachments = append(attachments, pouchdb.Attachment{
 			Name: "template.html",
@@ -163,19 +192,19 @@ func storeModels(c *anki.Collection) (idmap, tmplmap, error) {
 		})
 		rev, err := db.Put(model)
 		if err != nil {
-			return nil, nil, err
+			return nil, err
 		}
 		for _, a := range attachments {
 			rev, err = db.PutAttachment(model.Id, &a, rev)
 			if err != nil {
-				return nil, nil, err
+				return nil, err
 			}
 		}
 		if err != nil {
-			return nil, nil, err
+			return nil, err
 		}
 	}
-	return modelMap, templateMap, nil
+	return modelMap, nil
 }
 
 var masterTmpl = template.Must(template.New("template.html").Delims("[[", "]]").Parse(`
@@ -190,12 +219,12 @@ var masterTmpl = template.Must(template.New("template.html").Delims("[[", "]]").
 </head>
 <body>
 {{ $g := . }}
-[[ range . ]]
-	<div id="front-{{ .Id }}">
-		{{template "[[ .Name ]] front.html" $g}}
+[[ range $i, $Name := . ]]
+	<div id="front-[[ $i ]]">
+		{{template "[[ $Name ]] front.html" $g}}
 	</div>
-	<div id="back-{{ . }}">
-		{{template "[[ .Name ]] back.html" $g}}
+	<div id="back-[[ $i ]]">
+		{{template "[[ $Name ]] back.html" $g}}
 	</div>
 [[ end ]]
 </body>
@@ -207,11 +236,15 @@ func storeDecks(c *anki.Collection) (idmap, error) {
 	dbName := "user-" + util.CurrentUser()
 	db := pouchdb.New(dbName)
 	for _, d := range c.Decks {
-		deckUuid := "deck-" + uuid.New()
-		deck := data.Deck{
+		deckUuid := d.AnkiId()
+		deckMap[d.Id] = deckUuid
+		var deck data.Deck
+		if err := db.Get(deckUuid, &deck, pouchdb.Options{}); err == nil {
+			continue
+		}
+		deck = data.Deck{
 			Id:          deckUuid,
 			Name:        d.Name,
-			AnkiId:      d.AnkiId(),
 			Description: d.Description,
 			Type:        "deck",
 			Modified:    time.Now(),
@@ -225,7 +258,6 @@ func storeDecks(c *anki.Collection) (idmap, error) {
 		if err := storeDeckConfig(c, d.ConfigId, deckUuid); err != nil {
 			return nil, err
 		}
-		deckMap[d.Id] = deck.Id
 	}
 	return deckMap, nil
 }
@@ -261,7 +293,10 @@ type noteNode struct {
 }
 type notemap map[int64]noteNode
 
-func storeNotes(c *anki.Collection, modelMap idmap) (notemap, error) {
+var soundRe = regexp.MustCompile("\\[sound:(.*?)\\]")
+var imageRe = regexp.MustCompile("<img src=\"(.*?)\" />")
+
+func storeNotes(c *anki.Collection, modelMap idmap, mediaMap map[string]*zip.File) (notemap, error) {
 	noteMap := make(notemap)
 	dbName := "user-" + util.CurrentUser()
 	db := pouchdb.New(dbName)
@@ -272,9 +307,14 @@ func storeNotes(c *anki.Collection, modelMap idmap) (notemap, error) {
 			continue
 			// 			return nil, fmt.Errorf("Found note (id=%d) with no model", n.Id)
 		}
-		note := data.Note{
-			Id:          "note-" + uuid.New(),
-			AnkiId:      n.AnkiId(),
+		noteUuid := n.AnkiId()
+		noteMap[n.Id] = noteNode{Uuid: noteUuid, Model: modelUuid}
+		var note data.Note
+		if err := db.Get(noteUuid, &note, pouchdb.Options{}); err == nil {
+			continue
+		}
+		note = data.Note{
+			Id:          noteUuid,
 			Type:        "note",
 			ModelId:     modelUuid,
 			Modified:    time.Now(),
@@ -282,17 +322,68 @@ func storeNotes(c *anki.Collection, modelMap idmap) (notemap, error) {
 			Tags:        n.Tags,
 			FieldValues: n.Fields,
 		}
-		if _, err := db.Put(note); err != nil {
+		rev, err := db.Put(note)
+		if err != nil {
 			return nil, err
 		}
-		noteMap[n.Id] = noteNode{Uuid: note.Id, Model: modelUuid}
+		files := make(map[string][]string)
+		files["audio"] = make([]string,0)
+		files["image"] = make([]string,0)
+		for _, field := range note.FieldValues {
+			for _,match := range soundRe.FindAllStringSubmatch(field,-1) {
+				files["audio"] = append( files["audio"], match[1])
+			}
+			for _, match := range imageRe.FindAllStringSubmatch(field,-1) {
+				files["image"] = append( files["image"], match[1])
+			}
+		}
+		for ftype, filenames := range files {
+			for _, file := range filenames {
+				contentType, ok := contentTypeMap[ftype][ filepath.Ext(file) ]
+				if ! ok {
+					fmt.Printf("Unknown content type for file '%s'\n", file)
+					contentType = ftype + "/unknown"
+				}
+
+				rc, err := mediaMap[file].Open()
+				if err != nil {
+					return nil, err
+				}
+				defer rc.Close()
+				attachment := pouchdb.Attachment{
+					Name: file,
+					Type: contentType,
+					Body: rc,
+				}
+				rev, err = db.PutAttachment(note.Id, &attachment, rev)
+			}
+		}
 	}
 	return noteMap, nil
 }
 
-func storeCards(c *anki.Collection, deckMap idmap, noteMap notemap, tmplMap tmplmap) error {
-	related := make(map[string][]string)
+var contentTypeMap = map[string]map[string]string{
+	"audio": map[string]string{
+		".3gp": "audio/3gpp",
+		".ogg": "audio/ogg",
+		".mp3": "audio/mpeg",
+		".spx": "audio/ogg",
+		".wav": "audio/x-wav",
+		".flac": "audio/flac",
+	},
+	"image": map[string]string{
+		".jpg": "image/jpeg",
+		".jpeg": "image/jpeg",
+		".png": "image/png",
+		".gif": "image/gif",
+	},
+}
+
+func storeCards(c *anki.Collection, deckMap idmap, noteMap notemap) error {
+	related := make(map[string]*[]string)
 	var cards []data.Card
+	dbName := "user-" + util.CurrentUser()
+	db := pouchdb.New(dbName)
 	for _, c := range c.Cards {
 		var note noteNode
 		var deckUuid string
@@ -305,9 +396,18 @@ func storeCards(c *anki.Collection, deckMap idmap, noteMap notemap, tmplMap tmpl
 			continue
 			// 			return fmt.Errorf("Found card (%d) with no note", c.Id)
 		}
-		card := data.Card{
-			Id:         "card-" + uuid.New(),
-			AnkiId:     c.AnkiId(),
+		cardUuid := c.AnkiId(note.Uuid)
+		if rel, ok := related[note.Uuid]; ok {
+			*rel = append(*rel, cardUuid)
+		} else {
+			related[note.Uuid] = &([]string{cardUuid})
+		}
+		var card data.Card
+		if err := db.Get(cardUuid, &card, pouchdb.Options{}); err == nil {
+			continue
+		}
+		card = data.Card{
+			Id:         cardUuid,
 			Type:       "card",
 			NoteId:     note.Uuid,
 			DeckId:     deckUuid,
@@ -317,32 +417,22 @@ func storeCards(c *anki.Collection, deckMap idmap, noteMap notemap, tmplMap tmpl
 			Lapses:     c.Lapses,
 			Interval:   c.Interval,
 			SRSFactor:  float32(c.Factor) / 1000,
-			TemplateId: note.Model + "-" + tmplMap[note.Model][c.Ord],
+			TemplateId: fmt.Sprintf("%s/%d", note.Model, c.Ord),
+			Suspended:  c.Queue == anki.QueueTypeSuspended,
 		}
 		switch c.Type {
-		case anki.CardTypeLearning:
-			card.Due = time.Unix(0, 0).AddDate(0, 0, int(c.Due))
-		case anki.CardTypeDue:
-			card.Due = time.Unix(c.Due, 0)
-		}
-		if c.Queue == anki.QueueTypeSuspended {
-			card.Suspended = true
-		}
-		if rel, ok := related[card.NoteId]; ok {
-			rel = append(rel, card.Id)
-		} else {
-			related[card.NoteId] = []string{card.Id}
+			case anki.CardTypeLearning:
+				card.Due = time.Unix(0, 0).AddDate(0, 0, int(c.Due))
+			case anki.CardTypeDue:
+				card.Due = time.Unix(c.Due, 0)
 		}
 		cards = append(cards, card)
 	}
-	dbName := "user-" + util.CurrentUser()
-	db := pouchdb.New(dbName)
 	for _, card := range cards {
 		rel := related[card.NoteId]
-		card.RelatedCards = make([]string, len(rel)-1)
+		card.RelatedCards = make([]string, len(*rel)-1)
 		var i int
-		for _, r := range rel {
-			fmt.Printf("Comparing %s to %s\n", r, card.Id)
+		for _, r := range *rel {
 			if r != card.Id {
 				card.RelatedCards[i] = r
 				i++
