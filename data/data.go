@@ -34,7 +34,6 @@ type Deck struct {
 	Id           string    `json:"_id"`
 	Rev          string    `json:"_rev,omitempty"`
 	Type         string    `json:"$type"`
-	AnkiId       string    `json:"$ankiId"`
 	Name         string    `json:"Name,omitempty"`
 	Description  string    `json:"Description,omitempty"`
 	Created      time.Time `json:"$created,omitempty"`
@@ -51,8 +50,8 @@ type DeckConfig struct {
 	Created         time.Time `json:"$created,omitempty"`
 	AnkiImported    time.Time `json:"$ankiImported,omitempty"` // Only for items imported from Anki
 	Modified        time.Time `json:"$modified,omitempty"`
-	MaxDailyReviews uint16    `json:"MaxDailyReviews"`
-	MaxDailyNew     uint16    `json:"MaxDailyNew"`
+	MaxDailyReviews int       `json:"MaxDailyReviews"`
+	MaxDailyNew     int       `json:"MaxDailyNew"`
 }
 
 type Note struct {

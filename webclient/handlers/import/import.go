@@ -22,7 +22,6 @@ import (
 	"github.com/flimzy/web/file"
 	"github.com/gopherjs/gopherjs/js"
 	"github.com/gopherjs/jquery"
-	"github.com/pborman/uuid"
 	"honnef.co/go/js/console"
 )
 
@@ -172,10 +171,8 @@ func storeModels(c *anki.Collection) (idmap, error) {
 		// Check for duplicates
 		if err := db.Get(modelUuid, &model, pouchdb.Options{}); err == nil {
 			if model.Modified.After(model.AnkiImported) {
-				fmt.Printf("Model %d / %s has local changes, skipping.\n", m.Id, model.Id)
 				continue
 			}
-			fmt.Printf("Gonna update model %d / %s\n", m.Id, model.Id)
 			if err := updateModel(&model, m); err != nil {
 				return nil, err
 			}
@@ -274,8 +271,13 @@ func updateModel(model *data.Model, m *anki.Model) error {
 	if err != nil {
 		return err
 	}
+	deletedAttachments := make(map[string]bool)
+	for filename, _ := range model.Attachments {
+		deletedAttachments[filename] = true
+	}
 	changedAttachments := make([]pouchdb.Attachment, 0)
 	for _, pouchAtt := range *attachments {
+		delete(deletedAttachments, pouchAtt.Name)
 		att, ok := model.Attachments[pouchAtt.Name]
 		if ok {
 			oldMd5, err := base64.StdEncoding.DecodeString(att.MD5[4:])
@@ -298,8 +300,7 @@ func updateModel(model *data.Model, m *anki.Model) error {
 		changedAttachments = append(changedAttachments, pouchAtt)
 	}
 
-	if !changed {
-		fmt.Printf("No changes to model %d / %s, skipping\n", m.Id, model.Id)
+	if !changed && len(deletedAttachments) == 0 {
 		return nil
 	}
 
@@ -309,23 +310,7 @@ func updateModel(model *data.Model, m *anki.Model) error {
 
 	fmt.Printf("Now applying changes to model %d / %s\n", m.Id, model.Id)
 
-	db := util.UserDb()
-
-	rev, err := db.Put(model)
-	if err != nil {
-		return fmt.Errorf("Error updating model: %s", err)
-	}
-	for _, a := range changedAttachments {
-		rev, err = db.PutAttachment(model.Id, &a, rev)
-		if err != nil {
-			return fmt.Errorf("Error updating model attachment: %s", err)
-		}
-	}
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return updateDoc(model, model.Id, &changedAttachments, &deletedAttachments)
 }
 
 func storeDecks(c *anki.Collection) (idmap, error) {
@@ -337,6 +322,12 @@ func storeDecks(c *anki.Collection) (idmap, error) {
 		deckMap[d.Id] = deckUuid
 		var deck data.Deck
 		if err := db.Get(deckUuid, &deck, pouchdb.Options{}); err == nil {
+			if deck.Modified.After(deck.AnkiImported) {
+				continue
+			}
+			if err := updateDeck(&deck, d); err != nil {
+				return nil, err
+			}
 			continue
 		}
 		deck = data.Deck{
@@ -359,19 +350,73 @@ func storeDecks(c *anki.Collection) (idmap, error) {
 	return deckMap, nil
 }
 
+func updateDeck(deck *data.Deck, d *anki.Deck) error {
+	var changed bool
+
+	if deck.Name != d.Name {
+		deck.Name = d.Name
+		changed = true
+	}
+
+	if deck.Description != d.Description {
+		deck.Description = d.Description
+		changed = true
+	}
+
+	if !changed {
+		return nil
+	}
+
+	deck.Modified = d.Modified
+	deck.AnkiImported = time.Now()
+	deck.Comment = "Imported from Anki on " + time.Now().String()
+
+	return updateDoc(deck, deck.Id, nil, nil)
+}
+
+func updateDoc(doc interface{}, id string, chAtt *[]pouchdb.Attachment, delAtt *map[string]bool) error {
+	db := util.UserDb()
+	rev, err := db.Put(doc)
+	if err != nil {
+		return fmt.Errorf("Error updating doc %s: %s", id, err)
+	}
+	for _, a := range *chAtt {
+		if rev, err = db.PutAttachment(id, &a, rev); err != nil {
+			return fmt.Errorf("Error updating attachment %s for %s: %s", a.Name, id, err)
+		}
+	}
+	for a, _ := range *delAtt {
+		if rev, err = db.DeleteAttachment(id, a, rev); err != nil {
+			return fmt.Errorf("Error deleting attachment %s for %s: %s", a, id, err)
+		}
+	}
+	return nil
+}
+
 func storeDeckConfig(c *anki.Collection, deckId int64, deckUuid string) error {
 	dbName := "user-" + util.CurrentUser()
 	db := pouchdb.New(dbName)
 	for _, dc := range c.DeckConfig {
 		if dc.Id == deckId {
-			conf := data.DeckConfig{
-				Id:              "deckconf-" + uuid.New(),
+			confUuid := "deckconf-" + deckUuid
+			var conf data.DeckConfig
+			if err := db.Get(confUuid, &conf, pouchdb.Options{}); err == nil {
+				if conf.Modified.After(conf.AnkiImported) {
+					continue
+				}
+				if err := updateDeckConfig(&conf, dc); err != nil {
+					return err
+				}
+				continue
+			}
+			conf = data.DeckConfig{
+				Id:              confUuid,
 				Type:            "deckconf",
 				DeckId:          deckUuid,
 				Modified:        time.Now(),
 				Created:         time.Now(),
-				MaxDailyReviews: uint16(dc.Reviews.PerDay),
-				MaxDailyNew:     uint16(dc.New.PerDay),
+				MaxDailyReviews: dc.Reviews.PerDay,
+				MaxDailyNew:     dc.New.PerDay,
 			}
 			if _, err := db.Put(conf); err != nil {
 				return err
@@ -382,6 +427,29 @@ func storeDeckConfig(c *anki.Collection, deckId int64, deckUuid string) error {
 		return nil
 	}
 	return nil
+}
+
+func updateDeckConfig(conf *data.DeckConfig, dc *anki.DeckConfig) error {
+	changed := false
+
+	if conf.MaxDailyReviews != dc.Reviews.PerDay {
+		conf.MaxDailyReviews = dc.Reviews.PerDay
+		changed = true
+	}
+
+	if conf.MaxDailyNew != dc.New.PerDay {
+		conf.MaxDailyNew = dc.New.PerDay
+		changed = true
+	}
+
+	if !changed {
+		return nil
+	}
+
+	conf.Modified = dc.Modified
+	conf.AnkiImported = time.Now()
+
+	return updateDoc(conf, conf.Id, nil, nil)
 }
 
 type noteNode struct {
@@ -409,10 +477,8 @@ func storeNotes(c *anki.Collection, modelMap idmap, mediaMap map[string]*zip.Fil
 		var note data.Note
 		if err := db.Get(noteUuid, &note, pouchdb.Options{}); err == nil {
 			if note.Modified.After(note.AnkiImported) {
-				fmt.Printf("Note %d / %s has local changes, skipping\n", n.Id, note.Id)
 				continue
 			}
-			fmt.Printf("Gonna update note %d / %s\n", n.Id, note.Id)
 			if note.ModelId != modelUuid {
 				return nil, errors.New("Changing a note's model is not supported")
 			}
@@ -491,14 +557,11 @@ func noteAttachments(n *anki.Note) (*[]pouchdb.Attachment, error) {
 
 func updateNote(note *data.Note, n *anki.Note, mediaMap map[string]*zip.File) error {
 	var changed bool
-	// FIXME: This is giving occasional false positives, nil vs. empty array I guess
-	if !reflect.DeepEqual(n.Tags, note.Tags) {
-		fmt.Printf("Tags changed. Old: %s (%d), New: %s (%d)\n", note.Tags, len(note.Tags), n.Tags, len(n.Tags))
+	if !reflect.DeepEqual(n.Tags, note.Tags) && len(n.Tags) > 0 {
 		note.Tags = n.Tags
 		changed = true
 	}
 	if !reflect.DeepEqual(n.Fields, note.FieldValues) {
-		fmt.Printf("Fields changes. Old: %s, New: %s\n", note.FieldValues, n.Fields)
 		note.FieldValues = n.Fields
 		changed = true
 	}
@@ -553,8 +616,7 @@ func updateNote(note *data.Note, n *anki.Note, mediaMap map[string]*zip.File) er
 		fmt.Printf("Need to delete attachment %s\n", filename)
 	}
 
-	if !changed {
-		fmt.Printf("No changes to note %d / %s, skipping\n", n.Id, note.Id)
+	if !changed && len(deletedAttachments) == 0 {
 		return nil
 	}
 
@@ -562,22 +624,7 @@ func updateNote(note *data.Note, n *anki.Note, mediaMap map[string]*zip.File) er
 	note.AnkiImported = time.Now()
 	note.Comment = "Imported from Anki on " + time.Now().String()
 
-	fmt.Printf("Now applying changes to note %d / %s\n", n.Id, note.Id)
-
-	db := util.UserDb()
-
-	rev, err := db.Put(note)
-	if err != nil {
-		return fmt.Errorf("Error updating note: %s", err)
-	}
-	for _, a := range changedAttachments {
-		rev, err = db.PutAttachment(note.Id, &a, rev)
-		if err != nil {
-			return fmt.Errorf("Error updating note attachment: %s", err)
-		}
-	}
-	fmt.Printf("Updated note successfully\n")
-	return nil
+	return updateDoc(note, note.Id, &changedAttachments, &deletedAttachments)
 }
 
 var contentTypeMap = map[string]string{
@@ -617,11 +664,7 @@ func storeCards(c *anki.Collection, deckMap idmap, noteMap notemap) error {
 		} else {
 			related[note.Uuid] = &([]string{cardUuid})
 		}
-		var card data.Card
-		if err := db.Get(cardUuid, &card, pouchdb.Options{}); err == nil {
-			continue
-		}
-		card = data.Card{
+		card := data.Card{
 			Id:         cardUuid,
 			Type:       "card",
 			NoteId:     note.Uuid,
@@ -640,6 +683,13 @@ func storeCards(c *anki.Collection, deckMap idmap, noteMap notemap) error {
 			card.Due = time.Unix(0, 0).AddDate(0, 0, int(c.Due))
 		case anki.CardTypeDue:
 			card.Due = time.Unix(c.Due, 0)
+		}
+		var existing data.Card
+		if err := db.Get(cardUuid, &existing, pouchdb.Options{}); err == nil {
+			if err := updateCard(&existing, &card); err != nil {
+				return err
+			}
+			continue
 		}
 		cards = append(cards, card)
 	}
@@ -660,20 +710,67 @@ func storeCards(c *anki.Collection, deckMap idmap, noteMap notemap) error {
 	return nil
 }
 
-type Card struct {
-	Suspeended   bool     `json:"Suspended"`
-	RelatedCards []string `json:"Related"`
-}
+func updateCard(doc, card *data.Card) error {
+	if doc.Modified.After(doc.AnkiImported) {
+		return nil
+	}
 
-/*
-type Collection struct {
-	Created        time.Time
-	Modified       time.Time
-	SchemaModified time.Time
-	Ver            int
-	LastSync       time.Time
-	Config         Config
-	Cards          []*Card
-	Revlog         []*Review
+	changed := false
+
+	if doc.NoteId != card.NoteId {
+		return fmt.Errorf("Cannot change noteid of card %s\n", doc.Id)
+	}
+
+	if doc.TemplateId != card.TemplateId {
+		return fmt.Errorf("Cannot change template of card %s\n", doc.Id)
+	}
+
+	if doc.DeckId != card.DeckId {
+		doc.DeckId = card.DeckId
+		changed = true
+	}
+
+	if !doc.Due.Equal(card.Due) {
+		doc.Due = card.Due
+		changed = true
+	}
+
+	if doc.Reviews != card.Reviews {
+		doc.Reviews = card.Reviews
+		changed = true
+	}
+
+	if doc.Lapses != card.Lapses {
+		doc.Lapses = card.Lapses
+		changed = true
+	}
+
+	if doc.Interval != card.Interval {
+		doc.Interval = card.Interval
+		changed = true
+	}
+
+	if doc.SRSFactor != card.SRSFactor {
+		doc.SRSFactor = card.SRSFactor
+		changed = true
+	}
+
+	if doc.Suspended != card.Suspended {
+		doc.Suspended = card.Suspended
+		changed = true
+	}
+
+	if !reflect.DeepEqual(doc.RelatedCards, card.RelatedCards) {
+		doc.RelatedCards = card.RelatedCards
+		changed = true
+	}
+
+	if !changed {
+		return nil
+	}
+
+	doc.Modified = card.Modified
+	doc.AnkiImported = time.Now()
+
+	return updateDoc(card, card.Id, nil, nil)
 }
-*/
