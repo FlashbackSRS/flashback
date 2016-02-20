@@ -28,6 +28,7 @@ func BeforeTransition(event *jquery.Event, ui *js.Object) bool {
 func DoSync() {
 	host := util.CouchHost()
 	dbName := "user-" + util.CurrentUser()
+	fmt.Printf("Syncing down\n")
 	ldb := pouchdb.New(dbName)
 	rdb := pouchdb.New(host + "/" + dbName)
 	result, err := pouchdb.Replicate(rdb, ldb, pouchdb.Options{})
@@ -36,9 +37,11 @@ func DoSync() {
 		return
 	}
 	docsRead := int(result["docs_written"].(float64))
+	fmt.Printf("Syncing up\n")
 	result, err = pouchdb.Replicate(ldb, rdb, pouchdb.Options{})
 	if err != nil {
 		fmt.Printf("Error syncing from server: %s\n", err)
+		return
 	}
 	docsWritten := int(result["docs_written"].(float64))
 	fmt.Printf("Synced %d docs from server, and %d to server\n", docsRead, docsWritten)

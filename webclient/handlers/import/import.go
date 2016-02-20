@@ -3,11 +3,14 @@ package import_handler
 import (
 	"archive/zip"
 	"bytes"
+	"crypto/md5"
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"html/template"
 	"path/filepath"
+	"reflect"
 	"regexp"
 	"strings"
 	"time"
@@ -59,7 +62,7 @@ func importFile(f file.File) error {
 	}
 	zipMap := make(map[string]*zip.File)
 	for _, file := range z.File {
-		zipMap[ file.FileHeader.Name ] = file
+		zipMap[file.FileHeader.Name] = file
 	}
 	mediaMap, err := extractMediaMap(zipMap)
 	if err != nil {
@@ -90,7 +93,7 @@ func importFile(f file.File) error {
 
 func extractMediaMap(z map[string]*zip.File) (map[string]*zip.File, error) {
 	file, ok := z["media"]
-	if ! ok {
+	if !ok {
 		return nil, errors.New("Did not find 'media'. Invalid Anki package")
 	}
 	var fileMap map[string]string
@@ -105,7 +108,7 @@ func extractMediaMap(z map[string]*zip.File) (map[string]*zip.File, error) {
 		return nil, err
 	}
 	mediaMap := make(map[string]*zip.File)
-	for archiveName,fileName := range fileMap {
+	for archiveName, fileName := range fileMap {
 		mediaMap[fileName] = z[archiveName]
 	}
 	return mediaMap, nil
@@ -113,7 +116,7 @@ func extractMediaMap(z map[string]*zip.File) (map[string]*zip.File, error) {
 
 func extractCollection(z map[string]*zip.File) (*anki.Collection, error) {
 	file, ok := z["collection.anki2"]
-	if ! ok {
+	if !ok {
 		return nil, errors.New("Did not find 'collection.anki2'. Invalid Anki package")
 	}
 	rc, err := file.Open()
@@ -124,87 +127,6 @@ func extractCollection(z map[string]*zip.File) (*anki.Collection, error) {
 	buf := new(bytes.Buffer)
 	buf.ReadFrom(rc)
 	return readSQLite(buf.Bytes())
-}
-
-type idmap map[int64]string
-
-var nameToIdRE = regexp.MustCompile("[[:space:]]")
-
-func storeModels(c *anki.Collection) (idmap, error) {
-	modelMap := make(idmap)
-	dbName := "user-" + util.CurrentUser()
-	db := pouchdb.New(dbName)
-	for _, m := range c.Models {
-		if m.Type == anki.ModelTypeCloze {
-			fmt.Printf("Cloze Models not yet supported\n")
-			continue
-		}
-		modelUuid := m.AnkiId()
-		modelMap[m.Id] = modelUuid
-		var model data.Model
-		// Check for duplicates
-		if err := db.Get(modelUuid, &model, pouchdb.Options{}); err == nil {
-			continue
-		}
-		model = data.Model{
-			Id:          modelUuid,
-			Name:        m.Name,
-			Description: "Anki Model " + m.Name,
-			Type:        "Model",
-			Modified:    time.Now(),
-			Created:     time.Now(),
-			Comment:     "Imported from Anki on " + time.Now().String(),
-		}
-		for _, f := range m.Fields {
-			model.Fields = append(model.Fields, &data.Field{
-				Name: f.Name,
-			})
-		}
-		attachments := []pouchdb.Attachment{
-			pouchdb.Attachment{
-				Name: "style.css",
-				Type: "text/css",
-				Body: strings.NewReader(m.CSS),
-			},
-		}
-		tmpls := make([]string, len(m.Templates))
-		for i, t := range m.Templates {
-			attachments = append(attachments, pouchdb.Attachment{
-				Name: t.Name + " front.html",
-				Type: data.HTMLTemplateContentType,
-				Body: strings.NewReader(t.QuestionFormat),
-			})
-			attachments = append(attachments, pouchdb.Attachment{
-				Name: t.Name + " back.html",
-				Type: data.HTMLTemplateContentType,
-				Body: strings.NewReader(t.AnswerFormat),
-			})
-			tmpls[i] = t.Name
-		}
-		buf := new(bytes.Buffer)
-		if err := masterTmpl.Execute(buf, tmpls); err != nil {
-			return nil, err
-		}
-		attachments = append(attachments, pouchdb.Attachment{
-			Name: "template.html",
-			Type: data.HTMLTemplateContentType,
-			Body: buf,
-		})
-		rev, err := db.Put(model)
-		if err != nil {
-			return nil, err
-		}
-		for _, a := range attachments {
-			rev, err = db.PutAttachment(model.Id, &a, rev)
-			if err != nil {
-				return nil, err
-			}
-		}
-		if err != nil {
-			return nil, err
-		}
-	}
-	return modelMap, nil
 }
 
 var masterTmpl = template.Must(template.New("template.html").Delims("[[", "]]").Parse(`
@@ -230,6 +152,181 @@ var masterTmpl = template.Must(template.New("template.html").Delims("[[", "]]").
 </body>
 </html>
 `))
+
+type idmap map[int64]string
+
+var nameToIdRE = regexp.MustCompile("[[:space:]]")
+
+func storeModels(c *anki.Collection) (idmap, error) {
+	modelMap := make(idmap)
+	dbName := "user-" + util.CurrentUser()
+	db := pouchdb.New(dbName)
+	for _, m := range c.Models {
+		if m.Type == anki.ModelTypeCloze {
+			fmt.Printf("Cloze Models not yet supported\n")
+			continue
+		}
+		modelUuid := m.AnkiId()
+		modelMap[m.Id] = modelUuid
+		var model data.Model
+		// Check for duplicates
+		if err := db.Get(modelUuid, &model, pouchdb.Options{}); err == nil {
+			if model.Modified.After(model.AnkiImported) {
+				fmt.Printf("Model %d / %s has local changes, skipping.\n", m.Id, model.Id)
+				continue
+			}
+			fmt.Printf("Gonna update model %d / %s\n", m.Id, model.Id)
+			if err := updateModel(&model, m); err != nil {
+				return nil, err
+			}
+			continue
+		}
+		model = data.Model{
+			Id:           modelUuid,
+			Rev:          model.Rev, // Preserve the Rev, if there is one, so the put succeeds
+			Name:         m.Name,
+			Description:  "Anki Model " + m.Name,
+			Type:         "model",
+			Modified:     m.Modified,
+			AnkiImported: time.Now(),
+			Comment:      "Imported from Anki on " + time.Now().String(),
+		}
+		for _, f := range m.Fields {
+			model.Fields = append(model.Fields, &data.Field{
+				Name: f.Name,
+			})
+		}
+		attachments, err := modelAttachments(m)
+		if err != nil {
+			return nil, err
+		}
+		rev, err := db.Put(model)
+		if err != nil {
+			return nil, err
+		}
+		for _, a := range *attachments {
+			rev, err = db.PutAttachment(model.Id, &a, rev)
+			if err != nil {
+				return nil, err
+			}
+		}
+		if err != nil {
+			return nil, err
+		}
+	}
+	return modelMap, nil
+}
+
+func modelAttachments(m *anki.Model) (*[]pouchdb.Attachment, error) {
+	attachments := []pouchdb.Attachment{
+		pouchdb.Attachment{
+			Name: "style.css",
+			Type: "text/css",
+			Body: strings.NewReader(m.CSS),
+		},
+	}
+	tmpls := make([]string, len(m.Templates))
+	for i, t := range m.Templates {
+		attachments = append(attachments, pouchdb.Attachment{
+			Name: t.Name + " front.html",
+			Type: data.HTMLTemplateContentType,
+			Body: strings.NewReader(t.QuestionFormat),
+		})
+		attachments = append(attachments, pouchdb.Attachment{
+			Name: t.Name + " back.html",
+			Type: data.HTMLTemplateContentType,
+			Body: strings.NewReader(t.AnswerFormat),
+		})
+		tmpls[i] = t.Name
+	}
+	buf := new(bytes.Buffer)
+	if err := masterTmpl.Execute(buf, tmpls); err != nil {
+		return nil, err
+	}
+	attachments = append(attachments, pouchdb.Attachment{
+		Name: "template.html",
+		Type: data.HTMLTemplateContentType,
+		Body: buf,
+	})
+
+	return &attachments, nil
+}
+
+func updateModel(model *data.Model, m *anki.Model) error {
+	var changed bool
+	if m.Name != model.Name {
+		model.Name = m.Name
+		model.Description = "Anki Model " + m.Name
+		changed = true
+	}
+	var fields []*data.Field
+	for _, f := range m.Fields {
+		fields = append(fields, &data.Field{
+			Name: f.Name,
+		})
+	}
+	if !reflect.DeepEqual(fields, model.Fields) {
+		model.Fields = fields
+		changed = true
+	}
+
+	attachments, err := modelAttachments(m)
+	if err != nil {
+		return err
+	}
+	changedAttachments := make([]pouchdb.Attachment, 0)
+	for _, pouchAtt := range *attachments {
+		att, ok := model.Attachments[pouchAtt.Name]
+		if ok {
+			oldMd5, err := base64.StdEncoding.DecodeString(att.MD5[4:])
+			if err != nil {
+				return err
+			}
+			buf := new(bytes.Buffer)
+			buf.ReadFrom(pouchAtt.Body)
+			newMd5 := md5.Sum(buf.Bytes())
+
+			if bytes.Equal(newMd5[:], oldMd5) {
+				// This attachment has not changed
+				continue
+			}
+			// The attachment has been updated, so restore the pouch attachment body
+			buf.Reset()
+			pouchAtt.Body = buf
+		}
+		changed = true
+		changedAttachments = append(changedAttachments, pouchAtt)
+	}
+
+	if !changed {
+		fmt.Printf("No changes to model %d / %s, skipping\n", m.Id, model.Id)
+		return nil
+	}
+
+	model.Modified = m.Modified
+	model.AnkiImported = time.Now()
+	model.Comment = "Imported from Anki on " + time.Now().String()
+
+	fmt.Printf("Now applying changes to model %d / %s\n", m.Id, model.Id)
+
+	db := util.UserDb()
+
+	rev, err := db.Put(model)
+	if err != nil {
+		return fmt.Errorf("Error updating model: %s", err)
+	}
+	for _, a := range changedAttachments {
+		rev, err = db.PutAttachment(model.Id, &a, rev)
+		if err != nil {
+			return fmt.Errorf("Error updating model attachment: %s", err)
+		}
+	}
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
 
 func storeDecks(c *anki.Collection) (idmap, error) {
 	deckMap := make(idmap)
@@ -311,72 +408,190 @@ func storeNotes(c *anki.Collection, modelMap idmap, mediaMap map[string]*zip.Fil
 		noteMap[n.Id] = noteNode{Uuid: noteUuid, Model: modelUuid}
 		var note data.Note
 		if err := db.Get(noteUuid, &note, pouchdb.Options{}); err == nil {
+			if note.Modified.After(note.AnkiImported) {
+				fmt.Printf("Note %d / %s has local changes, skipping\n", n.Id, note.Id)
+				continue
+			}
+			fmt.Printf("Gonna update note %d / %s\n", n.Id, note.Id)
+			if note.ModelId != modelUuid {
+				return nil, errors.New("Changing a note's model is not supported")
+			}
+			if err := updateNote(&note, n, mediaMap); err != nil {
+				return nil, err
+			}
 			continue
 		}
 		note = data.Note{
-			Id:          noteUuid,
-			Type:        "note",
-			ModelId:     modelUuid,
-			Modified:    time.Now(),
-			Created:     time.Now(),
-			Tags:        n.Tags,
-			FieldValues: n.Fields,
+			Id:           noteUuid,
+			Rev:          note.Rev,
+			Type:         "note",
+			ModelId:      modelUuid,
+			Created:      note.Created,
+			Modified:     n.Modified,
+			AnkiImported: time.Now(),
+			Tags:         n.Tags,
+			FieldValues:  n.Fields,
+			Comment:      "Imported from Anki on " + time.Now().String(),
 		}
 		rev, err := db.Put(note)
 		if err != nil {
 			return nil, err
 		}
-		files := make(map[string][]string)
-		files["audio"] = make([]string,0)
-		files["image"] = make([]string,0)
-		for _, field := range note.FieldValues {
-			for _,match := range soundRe.FindAllStringSubmatch(field,-1) {
-				files["audio"] = append( files["audio"], match[1])
-			}
-			for _, match := range imageRe.FindAllStringSubmatch(field,-1) {
-				files["image"] = append( files["image"], match[1])
-			}
-		}
-		for ftype, filenames := range files {
-			for _, file := range filenames {
-				contentType, ok := contentTypeMap[ftype][ filepath.Ext(file) ]
-				if ! ok {
-					fmt.Printf("Unknown content type for file '%s'\n", file)
-					contentType = ftype + "/unknown"
-				}
 
-				rc, err := mediaMap[file].Open()
-				if err != nil {
-					return nil, err
-				}
-				defer rc.Close()
-				attachment := pouchdb.Attachment{
-					Name: file,
-					Type: contentType,
-					Body: rc,
-				}
-				rev, err = db.PutAttachment(note.Id, &attachment, rev)
+		attachments, err := noteAttachments(n)
+		if err != nil {
+			return nil, err
+		}
+
+		for _, att := range *attachments {
+			filename := att.Name
+			rc, err := mediaMap[filename].Open()
+			if err != nil {
+				return nil, err
 			}
+			defer rc.Close()
+			att.Body = rc
+			rev, err = db.PutAttachment(note.Id, &att, rev)
 		}
 	}
 	return noteMap, nil
 }
 
-var contentTypeMap = map[string]map[string]string{
-	"audio": map[string]string{
-		".3gp": "audio/3gpp",
-		".ogg": "audio/ogg",
-		".mp3": "audio/mpeg",
-		".spx": "audio/ogg",
-		".wav": "audio/x-wav",
-		".flac": "audio/flac",
-	},
-	"image": map[string]string{
-		".jpg": "image/jpeg",
-		".jpeg": "image/jpeg",
-		".png": "image/png",
-		".gif": "image/gif",
-	},
+func noteAttachments(n *anki.Note) (*[]pouchdb.Attachment, error) {
+	attachments := make([]pouchdb.Attachment, 0)
+
+	files := make(map[string][]string)
+	files["audio"] = make([]string, 0)
+	files["image"] = make([]string, 0)
+	for _, field := range n.Fields {
+		for _, match := range soundRe.FindAllStringSubmatch(field, -1) {
+			files["audio"] = append(files["audio"], match[1])
+		}
+		for _, match := range imageRe.FindAllStringSubmatch(field, -1) {
+			files["image"] = append(files["image"], match[1])
+		}
+	}
+
+	for ftype, filenames := range files {
+		for _, file := range filenames {
+			ext := strings.TrimPrefix(filepath.Ext(file), ".")
+			contentType, ok := contentTypeMap[ext]
+			if !ok {
+				fmt.Printf("Unknown content type for file '%s'/%s\n", file, ext)
+				contentType = ftype + "/" + ext
+			}
+			attachments = append(attachments, pouchdb.Attachment{
+				Name: file,
+				Type: contentType,
+			})
+		}
+	}
+	return &attachments, nil
+}
+
+func updateNote(note *data.Note, n *anki.Note, mediaMap map[string]*zip.File) error {
+	var changed bool
+	// FIXME: This is giving occasional false positives, nil vs. empty array I guess
+	if !reflect.DeepEqual(n.Tags, note.Tags) {
+		fmt.Printf("Tags changed. Old: %s (%d), New: %s (%d)\n", note.Tags, len(note.Tags), n.Tags, len(n.Tags))
+		note.Tags = n.Tags
+		changed = true
+	}
+	if !reflect.DeepEqual(n.Fields, note.FieldValues) {
+		fmt.Printf("Fields changes. Old: %s, New: %s\n", note.FieldValues, n.Fields)
+		note.FieldValues = n.Fields
+		changed = true
+	}
+
+	attachments, err := noteAttachments(n)
+	if err != nil {
+		return err
+	}
+
+	deletedAttachments := make(map[string]bool)
+	for filename, _ := range note.Attachments {
+		deletedAttachments[filename] = true
+	}
+	changedAttachments := make([]pouchdb.Attachment, 0)
+	for _, pouchAtt := range *attachments {
+		delete(deletedAttachments, pouchAtt.Name)
+		att, ok := note.Attachments[pouchAtt.Name]
+		if ok {
+			if att.Type != pouchAtt.Type {
+				fmt.Printf("Content type change for %s\n", pouchAtt.Name)
+			} else {
+				oldMd5, err := base64.StdEncoding.DecodeString(att.MD5[4:])
+				if err != nil {
+					return err
+				}
+				rc, err := mediaMap[pouchAtt.Name].Open()
+				if err != nil {
+					return err
+				}
+				defer rc.Close()
+				buf := new(bytes.Buffer)
+				buf.ReadFrom(rc)
+				newMd5 := md5.Sum(buf.Bytes())
+				if bytes.Equal(newMd5[:], oldMd5) {
+					// This attachment has not changed
+					continue
+				}
+				fmt.Printf("MD5s differ. Old: %x, New: %x\n", oldMd5, newMd5)
+			}
+		}
+		fmt.Printf("Attachment changed: %s\n", pouchAtt.Name)
+		changed = true
+		rc, err := mediaMap[pouchAtt.Name].Open()
+		if err != nil {
+			return err
+		}
+		pouchAtt.Body = rc
+		changedAttachments = append(changedAttachments, pouchAtt)
+	}
+
+	for filename, _ := range deletedAttachments {
+		fmt.Printf("Need to delete attachment %s\n", filename)
+	}
+
+	if !changed {
+		fmt.Printf("No changes to note %d / %s, skipping\n", n.Id, note.Id)
+		return nil
+	}
+
+	note.Modified = n.Modified
+	note.AnkiImported = time.Now()
+	note.Comment = "Imported from Anki on " + time.Now().String()
+
+	fmt.Printf("Now applying changes to note %d / %s\n", n.Id, note.Id)
+
+	db := util.UserDb()
+
+	rev, err := db.Put(note)
+	if err != nil {
+		return fmt.Errorf("Error updating note: %s", err)
+	}
+	for _, a := range changedAttachments {
+		rev, err = db.PutAttachment(note.Id, &a, rev)
+		if err != nil {
+			return fmt.Errorf("Error updating note attachment: %s", err)
+		}
+	}
+	fmt.Printf("Updated note successfully\n")
+	return nil
+}
+
+var contentTypeMap = map[string]string{
+	"3gp":  "audio/3gpp",
+	"ogg":  "audio/ogg",
+	"mp3":  "audio/mpeg",
+	"spx":  "audio/ogg",
+	"wav":  "audio/x-wav",
+	"flac": "audio/flac",
+	"m4a":  "audio/m4a",
+	"jpg":  "image/jpeg",
+	"jpeg": "image/jpeg",
+	"png":  "image/png",
+	"gif":  "image/gif",
 }
 
 func storeCards(c *anki.Collection, deckMap idmap, noteMap notemap) error {
@@ -421,10 +636,10 @@ func storeCards(c *anki.Collection, deckMap idmap, noteMap notemap) error {
 			Suspended:  c.Queue == anki.QueueTypeSuspended,
 		}
 		switch c.Type {
-			case anki.CardTypeLearning:
-				card.Due = time.Unix(0, 0).AddDate(0, 0, int(c.Due))
-			case anki.CardTypeDue:
-				card.Due = time.Unix(c.Due, 0)
+		case anki.CardTypeLearning:
+			card.Due = time.Unix(0, 0).AddDate(0, 0, int(c.Due))
+		case anki.CardTypeDue:
+			card.Due = time.Unix(c.Due, 0)
 		}
 		cards = append(cards, card)
 	}
