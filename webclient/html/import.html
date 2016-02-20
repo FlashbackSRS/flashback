@@ -1,0 +1,23 @@
+<html>
+<head>
+</head>
+<body>
+    <div data-role="page" class="ui-responsive-panel">
+        <div data-role="header">
+            <a href="#menu" data-icon="bars" data-iconpos="notext">Menu</a>
+            <h1>Flashback</h1>
+        </div>
+        <div data-role="content">
+            <h1>Import Anki File</h1>
+            <div class="hide-until-load">
+                Select a file to import: <input type="file" id="apkg" />
+                <a id="importnow" class="ui-btn ui-icon-recycle ui-btn-icon-left">Import Now</a>
+                <textarea id="log"></textarea>
+            </div>
+            <div class="show-until-load">
+                Initializing page...
+            </div>
+        </div>
+    </div>
+</body>
+</html>

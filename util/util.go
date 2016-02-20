@@ -5,6 +5,7 @@ import (
 	"net/url"
 	"strings"
 
+	"github.com/flimzy/go-pouchdb"
 	"github.com/gopherjs/gopherjs/js"
 )
 
@@ -65,4 +66,9 @@ func findLink(rel string) string {
 		}
 	}
 	return ""
+}
+
+func UserDb() *pouchdb.PouchDB {
+	dbName := "user-" + CurrentUser()
+	return pouchdb.New(dbName)
 }

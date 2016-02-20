@@ -26,6 +26,7 @@ import (
 	"github.com/flimzy/flashback/webclient/handlers/login"
 	"github.com/flimzy/flashback/webclient/handlers/logout"
 	sync_handler "github.com/flimzy/flashback/webclient/handlers/sync"
+	"github.com/flimzy/flashback/webclient/handlers/import"
 )
 
 // Some spiffy shortcuts
@@ -96,6 +97,7 @@ func RouterInit() {
 	beforeTransition.HandleFunc("/login.html", login.BeforeTransition)
 	beforeTransition.HandleFunc("/logout.html", logout.BeforeTransition)
 	beforeTransition.HandleFunc("/sync.html", sync_handler.BeforeTransition)
+	beforeTransition.HandleFunc("/import.html", import_handler.BeforeTransition)
 	jqeventrouter.Listen( "pagecontainerbeforetransition", beforeTransition )
 }
 
