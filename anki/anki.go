@@ -160,7 +160,7 @@ func idToBytes(id int64) []byte {
 }
 
 func b64(str string) string {
-	return base64.StdEncoding.EncodeToString([]byte(str))
+	return strings.Replace(base64.StdEncoding.EncodeToString([]byte(str)), "/", "_", -1)
 }
 
 func (m Model) AnkiId() string {
@@ -403,8 +403,9 @@ type Card struct {
 	Left     int
 }
 
-func (c Card) AnkiId() string {
-	return "card-anki-" + b64(fmt.Sprintf("%s %s", idToBytes(c.Id), idToBytes(c.NoteId)))
+func (c Card) AnkiId(note string) string {
+	note = strings.TrimPrefix(note, "note-anki-")
+	return fmt.Sprintf("card-anki-%s-%s", b64(string(idToBytes(c.Id))), note)
 }
 
 func (c *Collection) AddCardFromSqlite(row map[string]interface{}) {
