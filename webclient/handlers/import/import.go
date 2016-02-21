@@ -132,10 +132,12 @@ var masterTmpl = template.Must(template.New("template.html").Delims("[[", "]]").
 <html>
 <head>
 <style>
-{{ template "style.css" }}
+{{ block "style.css" }}
+{{end}}
 </style>
 <script>
-{{ template "script.js" }}
+{{ block "script.js" }}
+{{end}}
 </script>
 </head>
 <body>
@@ -285,16 +287,17 @@ func updateModel(model *data.Model, m *anki.Model) error {
 			}
 			buf := new(bytes.Buffer)
 			buf.ReadFrom(pouchAtt.Body)
-			newMd5 := md5.Sum(buf.Bytes())
+			body := buf.Bytes()
+			newMd5 := md5.Sum(body)
 
 			if bytes.Equal(newMd5[:], oldMd5) {
 				// This attachment has not changed
 				continue
 			}
 			// The attachment has been updated, so restore the pouch attachment body
-			buf.Reset()
-			pouchAtt.Body = buf
+			pouchAtt.Body = bytes.NewReader(body)
 		}
+		fmt.Printf("Attachment '%s' changed\n", pouchAtt.Name)
 		changed = true
 		changedAttachments = append(changedAttachments, pouchAtt)
 	}
