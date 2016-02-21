@@ -27,8 +27,8 @@ func BeforeTransition(event *jquery.Event, ui *js.Object) bool {
 
 func DoSync() {
 	host := util.CouchHost()
-	dbName := "user-" + util.CurrentUser()
 	fmt.Printf("Syncing down\n")
+	dbName := "user-" + util.CurrentUser()
 	ldb := pouchdb.New(dbName)
 	rdb := pouchdb.New(host + "/" + dbName)
 	result, err := pouchdb.Replicate(rdb, ldb, pouchdb.Options{})

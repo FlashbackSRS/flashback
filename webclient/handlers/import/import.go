@@ -158,8 +158,7 @@ var nameToIdRE = regexp.MustCompile("[[:space:]]")
 
 func storeModels(c *anki.Collection) (idmap, error) {
 	modelMap := make(idmap)
-	dbName := "user-" + util.CurrentUser()
-	db := pouchdb.New(dbName)
+	db := util.UserDb()
 	for _, m := range c.Models {
 		if m.Type == anki.ModelTypeCloze {
 			fmt.Printf("Cloze Models not yet supported\n")
@@ -315,8 +314,7 @@ func updateModel(model *data.Model, m *anki.Model) error {
 
 func storeDecks(c *anki.Collection) (idmap, error) {
 	deckMap := make(idmap)
-	dbName := "user-" + util.CurrentUser()
-	db := pouchdb.New(dbName)
+	db := util.UserDb()
 	for _, d := range c.Decks {
 		deckUuid := d.AnkiId()
 		deckMap[d.Id] = deckUuid
@@ -394,8 +392,7 @@ func updateDoc(doc interface{}, id string, chAtt *[]pouchdb.Attachment, delAtt *
 }
 
 func storeDeckConfig(c *anki.Collection, deckId int64, deckUuid string) error {
-	dbName := "user-" + util.CurrentUser()
-	db := pouchdb.New(dbName)
+	db := util.UserDb()
 	for _, dc := range c.DeckConfig {
 		if dc.Id == deckId {
 			confUuid := "deckconf-" + deckUuid
@@ -463,8 +460,7 @@ var imageRe = regexp.MustCompile("<img src=\"(.*?)\" />")
 
 func storeNotes(c *anki.Collection, modelMap idmap, mediaMap map[string]*zip.File) (notemap, error) {
 	noteMap := make(notemap)
-	dbName := "user-" + util.CurrentUser()
-	db := pouchdb.New(dbName)
+	db := util.UserDb()
 	for _, n := range c.Notes {
 		modelUuid, ok := modelMap[n.ModelId]
 		if !ok {
@@ -644,8 +640,7 @@ var contentTypeMap = map[string]string{
 func storeCards(c *anki.Collection, deckMap idmap, noteMap notemap) error {
 	related := make(map[string]*[]string)
 	var cards []data.Card
-	dbName := "user-" + util.CurrentUser()
-	db := pouchdb.New(dbName)
+	db := util.UserDb()
 	for _, c := range c.Cards {
 		var note noteNode
 		var deckUuid string
