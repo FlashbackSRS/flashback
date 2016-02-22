@@ -8,19 +8,10 @@ import (
 	"honnef.co/go/js/console"
 	"sync"
 
-	// 	"golang.org/x/net/context"
-
-	// 	"github.com/flimzy/flashback"
-
 	"github.com/flimzy/flashback/util"
-	// 	"github.com/flimzy/flashback/clientstate"
-	// 	"github.com/flimzy/flashback/state"
 	"github.com/flimzy/go-cordova"
 	"github.com/flimzy/jqeventrouter"
-	//    "github.com/flimzy/flashback/user"
-	// 	"github.com/flimzy/flashback/webclient/pages"
-	// 	_ "github.com/flimzy/flashback/webclient/pages/index"
-	// 	_ "github.com/flimzy/flashback/webclient/pages/debug"
+
 	"github.com/flimzy/flashback/webclient/handlers/auth"
 	"github.com/flimzy/flashback/webclient/handlers/general"
 	"github.com/flimzy/flashback/webclient/handlers/import"
@@ -42,13 +33,6 @@ func main() {
 
 	initjQuery(&wg)
 	initCordova(&wg)
-	// 	state := clientstate.New()
-	// 	api := flashback.New(jQuery("link[rel=flashback]").Get(0).Get("href").String())
-	// 	ctx := context.Background()
-	//	ctx = context.WithValue(ctx, "cordova", cordova)
-	// 	ctx = context.WithValue(ctx, "AppState", state)
-	// 	ctx = context.WithValue(ctx, "api", api)
-	// 	ctx = context.WithValue(ctx, "couchhost", jQuery("link[rel=flashbackdb]").Get(0).Get("href").String())
 
 	// Wait for the above modules to initialize before we initialize jQuery Mobile
 	wg.Wait()
