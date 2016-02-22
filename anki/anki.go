@@ -245,11 +245,13 @@ func convertTemplate(ankiTmpl string) (string, error) {
 			converted.WriteString("{{/* " + content + " */}}")
 		case strings.HasPrefix(content, "hint:"):
 			converted.WriteString("{{/* " + content + " */}}")
-		case strings.HasPrefix(content, "text:"):
+		case strings.HasPrefix(content, "text:"): // Strips HTML tags
 			converted.WriteString("{{/* " + content + " */}}")
-		case strings.HasPrefix(content, "#"):
+		case strings.HasPrefix(content, "#"): // Defined
 			converted.WriteString("{{/* " + content + " */}}")
-		case strings.HasPrefix(content, "/"):
+		case strings.HasPrefix(content, "/"):  // End
+			converted.WriteString("{{/* " + content + " */}}")
+		case strings.HasPrefix(content, "^"): // Not defined
 			converted.WriteString("{{/* " + content + " */}}")
 		default:
 			converted.WriteString("{{ ." + content + " }}")
