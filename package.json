@@ -9,7 +9,8 @@
         "url": "https://github.com/flimzy/flashback"
     },
     "dependencies": {
-        "pouchdb": ">=4.0.0",
+        "pouchdb": ">=5.2.0",
+        "pouchdb-find": "*",
         "browserify-shim": "*"
     },
     "browser": {

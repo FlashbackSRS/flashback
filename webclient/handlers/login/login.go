@@ -7,7 +7,7 @@ import (
 	"honnef.co/go/js/console"
 
 	"github.com/flimzy/flashback"
-// 	"github.com/flimzy/flashback/state"
+	"github.com/flimzy/flashback/util"
 	"github.com/flimzy/go-cordova"
 )
 
@@ -26,7 +26,7 @@ func BeforeTransition(event *jquery.Event, ui *js.Object) bool {
 			a := jQuery("a", li)
 			if cordova.IsMobile() {
 				console.Log("Setting on click event")
-				a.On("click", CordovaLogin )
+				a.On("click", CordovaLogin)
 			} else {
 				a.SetAttr("href", href+"?return="+jsbuiltin.EncodeURIComponent(js.Global.Get("location").Get("href").String()))
 			}
@@ -42,6 +42,7 @@ func CordovaLogin() bool {
 	console.Log("CordovaLogin()")
 	js.Global.Get("facebookConnectPlugin").Call("login", []string{}, func() {
 		console.Log("Success logging in")
+		util.InitUserDb()
 	}, func() {
 		console.Log("Failure logging in")
 	})

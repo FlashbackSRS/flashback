@@ -129,29 +129,15 @@ func extractCollection(z map[string]*zip.File) (*anki.Collection, error) {
 }
 
 var masterTmpl = template.Must(template.New("template.html").Delims("[[", "]]").Parse(`
-<html>
-<head>
-<style>
-{{ block "style.css" }}
-{{end}}
-</style>
-<script>
-{{ block "script.js" }}
-{{end}}
-</script>
-</head>
-<body>
 {{ $g := . }}
-[[ range $i, $Name := . ]]
+[[- range $i, $Name := . ]]
 	<div id="front-[[ $i ]]">
 		{{template "[[ $Name ]] front.html" $g}}
 	</div>
 	<div id="back-[[ $i ]]">
 		{{template "[[ $Name ]] back.html" $g}}
 	</div>
-[[ end ]]
-</body>
-</html>
+[[ end -]]
 `))
 
 type idmap map[int64]string

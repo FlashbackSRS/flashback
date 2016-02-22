@@ -8,25 +8,26 @@ import (
 	"honnef.co/go/js/console"
 	"sync"
 
-// 	"golang.org/x/net/context"
+	// 	"golang.org/x/net/context"
 
-// 	"github.com/flimzy/flashback"
+	// 	"github.com/flimzy/flashback"
 
 	"github.com/flimzy/flashback/util"
-// 	"github.com/flimzy/flashback/clientstate"
-// 	"github.com/flimzy/flashback/state"
+	// 	"github.com/flimzy/flashback/clientstate"
+	// 	"github.com/flimzy/flashback/state"
 	"github.com/flimzy/go-cordova"
 	"github.com/flimzy/jqeventrouter"
 	//    "github.com/flimzy/flashback/user"
-// 	"github.com/flimzy/flashback/webclient/pages"
-// 	_ "github.com/flimzy/flashback/webclient/pages/index"
-// 	_ "github.com/flimzy/flashback/webclient/pages/debug"
+	// 	"github.com/flimzy/flashback/webclient/pages"
+	// 	_ "github.com/flimzy/flashback/webclient/pages/index"
+	// 	_ "github.com/flimzy/flashback/webclient/pages/debug"
 	"github.com/flimzy/flashback/webclient/handlers/auth"
 	"github.com/flimzy/flashback/webclient/handlers/general"
+	"github.com/flimzy/flashback/webclient/handlers/import"
 	"github.com/flimzy/flashback/webclient/handlers/login"
 	"github.com/flimzy/flashback/webclient/handlers/logout"
-	sync_handler "github.com/flimzy/flashback/webclient/handlers/sync"
-	"github.com/flimzy/flashback/webclient/handlers/import"
+	"github.com/flimzy/flashback/webclient/handlers/study"
+	"github.com/flimzy/flashback/webclient/handlers/sync"
 )
 
 // Some spiffy shortcuts
@@ -41,13 +42,13 @@ func main() {
 
 	initjQuery(&wg)
 	initCordova(&wg)
-// 	state := clientstate.New()
-// 	api := flashback.New(jQuery("link[rel=flashback]").Get(0).Get("href").String())
-// 	ctx := context.Background()
-//	ctx = context.WithValue(ctx, "cordova", cordova)
-// 	ctx = context.WithValue(ctx, "AppState", state)
-// 	ctx = context.WithValue(ctx, "api", api)
-// 	ctx = context.WithValue(ctx, "couchhost", jQuery("link[rel=flashbackdb]").Get(0).Get("href").String())
+	// 	state := clientstate.New()
+	// 	api := flashback.New(jQuery("link[rel=flashback]").Get(0).Get("href").String())
+	// 	ctx := context.Background()
+	//	ctx = context.WithValue(ctx, "cordova", cordova)
+	// 	ctx = context.WithValue(ctx, "AppState", state)
+	// 	ctx = context.WithValue(ctx, "api", api)
+	// 	ctx = context.WithValue(ctx, "couchhost", jQuery("link[rel=flashbackdb]").Get(0).Get("href").String())
 
 	// Wait for the above modules to initialize before we initialize jQuery Mobile
 	wg.Wait()
@@ -64,7 +65,7 @@ func initjQuery(wg *sync.WaitGroup) {
 }
 
 func initCordova(wg *sync.WaitGroup) {
-	if ! cordova.IsMobile() {
+	if !cordova.IsMobile() {
 		return
 	}
 	wg.Add(1)
@@ -87,18 +88,19 @@ func initjQueryMobile() {
 func RouterInit() {
 	// beforechange -- Just check auth
 	beforeChange := jqeventrouter.NullHandler()
-	jqeventrouter.Listen( "pagecontainerbeforechange", general.JQMRouteOnce(general.CleanFacebookURI(auth.CheckAuth(beforeChange))) )
+	jqeventrouter.Listen("pagecontainerbeforechange", general.JQMRouteOnce(general.CleanFacebookURI(auth.CheckAuth(beforeChange))))
 
 	// beforetransition
 	beforeTransition := jqeventrouter.NewEventMux()
-	beforeTransition.SetUriFunc( func(_ *jquery.Event, ui *js.Object) string {
+	beforeTransition.SetUriFunc(func(_ *jquery.Event, ui *js.Object) string {
 		return util.JqmTargetUri(ui)
 	})
 	beforeTransition.HandleFunc("/login.html", login.BeforeTransition)
 	beforeTransition.HandleFunc("/logout.html", logout.BeforeTransition)
 	beforeTransition.HandleFunc("/sync.html", sync_handler.BeforeTransition)
 	beforeTransition.HandleFunc("/import.html", import_handler.BeforeTransition)
-	jqeventrouter.Listen( "pagecontainerbeforetransition", beforeTransition )
+	beforeTransition.HandleFunc("/study.html", study_handler.BeforeTransition)
+	jqeventrouter.Listen("pagecontainerbeforetransition", beforeTransition)
 }
 
 // MobileInit is run after jQuery Mobile's 'mobileinit' event has fired

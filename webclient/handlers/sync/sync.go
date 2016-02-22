@@ -1,4 +1,4 @@
-package sync
+package sync_handler
 
 import (
 	"fmt"
