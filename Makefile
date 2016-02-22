@@ -48,7 +48,7 @@ distclean:
 npm-install: package.json
 	npm install
 
-javascript: www/js/flashback.js www/js/worker.sql.js
+javascript: www/js/flashback.js www/js/worker.sql.js www/js/cardframe.js
 www/js/flashback.js: package.json webclient/main.js main.js npm-install
 	mkdir -p www/js
 #	browserify js/main.js > $@ || ( stats=$?; rm -f $@; exit $? )
@@ -62,6 +62,9 @@ www/js/flashback.js: package.json webclient/main.js main.js npm-install
 # 		--in-source-map bundle.js.map
 
 www/js/worker.sql.js: webclient/vendor/sql.js/worker.sql.js
+	cp $< $@
+
+www/js/cardframe.js: webclient/js/cardframe.js
 	cp $< $@
 
 .PHONY: main.js
