@@ -104,3 +104,7 @@ func InitUserDb() <-chan struct{} {
 	}()
 	return done
 }
+
+func BaseURI() string {
+	return js.Global.Get("jQuery").Get("mobile").Get("path").Call("getDocumentBase").String()
+}

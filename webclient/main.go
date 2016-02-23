@@ -12,6 +12,8 @@ import (
 	"github.com/flimzy/go-cordova"
 	"github.com/flimzy/jqeventrouter"
 
+	"github.com/flimzy/flashback/fserve"
+
 	"github.com/flimzy/flashback/webclient/handlers/auth"
 	"github.com/flimzy/flashback/webclient/handlers/general"
 	"github.com/flimzy/flashback/webclient/handlers/import"
@@ -33,6 +35,7 @@ func main() {
 
 	initjQuery(&wg)
 	initCordova(&wg)
+	fserve.Init(&wg)
 
 	// Wait for the above modules to initialize before we initialize jQuery Mobile
 	wg.Wait()
@@ -96,7 +99,7 @@ func MobileInit() {
 	jQMobile.Set("pushStateEnabled", false)
 	jQMobile.Get("changePage").Get("defaults").Set("changeHash", false)
 
-	DebugEvents()
+// 	DebugEvents()
 	RouterInit()
 
 	jQuery(document).On("pagecontainerbeforechange", func(event *jquery.Event, ui *js.Object) {

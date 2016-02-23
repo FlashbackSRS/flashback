@@ -152,11 +152,11 @@ func storeModels(c *anki.Collection) (idmap, error) {
 			fmt.Printf("Cloze Models not yet supported\n")
 			continue
 		}
-		modelUuid := m.AnkiId()
-		modelMap[m.Id] = modelUuid
+		modelId := m.AnkiId()
+		modelMap[m.Id] = modelId
 		var model data.Model
 		// Check for duplicates
-		if err := db.Get(modelUuid, &model, pouchdb.Options{}); err == nil {
+		if err := db.Get(modelId, &model, pouchdb.Options{}); err == nil {
 			if model.Modified.After(model.AnkiImported) {
 				continue
 			}
@@ -166,7 +166,7 @@ func storeModels(c *anki.Collection) (idmap, error) {
 			continue
 		}
 		model = data.Model{
-			Id:           modelUuid,
+			Id:           modelId,
 			Rev:          model.Rev, // Preserve the Rev, if there is one, so the put succeeds
 			Name:         m.Name,
 			Description:  "Anki Model " + m.Name,
@@ -305,10 +305,10 @@ func storeDecks(c *anki.Collection) (idmap, error) {
 	deckMap := make(idmap)
 	db := util.UserDb()
 	for _, d := range c.Decks {
-		deckUuid := d.AnkiId()
-		deckMap[d.Id] = deckUuid
+		deckId := d.AnkiId()
+		deckMap[d.Id] = deckId
 		var deck data.Deck
-		if err := db.Get(deckUuid, &deck, pouchdb.Options{}); err == nil {
+		if err := db.Get(deckId, &deck, pouchdb.Options{}); err == nil {
 			if deck.Modified.After(deck.AnkiImported) {
 				continue
 			}
@@ -318,7 +318,7 @@ func storeDecks(c *anki.Collection) (idmap, error) {
 			continue
 		}
 		deck = data.Deck{
-			Id:          deckUuid,
+			Id:          deckId,
 			Name:        d.Name,
 			Description: d.Description,
 			Type:        "deck",
@@ -330,7 +330,7 @@ func storeDecks(c *anki.Collection) (idmap, error) {
 		if err != nil {
 			return nil, err
 		}
-		if err := storeDeckConfig(c, d.ConfigId, deckUuid); err != nil {
+		if err := storeDeckConfig(c, d.ConfigId, deckId); err != nil {
 			return nil, err
 		}
 	}
@@ -380,13 +380,13 @@ func updateDoc(doc interface{}, id string, chAtt *[]pouchdb.Attachment, delAtt *
 	return nil
 }
 
-func storeDeckConfig(c *anki.Collection, deckId int64, deckUuid string) error {
+func storeDeckConfig(c *anki.Collection, dcId int64, deckId string) error {
 	db := util.UserDb()
 	for _, dc := range c.DeckConfig {
-		if dc.Id == deckId {
-			confUuid := "deckconf-" + deckUuid
+		if dc.Id == dcId {
+			confId := "deckconf-" + deckId
 			var conf data.DeckConfig
-			if err := db.Get(confUuid, &conf, pouchdb.Options{}); err == nil {
+			if err := db.Get(confId, &conf, pouchdb.Options{}); err == nil {
 				if conf.Modified.After(conf.AnkiImported) {
 					continue
 				}
@@ -396,9 +396,9 @@ func storeDeckConfig(c *anki.Collection, deckId int64, deckUuid string) error {
 				continue
 			}
 			conf = data.DeckConfig{
-				Id:              confUuid,
+				Id:              confId,
 				Type:            "deckconf",
-				DeckId:          deckUuid,
+				DeckId:          deckId,
 				Modified:        time.Now(),
 				Created:         time.Now(),
 				MaxDailyReviews: dc.Reviews.PerDay,
@@ -439,7 +439,7 @@ func updateDeckConfig(conf *data.DeckConfig, dc *anki.DeckConfig) error {
 }
 
 type noteNode struct {
-	Uuid  string
+	Id    string
 	Model string
 }
 type notemap map[int64]noteNode
@@ -451,20 +451,20 @@ func storeNotes(c *anki.Collection, modelMap idmap, mediaMap map[string]*zip.Fil
 	noteMap := make(notemap)
 	db := util.UserDb()
 	for _, n := range c.Notes {
-		modelUuid, ok := modelMap[n.ModelId]
+		modelId, ok := modelMap[n.ModelId]
 		if !ok {
 			// This isn't necessarily an error, since we skip cloze models, so just ignore for now
 			continue
 			// 			return nil, fmt.Errorf("Found note (id=%d) with no model", n.Id)
 		}
-		noteUuid := n.AnkiId()
-		noteMap[n.Id] = noteNode{Uuid: noteUuid, Model: modelUuid}
+		noteId := n.AnkiId()
+		noteMap[n.Id] = noteNode{Id: noteId, Model: modelId}
 		var note data.Note
-		if err := db.Get(noteUuid, &note, pouchdb.Options{}); err == nil {
+		if err := db.Get(noteId, &note, pouchdb.Options{}); err == nil {
 			if note.Modified.After(note.AnkiImported) {
 				continue
 			}
-			if note.ModelId != modelUuid {
+			if note.ModelId != modelId {
 				return nil, errors.New("Changing a note's model is not supported")
 			}
 			if err := updateNote(&note, n, mediaMap); err != nil {
@@ -473,10 +473,10 @@ func storeNotes(c *anki.Collection, modelMap idmap, mediaMap map[string]*zip.Fil
 			continue
 		}
 		note = data.Note{
-			Id:           noteUuid,
+			Id:           noteId,
 			Rev:          note.Rev,
 			Type:         "note",
-			ModelId:      modelUuid,
+			ModelId:      modelId,
 			Created:      note.Created,
 			Modified:     n.Modified,
 			AnkiImported: time.Now(),
@@ -632,9 +632,9 @@ func storeCards(c *anki.Collection, deckMap idmap, noteMap notemap) error {
 	db := util.UserDb()
 	for _, c := range c.Cards {
 		var note noteNode
-		var deckUuid string
+		var deckId string
 		var ok bool
-		if deckUuid, ok = deckMap[c.DeckId]; !ok {
+		if deckId, ok = deckMap[c.DeckId]; !ok {
 			return errors.New("Found card that doesn't belong to a deck")
 		}
 		if note, ok = noteMap[c.NoteId]; !ok {
@@ -642,17 +642,17 @@ func storeCards(c *anki.Collection, deckMap idmap, noteMap notemap) error {
 			continue
 			// 			return fmt.Errorf("Found card (%d) with no note", c.Id)
 		}
-		cardUuid := c.AnkiId(note.Uuid)
-		if rel, ok := related[note.Uuid]; ok {
-			*rel = append(*rel, cardUuid)
+		cardId := c.AnkiId(note.Id)
+		if rel, ok := related[note.Id]; ok {
+			*rel = append(*rel, cardId)
 		} else {
-			related[note.Uuid] = &([]string{cardUuid})
+			related[note.Id] = &([]string{cardId})
 		}
 		card := data.Card{
-			Id:         cardUuid,
+			Id:         cardId,
 			Type:       "card",
-			NoteId:     note.Uuid,
-			DeckId:     deckUuid,
+			NoteId:     note.Id,
+			DeckId:     deckId,
 			Modified:   time.Now(),
 			Created:    time.Now(),
 			Reviews:    c.Reps,
@@ -669,7 +669,7 @@ func storeCards(c *anki.Collection, deckMap idmap, noteMap notemap) error {
 			card.Due = time.Unix(c.Due, 0)
 		}
 		var existing data.Card
-		if err := db.Get(cardUuid, &existing, pouchdb.Options{}); err == nil {
+		if err := db.Get(cardId, &existing, pouchdb.Options{}); err == nil {
 			if err := updateCard(&existing, &card); err != nil {
 				return err
 			}
