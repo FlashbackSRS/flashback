@@ -2,10 +2,12 @@ package util
 
 import (
 	"encoding/base64"
+	"fmt"
 	"net/url"
 	"strings"
 
 	"github.com/flimzy/go-pouchdb"
+	"github.com/flimzy/go-pouchdb/plugins/find"
 	"github.com/gopherjs/gopherjs/js"
 )
 
@@ -71,4 +73,38 @@ func findLink(rel string) string {
 func UserDb() *pouchdb.PouchDB {
 	dbName := "user-" + CurrentUser()
 	return pouchdb.New(dbName)
+}
+
+var initMap = make(map[string]<-chan struct{})
+
+// InitUserDb will do any db initialization necessary after account
+// creation/login such as setting up indexes. The return value is a channel,
+// which will be closed when initialization is complete
+func InitUserDb() <-chan struct{} {
+	user := CurrentUser()
+	if done, ok := initMap[user]; ok {
+		// Initialization has already been started, so return the existing
+		// channel (which may already be closed)
+		return done
+	}
+	done := make(chan struct{})
+	initMap[user] = done
+	go func() {
+		db := UserDb()
+		dbFind := find.New(db)
+		fmt.Printf("Creating index...\n")
+		err := dbFind.CreateIndex(find.Index{
+			Name:   "type",
+			Fields: []string{"$type"},
+		})
+		if err != nil && !find.IsIndexExists(err) {
+			fmt.Printf("Error creating index: %s\n", err)
+		}
+		close(done)
+	}()
+	return done
+}
+
+func BaseURI() string {
+	return js.Global.Get("jQuery").Get("mobile").Get("path").Call("getDocumentBase").String()
 }

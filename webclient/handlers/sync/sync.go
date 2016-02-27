@@ -1,4 +1,4 @@
-package sync
+package sync_handler
 
 import (
 	"fmt"
@@ -27,8 +27,8 @@ func BeforeTransition(event *jquery.Event, ui *js.Object) bool {
 
 func DoSync() {
 	host := util.CouchHost()
-	dbName := "user-" + util.CurrentUser()
 	fmt.Printf("Syncing down\n")
+	dbName := "user-" + util.CurrentUser()
 	ldb := pouchdb.New(dbName)
 	rdb := pouchdb.New(host + "/" + dbName)
 	result, err := pouchdb.Replicate(rdb, ldb, pouchdb.Options{})
@@ -41,6 +41,11 @@ func DoSync() {
 	result, err = pouchdb.Replicate(ldb, rdb, pouchdb.Options{})
 	if err != nil {
 		fmt.Printf("Error syncing from server: %s\n", err)
+		return
+	}
+	fmt.Printf("Compacting\n")
+	if err := ldb.Compact(pouchdb.Options{}); err != nil {
+		fmt.Printf("Error compacting database: %s\n", err)
 		return
 	}
 	docsWritten := int(result["docs_written"].(float64))

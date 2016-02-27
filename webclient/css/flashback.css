@@ -23,3 +23,16 @@ ul.login li {
 @media (min-width:35em){
     .ui-panel-dismiss { display: none !important; }
 }
+
+#cardframe iframe {
+    position: fixed;
+    width: 95%;
+    height: 90%;
+    border: none;
+    margin: 0;
+    padding: 0;
+    overflow: auto;
+    border-style: solid;
+    border-color: green;
+    border-width: 1px;
+}
