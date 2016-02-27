@@ -24,15 +24,18 @@ ul.login li {
     .ui-panel-dismiss { display: none !important; }
 }
 
-#cardframe iframe {
-    position: fixed;
-    width: 95%;
-    height: 90%;
-    border: none;
-    margin: 0;
+body,
+div[role="main"] {
+    overflow: hidden;
+}
+#cardframe {
+    height: inherit;
+}
+iframe {
+    position: absolute;
+    margin: -1em;
     padding: 0;
-    overflow: auto;
-    border-style: solid;
-    border-color: green;
-    border-width: 1px;
+    width: 100%;
+    height: inherit;
+    border: none;
 }

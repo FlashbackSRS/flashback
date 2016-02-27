@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"html/template"
+	"strconv"
 	"strings"
 
 	"github.com/pborman/uuid"
@@ -114,11 +115,7 @@ func getCardBodies(card *data.Card) (string, string, error) {
 		return "", "", err
 	}
 	for filename, t := range templates {
-		content := fmt.Sprintf(`
-{{define "%s"}}
-%s
-{{end}}
-		`, filename, t)
+		content := fmt.Sprintf("{{define \"%s\"}}%s{{end}}", filename, t)
 		if _, err := tmpl.Parse(content); err != nil {
 			return "", "", err
 		}

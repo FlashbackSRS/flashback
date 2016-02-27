@@ -3,16 +3,18 @@
 package main
 
 import (
+	"fmt"
+	"strconv"
+	"sync"
+
+	"github.com/flimzy/go-cordova"
+	"github.com/flimzy/jqeventrouter"
 	"github.com/gopherjs/gopherjs/js"
 	"github.com/gopherjs/jquery"
 	"honnef.co/go/js/console"
-	"sync"
-
-	"github.com/flimzy/flashback/util"
-	"github.com/flimzy/go-cordova"
-	"github.com/flimzy/jqeventrouter"
 
 	"github.com/flimzy/flashback/fserve"
+	"github.com/flimzy/flashback/util"
 
 	"github.com/flimzy/flashback/webclient/handlers/auth"
 	"github.com/flimzy/flashback/webclient/handlers/general"
@@ -67,9 +69,28 @@ func initjQueryMobile() {
 		console.Log("mobileinit")
 		MobileInit()
 	})
+	jQuery(js.Global).On("resize", resizeContent)
+	jQuery(js.Global).On("orentationchange", resizeContent)
+	jQuery(document).On("pagecontainertransition", resizeContent)
 	// This is what actually loads jQuery Mobile. We have to register our 'mobileinit'
 	// event handler above first, though.
 	js.Global.Call("postInit")
+}
+
+func resizeContent() {
+	screenHt := js.Global.Get("jQuery").Get("mobile").Call("getScreenHeight").Int()
+	header := jQuery(".ui-header:visible")
+	headerHt := header.OuterHeight()
+	if header.HasClass("ui-header-fixed") {
+		headerHt = headerHt - 1
+	}
+	footer := jQuery(".ui-footer:visible")
+	footerHt := footer.OuterHeight()
+	if footer.HasClass("ui-footer-fixed") {
+		footerHt = footerHt - 1
+	}
+	fmt.Printf("screen  = %d\nheader  = %d\nfooter  = %d\nnew     = %d\n", screenHt, headerHt, footerHt, screenHt-headerHt-footerHt)
+	jQuery(".ui-content").SetHeight(strconv.Itoa(screenHt - headerHt - footerHt))
 }
 
 func RouterInit() {
@@ -79,15 +100,23 @@ func RouterInit() {
 
 	// beforetransition
 	beforeTransition := jqeventrouter.NewEventMux()
-	beforeTransition.SetUriFunc(func(_ *jquery.Event, ui *js.Object) string {
-		return util.JqmTargetUri(ui)
-	})
+	beforeTransition.SetUriFunc(getJqmUri)
 	beforeTransition.HandleFunc("/login.html", login.BeforeTransition)
 	beforeTransition.HandleFunc("/logout.html", logout.BeforeTransition)
 	beforeTransition.HandleFunc("/sync.html", sync_handler.BeforeTransition)
 	beforeTransition.HandleFunc("/import.html", import_handler.BeforeTransition)
 	beforeTransition.HandleFunc("/study.html", study_handler.BeforeTransition)
 	jqeventrouter.Listen("pagecontainerbeforetransition", beforeTransition)
+
+	// 	// Window resizing
+	// 	resize := jqeventrouter.NewEventMux()
+	// 	resize.SetUriFunc(getJqmUri)
+	// 	resize.HandleFunc("/study.html", study_handler.Resize)
+	// 	jqeventrouter.Listen("resize", resize)
+}
+
+func getJqmUri(_ *jquery.Event, ui *js.Object) string {
+	return util.JqmTargetUri(ui)
 }
 
 // MobileInit is run after jQuery Mobile's 'mobileinit' event has fired
@@ -99,7 +128,7 @@ func MobileInit() {
 	jQMobile.Set("pushStateEnabled", false)
 	jQMobile.Get("changePage").Get("defaults").Set("changeHash", false)
 
-// 	DebugEvents()
+	// 	DebugEvents()
 	RouterInit()
 
 	jQuery(document).On("pagecontainerbeforechange", func(event *jquery.Event, ui *js.Object) {
