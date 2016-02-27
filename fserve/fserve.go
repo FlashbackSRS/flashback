@@ -27,7 +27,6 @@ func Init(wg *sync.WaitGroup) {
 				fmt.Printf("Error decoding message from iframe: %s\n", err)
 				return
 			}
-			fmt.Printf("Got a request for '%s'\n", msg.Path)
 			go func() {
 				data, err := fetchFile(&msg)
 				if err != nil {

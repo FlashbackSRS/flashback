@@ -4,7 +4,7 @@ window.addEventListener('error', function(e) {
     var t = e.target;
     var tag = t.tagName;
     var path = tag == 'LINK' ? t.getAttribute('href') : t.getAttribute('src');
-    console.log("not found : " + path);
+//     console.log("not found : " + path);
     if ( typeof requests[tag] === 'undefined' ) {
         requests[tag] = {};
     }
@@ -32,9 +32,9 @@ window.addEventListener('error', function(e) {
 }, true);
 
 window.addEventListener('message', function(e) {
-    console.log(e);
+//     console.log(e);
     var data = e.data;
-console.log("attempting to activate " + data.Tag + " / " + data.Path);
+// console.log("attempting to activate " + data.Tag + " / " + data.Path);
     var req = requests[ data.Tag ][ data.Path ];
     req.data = data.Data;
     var attr = data.Tag == 'LINK' ? 'href' : 'src';

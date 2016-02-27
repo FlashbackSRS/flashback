@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"html/template"
+	"strings"
 
 	"github.com/pborman/uuid"
 
@@ -13,7 +14,7 @@ import (
 	"github.com/gopherjs/gopherjs/js"
 	"github.com/gopherjs/jquery"
 	"github.com/gopherjs/jsbuiltin"
-	// 	"golang.org/x/net/html"
+	"golang.org/x/net/html"
 
 	"github.com/flimzy/flashback/data"
 	"github.com/flimzy/flashback/util"
@@ -136,12 +137,86 @@ func getCardBodies(card *data.Card) (string, string, error) {
 		ctx.Fields[f.Name] = template.HTML(note.FieldValues[i])
 	}
 
-	body := new(bytes.Buffer)
-	if err := tmpl.Execute(body, ctx); err != nil {
+	htmlDoc := new(bytes.Buffer)
+	if err := tmpl.Execute(htmlDoc, ctx); err != nil {
 		return "", "", err
 	}
+	// fmt.Printf("Body: '%s'\n", base64.StdEncoding.EncodeToString( body.Bytes() ))
+	doc, err := html.Parse(bytes.NewReader(htmlDoc.Bytes()))
+	if err != nil {
+		return "", "", err
+	}
+	tmp := strings.Split(card.TemplateId, "/")
+	fmt.Printf("Target id: %s, target class: %s\n", tmp[1], "question")
+	body := findBody(doc)
+	if body == nil {
+		return "", "", errors.New("No <body> in template output")
+	}
 
-	return body.String(), ctx.IframeId, nil
+	container := findContainer(body.FirstChild, tmp[1], "question")
+	if container == nil {
+		fmt.Printf("No matching div found in template output\n")
+		return htmlDoc.String(), ctx.IframeId, nil
+	}
+	fmt.Printf("Deleting divs\n")
+	for c := body.FirstChild; c != nil; c = body.FirstChild {
+		body.RemoveChild(c)
+	}
+	// 	container.RemoveChild(inner)
+	fmt.Printf("Appending target div's inner conent\n")
+	// 	for c := container.FirstChild; c != nil; c = container.FirstChild {
+	// 		container.RemoveChild( c )
+	// 		body.AppendChild( c )
+	// 	}
+	inner := container.FirstChild
+	inner.Parent = body
+	body.FirstChild = inner
+
+	newBody := new(bytes.Buffer)
+	if err := html.Render(newBody, doc); err != nil {
+		return "", "", err
+	}
+	nbString := newBody.String()
+	fmt.Printf("original size = %d\n", len(htmlDoc.String()))
+	fmt.Printf("new body size = %d\n", len(nbString))
+	return nbString, ctx.IframeId, nil
+}
+
+func findBody(n *html.Node) *html.Node {
+	if n.Type == html.ElementNode && n.Data == "body" {
+		return n
+	}
+	for c := n.FirstChild; c != nil; c = c.NextSibling {
+		if body := findBody(c); body != nil {
+			return body
+		}
+	}
+	return nil
+}
+
+func findContainer(n *html.Node, targetId, targetClass string) *html.Node {
+	if n == nil {
+		return nil
+	}
+	if n.Type == html.ElementNode && n.Data == "div" {
+		var class, id string
+		for _, a := range n.Attr {
+			switch a.Key {
+			case "class":
+				class = a.Val
+			case "data-id":
+				id = a.Val
+			}
+			if class != "" && id != "" {
+				break
+			}
+		}
+		fmt.Printf("considering element with id='%s'/'%s', id='%s'/'%s'\n", class, targetClass, id, targetId)
+		if class == targetClass && id == targetId {
+			return n
+		}
+	}
+	return findContainer(n.NextSibling, targetId, targetClass)
 }
 
 type cardContext struct {
@@ -155,13 +230,14 @@ type cardContext struct {
 }
 
 var masterTemplate = `
+<!DOCTYPE html>
 <html>
 <head>
+	<title>FB Card</title>
 	<base href="{{ .BaseURI }}">
+	<meta charset="UTF-8">
 	<meta http-equiv="Content-Security-Policy"
-		content="
-		script-src 'unsafe-inline' {{ .BaseURI }}
-	">
+		content="script-src 'unsafe-inline' {{ .BaseURI }}">
 <script type="text/javascript">
 'use strict';
 var FB = {
@@ -172,13 +248,9 @@ var FB = {
 };
 </script>
 <script type="text/javascript" src="js/cardframe.js"></script>
-<script type="text/javascript">
-{{ block "script.js" .Fields }}{{end}}
-</script>
-<link rel="stylesheet" type="text/css" href="style.css">
+<script type="text/javascript">{{ block "script.js" .Fields }}{{end}}</script>
+<style>{{ block "style.css" .Fields }}{{end}}</style>
 </head>
-<body>
-{{ block "template.html" .Fields }}{{end}}
-</body>
+<body class="card">{{ block "template.html" .Fields }}{{end}}</body>
 </html>
 `

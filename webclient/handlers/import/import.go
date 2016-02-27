@@ -22,7 +22,6 @@ import (
 	"github.com/flimzy/web/file"
 	"github.com/gopherjs/gopherjs/js"
 	"github.com/gopherjs/jquery"
-	"honnef.co/go/js/console"
 )
 
 var jQuery = jquery.NewJQuery
@@ -71,7 +70,6 @@ func importFile(f file.File) error {
 	if err != nil {
 		return err
 	}
-	console.Log(collection)
 	modelMap, err := storeModels(collection)
 	if err != nil {
 		return err
@@ -131,10 +129,10 @@ func extractCollection(z map[string]*zip.File) (*anki.Collection, error) {
 var masterTmpl = template.Must(template.New("template.html").Delims("[[", "]]").Parse(`
 {{ $g := . }}
 [[- range $i, $Name := . ]]
-	<div id="front-[[ $i ]]">
+	<div class="question" data-id="[[ $i ]]">
 		{{template "[[ $Name ]] front.html" $g}}
 	</div>
-	<div id="back-[[ $i ]]">
+	<div class="answer" data-id="[[ $i ]]">
 		{{template "[[ $Name ]] back.html" $g}}
 	</div>
 [[ end -]]
