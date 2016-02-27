@@ -43,6 +43,11 @@ func DoSync() {
 		fmt.Printf("Error syncing from server: %s\n", err)
 		return
 	}
+	fmt.Printf("Compacting\n")
+	if err := ldb.Compact(pouchdb.Options{}); err != nil {
+		fmt.Printf("Error compacting database: %s\n", err)
+		return
+	}
 	docsWritten := int(result["docs_written"].(float64))
 	fmt.Printf("Synced %d docs from server, and %d to server\n", docsRead, docsWritten)
 }
