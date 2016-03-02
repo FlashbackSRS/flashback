@@ -9,6 +9,7 @@ import (
 	"errors"
 	"fmt"
 	"html/template"
+	"net/url"
 	"path/filepath"
 	"reflect"
 	"regexp"
@@ -26,7 +27,7 @@ import (
 
 var jQuery = jquery.NewJQuery
 
-func BeforeTransition(event *jquery.Event, ui *js.Object) bool {
+func BeforeTransition(event *jquery.Event, ui *js.Object, p url.Values) bool {
 	go func() {
 		container := jQuery(":mobile-pagecontainer")
 		jQuery("#importnow", container).On("click", func() {

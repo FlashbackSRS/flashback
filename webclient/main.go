@@ -3,7 +3,6 @@
 package main
 
 import (
-	"fmt"
 	"strconv"
 	"sync"
 
@@ -89,7 +88,6 @@ func resizeContent() {
 	if footer.HasClass("ui-footer-fixed") {
 		footerHt = footerHt - 1
 	}
-	fmt.Printf("screen  = %d\nheader  = %d\nfooter  = %d\nnew     = %d\n", screenHt, headerHt, footerHt, screenHt-headerHt-footerHt)
 	jQuery(".ui-content").SetHeight(strconv.Itoa(screenHt - headerHt - footerHt))
 }
 
@@ -101,8 +99,8 @@ func RouterInit() {
 	// beforetransition
 	beforeTransition := jqeventrouter.NewEventMux()
 	beforeTransition.SetUriFunc(getJqmUri)
-	beforeTransition.HandleFunc("/login.html", login.BeforeTransition)
-	beforeTransition.HandleFunc("/logout.html", logout.BeforeTransition)
+	beforeTransition.HandleFunc("/login.html", login_handler.BeforeTransition)
+	beforeTransition.HandleFunc("/logout.html", logout_handler.BeforeTransition)
 	beforeTransition.HandleFunc("/sync.html", sync_handler.BeforeTransition)
 	beforeTransition.HandleFunc("/import.html", import_handler.BeforeTransition)
 	beforeTransition.HandleFunc("/study.html", study_handler.BeforeTransition)

@@ -5,7 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"html/template"
-	"strconv"
+	"net/url"
 	"strings"
 
 	"github.com/pborman/uuid"
@@ -19,12 +19,12 @@ import (
 
 	"github.com/flimzy/flashback/data"
 	"github.com/flimzy/flashback/util"
-	// 	"honnef.co/go/js/console"
 )
 
 var jQuery = jquery.NewJQuery
 
-func BeforeTransition(event *jquery.Event, ui *js.Object) bool {
+func BeforeTransition(event *jquery.Event, ui *js.Object, p url.Values) bool {
+	fmt.Printf("card = %s\n", p.Get("card"))
 	go func() {
 		container := jQuery(":mobile-pagecontainer")
 		// Ensure the indexes are created before trying to use them

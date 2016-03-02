@@ -2,6 +2,8 @@ package sync_handler
 
 import (
 	"fmt"
+	"net/url"
+
 	"github.com/flimzy/go-pouchdb"
 
 	"github.com/flimzy/flashback/util"
@@ -11,7 +13,7 @@ import (
 
 var jQuery = jquery.NewJQuery
 
-func BeforeTransition(event *jquery.Event, ui *js.Object) bool {
+func BeforeTransition(event *jquery.Event, ui *js.Object, p url.Values) bool {
 
 	go func() {
 		container := jQuery(":mobile-pagecontainer")

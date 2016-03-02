@@ -18,11 +18,11 @@ func JqmTargetUri(ui *js.Object) string {
 		rawUrl = ui.Get("toPage").Call("jqmData", "url").String()
 	}
 	pageUrl, _ := url.Parse(rawUrl)
-	path := strings.TrimPrefix(pageUrl.Path, "/android_asset/www")
-	if len(pageUrl.Fragment) > 0 {
-		return path + "#" + pageUrl.Fragment
-	}
-	return "/" + strings.TrimPrefix(path, "/")
+	pageUrl.Path = strings.TrimPrefix(pageUrl.Path, "/android_asset/www")
+	pageUrl.Host = ""
+	pageUrl.User = nil
+	pageUrl.Scheme = ""
+	return pageUrl.String()
 }
 
 // UserFromCookie extracts a user name from the CouchDB cookie, which is set
