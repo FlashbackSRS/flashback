@@ -70,21 +70,42 @@ type Note struct {
 }
 
 type Card struct {
-	Id           string    `json:"_id"`
-	Rev          string    `json:"_rev,omitempty"`
-	AnkiId       string    `json:"$ankiId"`
-	Type         string    `json:"$type"`
-	NoteId       string    `json:"$noteId"`
-	DeckId       string    `json:"$deckId"`
-	TemplateId   string    `json:"$templateId"`
-	Created      time.Time `json:"$created,omitempty"`
-	AnkiImported time.Time `json:"$ankiImported,omitempty"` // Only for items imported from Anki
-	Modified     time.Time `json:"$modified,omitempty"`
-	Due          time.Time `json:"Due,omitempty"`
-	Reviews      int       `json:"Reviews"`
-	Lapses       int       `json:"Lapses"`
-	Interval     int       `json:"Interval"`
-	SRSFactor    float32   `json:"SRSFactor"`
-	Suspended    bool      `json:"Suspended"`
-	RelatedCards []string  `json:"Related"`
+	Id           string        `json:"_id"`
+	Rev          string        `json:"_rev,omitempty"`
+	Type         string        `json:"$type"`
+	NoteId       string        `json:"$noteId"`
+	DeckId       string        `json:"$deckId"`
+	TemplateId   string        `json:"$templateId"`
+	Created      *time.Time    `json:"$created,omitempty"`
+	AnkiImported *time.Time    `json:"$ankiImported,omitempty"` // Only for items imported from Anki
+	Modified     *time.Time    `json:"$modified,omitempty"`
+	Due          *time.Time    `json:"Due,omitempty"`
+	Reviews      int           `json:"Reviews"`
+	Lapses       int           `json:"Lapses"`
+	Interval     time.Duration `json:"Interval"`
+	SRSFactor    float32       `json:"SRSFactor"`
+	Suspended    bool          `json:"Suspended"`
+	RelatedCards []string      `json:"Related"`
+}
+
+type Answer int
+
+const (
+	WrongAnswer Answer = iota
+	HardAnswer
+	OKAnswer
+	EasyAnswer
+)
+
+type Review struct {
+	Id           string        `json:"_id"`
+	Rev          string        `json:"_rev,omitempty"`
+	Type         string        `json:"$type"`
+	CardId       string        `json:"$card"`
+	Timestamp    time.Time     `json:"Timestamp"`
+	Answer       string        `json:"Answer"`
+	Interval     time.Duration `json:"Interval"`
+	LastInterval time.Duration `json:"LastInterval"`
+	Factor       float32       `json:"Factor"`
+	ReviewType   string        `json:"Type"`
 }

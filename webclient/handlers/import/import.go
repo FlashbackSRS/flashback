@@ -83,7 +83,11 @@ func importFile(f file.File) error {
 	if err != nil {
 		return err
 	}
-	if err := storeCards(collection, deckMap, noteMap); err != nil {
+	cardMap, err := storeCards(collection, deckMap, noteMap)
+	if err != nil {
+		return err
+	}
+	if err := storeReviews(collection, cardMap); err != nil {
 		return err
 	}
 	return nil
@@ -625,7 +629,10 @@ var contentTypeMap = map[string]string{
 	"gif":  "image/gif",
 }
 
-func storeCards(c *anki.Collection, deckMap idmap, noteMap notemap) error {
+type cardmap map[int64]string
+
+func storeCards(c *anki.Collection, deckMap idmap, noteMap notemap) (cardmap, error) {
+	cardmap := make(map[int64]string)
 	related := make(map[string]*[]string)
 	var cards []data.Card
 	db := util.UserDb()
@@ -634,43 +641,39 @@ func storeCards(c *anki.Collection, deckMap idmap, noteMap notemap) error {
 		var deckId string
 		var ok bool
 		if deckId, ok = deckMap[c.DeckId]; !ok {
-			return errors.New("Found card that doesn't belong to a deck")
+			return nil, errors.New("Found card that doesn't belong to a deck")
 		}
 		if note, ok = noteMap[c.NoteId]; !ok {
 			// Probably due to cloze
 			continue
-			// 			return fmt.Errorf("Found card (%d) with no note", c.Id)
 		}
 		cardId := c.AnkiId(note.Id)
+		cardmap[c.Id] = cardId
 		if rel, ok := related[note.Id]; ok {
 			*rel = append(*rel, cardId)
 		} else {
 			related[note.Id] = &([]string{cardId})
 		}
+		now := time.Now()
 		card := data.Card{
 			Id:         cardId,
 			Type:       "card",
 			NoteId:     note.Id,
 			DeckId:     deckId,
-			Modified:   time.Now(),
-			Created:    time.Now(),
+			Modified:   &now,
+			Created:    &now,
+			Due:        c.Due,
 			Reviews:    c.Reps,
 			Lapses:     c.Lapses,
 			Interval:   c.Interval,
-			SRSFactor:  float32(c.Factor) / 1000,
+			SRSFactor:  c.Factor,
 			TemplateId: fmt.Sprintf("%s/%d", note.Model, c.Ord),
-			Suspended:  c.Queue == anki.QueueTypeSuspended,
-		}
-		switch c.Type {
-		case anki.CardTypeLearning:
-			card.Due = time.Unix(0, 0).AddDate(0, 0, int(c.Due))
-		case anki.CardTypeDue:
-			card.Due = time.Unix(c.Due, 0)
+			Suspended:  c.Queue == "suspended",
 		}
 		var existing data.Card
 		if err := db.Get(cardId, &existing, pouchdb.Options{}); err == nil {
 			if err := updateCard(&existing, &card); err != nil {
-				return err
+				return nil, err
 			}
 			continue
 		}
@@ -687,14 +690,14 @@ func storeCards(c *anki.Collection, deckMap idmap, noteMap notemap) error {
 			}
 		}
 		if _, err := db.Put(card); err != nil {
-			return err
+			return nil, err
 		}
 	}
-	return nil
+	return cardmap, nil
 }
 
 func updateCard(doc, card *data.Card) error {
-	if doc.Modified.After(doc.AnkiImported) {
+	if doc.Modified.After(*doc.AnkiImported) {
 		return nil
 	}
 
@@ -713,7 +716,7 @@ func updateCard(doc, card *data.Card) error {
 		changed = true
 	}
 
-	if !doc.Due.Equal(card.Due) {
+	if !doc.Due.Equal(*card.Due) {
 		doc.Due = card.Due
 		changed = true
 	}
@@ -753,7 +756,24 @@ func updateCard(doc, card *data.Card) error {
 	}
 
 	doc.Modified = card.Modified
-	doc.AnkiImported = time.Now()
+	now := time.Now()
+	doc.AnkiImported = &now
 
 	return updateDoc(card, card.Id, nil, nil)
+}
+
+func storeReviews(c *anki.Collection, cardMap cardmap) error {
+	for _, r := range c.Revlog {
+		util.LogReview(&data.Review{
+			Id:           r.AnkiId(cardMap[r.CardId]),
+			CardId:       cardMap[r.CardId],
+			Timestamp:    r.Timestamp,
+			Answer:       r.Ease,
+			Interval:     r.Interval,
+			LastInterval: r.LastInterval,
+			Factor:       r.Factor,
+			ReviewType:   r.Type,
+		})
+	}
+	return nil
 }

@@ -9,6 +9,8 @@ import (
 	"github.com/flimzy/go-pouchdb"
 	"github.com/flimzy/go-pouchdb/plugins/find"
 	"github.com/gopherjs/gopherjs/js"
+
+	"github.com/flimzy/flashback/data"
 )
 
 // JqmTargetUri determines the target URI based on a jQuery Mobile event 'ui' object
@@ -73,6 +75,17 @@ func findLink(rel string) string {
 func UserDb() *pouchdb.PouchDB {
 	dbName := "user-" + CurrentUser()
 	return pouchdb.New(dbName)
+}
+
+type reviewDoc struct {
+	Id        string `json:"_id"`
+	Rev       string `json:"_rev"`
+	CurrentDb string `json:"CurrentDb"`
+}
+
+func LogReview(r *data.Review) error {
+	fmt.Printf("I'd like to store this review now\n")
+	return nil
 }
 
 var initMap = make(map[string]<-chan struct{})
