@@ -105,12 +105,6 @@ func RouterInit() {
 	beforeTransition.HandleFunc("/import.html", import_handler.BeforeTransition)
 	beforeTransition.HandleFunc("/study.html", study_handler.BeforeTransition)
 	jqeventrouter.Listen("pagecontainerbeforetransition", beforeTransition)
-
-	// 	// Window resizing
-	// 	resize := jqeventrouter.NewEventMux()
-	// 	resize.SetUriFunc(getJqmUri)
-	// 	resize.HandleFunc("/study.html", study_handler.Resize)
-	// 	jqeventrouter.Listen("resize", resize)
 }
 
 func getJqmUri(_ *jquery.Event, ui *js.Object) string {
