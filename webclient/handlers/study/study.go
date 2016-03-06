@@ -208,7 +208,6 @@ func findContainer(n *html.Node, targetId, targetClass string) *html.Node {
 				break
 			}
 		}
-		fmt.Printf("considering element with id='%s'/'%s', id='%s'/'%s'\n", class, targetClass, id, targetId)
 		if class == targetClass && id == targetId {
 			return n
 		}

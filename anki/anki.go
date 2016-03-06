@@ -508,7 +508,7 @@ func (c *Collection) AddNoteFromSqlite(row map[string]interface{}) {
 // CREATE INDEX ix_revlog_cid on revlog (cid);
 
 type Review struct {
-	Timestamp    time.Time
+	Timestamp    *time.Time
 	CardId       int64
 	Ease         string
 	Interval     time.Duration
@@ -533,12 +533,13 @@ var ReviewTypes = map[int]string{
 }
 
 func (r Review) AnkiId(cid string) string {
-	return fmt.Sprintf("%s-%s", cid, b64(int64ToBytes(r.Timestamp.Unix())))
+	cardId := strings.TrimPrefix(cid, "card-anki-")
+	return fmt.Sprintf("review-%s-%s", cardId, b64(int64ToBytes(r.Timestamp.Unix())))
 }
 
 func (c *Collection) AddReviewFromSqlite(row map[string]interface{}) {
 	c.Revlog = append(c.Revlog, &Review{
-		Timestamp:    time.Unix(int64(row["id"].(float64)), 0),
+		Timestamp:    jsMilliseconds(int64(row["id"].(float64))),
 		CardId:       int64(row["cid"].(float64)),
 		Ease:         EaseTypes[int(row["ease"].(float64))],
 		Interval:     intervalToDuration(int(row["ivl"].(float64))),

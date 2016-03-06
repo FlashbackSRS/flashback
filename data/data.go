@@ -20,9 +20,9 @@ type Model struct {
 	Name         string                `json:"Name,omitempty"`
 	Description  string                `json:"Description,omitempty"`
 	Fields       []*Field              `json:"Fields"`
-	Created      time.Time             `json:"$created,omitempty"`
-	AnkiImported time.Time             `json:"$ankiImported,omitempty"` // Only for items imported from Anki
-	Modified     time.Time             `json:"$modified,omitempty"`
+	Created      *time.Time            `json:"$created,omitempty"`
+	AnkiImported *time.Time            `json:"$ankiImported,omitempty"` // Only for items imported from Anki
+	Modified     *time.Time            `json:"$modified,omitempty"`
 	Comment      string                `json:"Comment,omitempty"`
 }
 
@@ -31,27 +31,27 @@ type Field struct {
 }
 
 type Deck struct {
-	Id           string    `json:"_id"`
-	Rev          string    `json:"_rev,omitempty"`
-	Type         string    `json:"$type"`
-	Name         string    `json:"Name,omitempty"`
-	Description  string    `json:"Description,omitempty"`
-	Created      time.Time `json:"$created,omitempty"`
-	AnkiImported time.Time `json:"$ankiImported,omitempty"` // Only for items imported from Anki
-	Modified     time.Time `json:"$modified,omitempty"`
-	Comment      string    `json:"Comment"`
+	Id           string     `json:"_id"`
+	Rev          string     `json:"_rev,omitempty"`
+	Type         string     `json:"$type"`
+	Name         string     `json:"Name,omitempty"`
+	Description  string     `json:"Description,omitempty"`
+	Created      *time.Time `json:"$created,omitempty"`
+	AnkiImported *time.Time `json:"$ankiImported,omitempty"` // Only for items imported from Anki
+	Modified     *time.Time `json:"$modified,omitempty"`
+	Comment      string     `json:"Comment"`
 }
 
 type DeckConfig struct {
-	Id              string    `json:"_id"`
-	Rev             string    `json:"_rev,omitempty"`
-	Type            string    `json:"$type"`
-	DeckId          string    `json:"$deckId"`
-	Created         time.Time `json:"$created,omitempty"`
-	AnkiImported    time.Time `json:"$ankiImported,omitempty"` // Only for items imported from Anki
-	Modified        time.Time `json:"$modified,omitempty"`
-	MaxDailyReviews int       `json:"MaxDailyReviews"`
-	MaxDailyNew     int       `json:"MaxDailyNew"`
+	Id              string     `json:"_id"`
+	Rev             string     `json:"_rev,omitempty"`
+	Type            string     `json:"$type"`
+	DeckId          string     `json:"$deckId"`
+	Created         *time.Time `json:"$created,omitempty"`
+	AnkiImported    *time.Time `json:"$ankiImported,omitempty"` // Only for items imported from Anki
+	Modified        *time.Time `json:"$modified,omitempty"`
+	MaxDailyReviews int        `json:"MaxDailyReviews"`
+	MaxDailyNew     int        `json:"MaxDailyNew"`
 }
 
 type Note struct {
@@ -59,9 +59,9 @@ type Note struct {
 	Rev          string                `json:"_rev,omitempty"`
 	Attachments  map[string]Attachment `json:"_attachments,omitempty"`
 	Type         string                `json:"$type"`
-	Created      time.Time             `json:"$created,omitempty"`
-	AnkiImported time.Time             `json:"$ankiImported,omitempty"` // Only for items imported from Anki
-	Modified     time.Time             `json:"$modified,omitempty"`
+	Created      *time.Time            `json:"$created,omitempty"`
+	AnkiImported *time.Time            `json:"$ankiImported,omitempty"` // Only for items imported from Anki
+	Modified     *time.Time            `json:"$modified,omitempty"`
 	ModelId      string                `json:"$modelId"`
 	Tags         []string              `json:"Tags,omitempty"`
 	FieldValues  []string              `json:"FieldValues"`
@@ -82,7 +82,7 @@ type Card struct {
 	Due          *time.Time    `json:"Due,omitempty"`
 	Reviews      int           `json:"Reviews"`
 	Lapses       int           `json:"Lapses"`
-	Interval     time.Duration `json:"Interval"`
+	Interval     time.Duration `json:"Interval,string"`
 	SRSFactor    float32       `json:"SRSFactor"`
 	Suspended    bool          `json:"Suspended"`
 	RelatedCards []string      `json:"Related"`
@@ -102,10 +102,10 @@ type Review struct {
 	Rev          string        `json:"_rev,omitempty"`
 	Type         string        `json:"$type"`
 	CardId       string        `json:"$card"`
-	Timestamp    time.Time     `json:"Timestamp"`
+	Timestamp    *time.Time    `json:"$timestamp"`
 	Answer       string        `json:"Answer"`
-	Interval     time.Duration `json:"Interval"`
-	LastInterval time.Duration `json:"LastInterval"`
+	Interval     time.Duration `json:"Interval,string"`
+	LastInterval time.Duration `json:"LastInterval,string"`
 	Factor       float32       `json:"Factor"`
 	ReviewType   string        `json:"Type"`
 }

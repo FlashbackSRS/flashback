@@ -84,8 +84,45 @@ type reviewDoc struct {
 }
 
 func LogReview(r *data.Review) error {
-	fmt.Printf("I'd like to store this review now\n")
+	fmt.Printf("I'm storing this review now\n")
+	db, err := ReviewsDb()
+	if err != nil {
+		return err
+	}
+	_, err = db.Put(r)
+	if err != nil {
+		fmt.Printf("Error storing review 0: %s\n", err)
+		return err
+	}
 	return nil
+}
+
+type DbList struct {
+	Id  string   `json:"_id"`
+	Rev string   `json:"_rev"`
+	Dbs []string `json:"$dbs"`
+}
+
+func ReviewsDb() (*pouchdb.PouchDB, error) {
+	var list DbList
+	db := UserDb()
+	if err := db.Get("_local/ReviewsDbs", &list, pouchdb.Options{}); err != nil {
+		if !pouchdb.IsNotExist(err) {
+			fmt.Printf("Error fetching _local/ReivewsDbs: %s\n", err)
+			return nil, err
+		}
+		list = DbList{
+			Id:  "_local/ReviewsDbs",
+			Dbs: []string{"reviews-0-" + CurrentUser()},
+		}
+		_, err := db.Put(list)
+		if err != nil {
+			fmt.Printf("ugh: %s\n", err)
+			return nil, err
+		}
+	}
+	dbName := list.Dbs[len(list.Dbs)-1]
+	return pouchdb.New(dbName), nil
 }
 
 var initMap = make(map[string]<-chan struct{})
