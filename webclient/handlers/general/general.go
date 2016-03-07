@@ -20,12 +20,13 @@ func CleanFacebookURI(h jqeventrouter.Handler) jqeventrouter.Handler {
 			uri = strings.TrimSuffix(uri, "#_=_")
 			ui.Set("toPage", uri)
 		}
+		// TODO: Can we change the hash without refreshing the page?
 		// It's also ugly, so remove it from the visible location bar
-		location := js.Global.Get("location")
-		href := location.Get("href").String()
-		if strings.HasSuffix(href, "#_=_") {
-			location.Set("href", strings.TrimSuffix(href, "#_=_"))
-		}
+		// location := js.Global.Get("location")
+		// href := location.Get("href").String()
+		// if strings.HasSuffix(href, "#_=_") {
+		//	location.Set("href", strings.TrimSuffix(href, "#_=_"))
+		// }
 		return h.HandleEvent(event, ui, p)
 	})
 }
