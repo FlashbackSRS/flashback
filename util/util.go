@@ -84,7 +84,6 @@ type reviewDoc struct {
 }
 
 func LogReview(r *data.Review) error {
-	fmt.Printf("I'm storing this review now\n")
 	db, err := ReviewsDb()
 	if err != nil {
 		return err
@@ -103,21 +102,80 @@ type DbList struct {
 	Dbs []string `json:"$dbs"`
 }
 
-func ReviewsDb() (*pouchdb.PouchDB, error) {
+func getReviewsDbList() (DbList, error) {
 	var list DbList
 	db := UserDb()
-	if err := db.Get("_local/ReviewsDbs", &list, pouchdb.Options{}); err != nil {
-		if !pouchdb.IsNotExist(err) {
-			fmt.Printf("Error fetching _local/ReivewsDbs: %s\n", err)
-			return nil, err
-		}
-		list = DbList{
-			Id:  "_local/ReviewsDbs",
-			Dbs: []string{"reviews-0-" + CurrentUser()},
-		}
-		_, err := db.Put(list)
+	err := db.Get("_local/ReviewsDbs", &list, pouchdb.Options{})
+	if err != nil && pouchdb.IsNotExist(err) {
+		return DbList{Id: "_local/ReviewsDbs"}, nil
+	}
+	return list, err
+}
+
+func setReviewsDbList(list DbList) error {
+	if list.Id != "_local/ReviewsDbs" {
+		return fmt.Errorf("Invalid id '%s' for ReviewsDbs", list.Id)
+	}
+	fmt.Printf("Setting list to: %v\n", list.Dbs)
+	db := UserDb()
+	_, err := db.Put(list)
+	return err
+}
+
+func ReviewsSyncDbs() (*pouchdb.PouchDB, error) {
+	list, err := getReviewsDbList()
+	if err != nil {
+		return nil, err
+	}
+	if len(list.Dbs) == 0 {
+		// No reviews database, nothing to sync
+		return nil, nil
+	}
+	dbName := list.Dbs[0]
+	db := pouchdb.New(dbName)
+	if len(list.Dbs) > 1 {
+		fmt.Printf("WARNING: More than one active reviews database!\n")
+		return db, nil
+	}
+	var newDbPrefix string = "reviews-1-"
+	if strings.HasPrefix(dbName, "reviews-1-") {
+		newDbPrefix = "reviews-0-"
+	}
+	list.Dbs = append(list.Dbs, newDbPrefix+CurrentUser())
+	if err := setReviewsDbList(list); err != nil {
+		return nil, err
+	}
+	return db, nil
+}
+
+func ZapReviewsDb(db *pouchdb.PouchDB) error {
+	info, err := db.Info()
+	if err != nil {
+		return err
+	}
+	list, err := getReviewsDbList()
+	if err != nil {
+		return err
+	}
+	if list.Dbs[0] != info.DBName {
+		return fmt.Errorf("Attempt to remove ReviewsDb '%s' not at head of list", info.DBName)
+	}
+	list.Dbs = list.Dbs[1:]
+	if err := setReviewsDbList(list); err != nil {
+		return err
+	}
+	return db.Destroy(pouchdb.Options{})
+}
+
+func ReviewsDb() (*pouchdb.PouchDB, error) {
+	list, err := getReviewsDbList()
+	if err != nil {
+		return nil, err
+	}
+	if len(list.Dbs) == 0 {
+		list.Dbs = []string{"reviews-0-" + CurrentUser()}
+		err := setReviewsDbList(list)
 		if err != nil {
-			fmt.Printf("ugh: %s\n", err)
 			return nil, err
 		}
 	}
@@ -156,5 +214,9 @@ func InitUserDb() <-chan struct{} {
 }
 
 func BaseURI() string {
-	return js.Global.Get("jQuery").Get("mobile").Get("path").Call("getDocumentBase").String()
+	rawUri := js.Global.Get("jQuery").Get("mobile").Get("path").Call("getDocumentBase").String()
+	uri, _ := url.Parse(rawUri)
+	uri.Fragment = ""
+	uri.RawQuery = ""
+	return uri.String()
 }

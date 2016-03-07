@@ -29,7 +29,6 @@
             <li><a href="study.html">Study</a></li>
             <li><a href="stats.html">Statistics</a></li>
             <li><a href="import.html">Import from Anki</a></li>
-            <li><a href="sync.html">Sync</a></li>
             <li><a href="config.html">Configure</a></li>
             <li><a href="about.html">About</a></li>
             <li><a href="logout.html">Log Out / Switch User</a></li>
@@ -38,10 +37,12 @@
     </div><!-- /panel -->
 
     <div data-role="page" class="ui-responsive-panel">
- 
-        <div data-role="header">
+        <div data-role="header" data-id="header" data-position="fixed">
             <a href="#menu" data-icon="bars" data-iconpos="notext">Menu</a>
             <h1>Flashback</h1>
+            <div data-type="horizontal" data-role="controlgroup" class="ui-btn-right">
+                <a data-id="syncbutton" data-icon="refresh" data-role="button">Sync</a>
+            </div>
         </div><!-- /header -->
  
         <div data-role="content">

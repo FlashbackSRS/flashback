@@ -786,8 +786,9 @@ func storeReviews(c *anki.Collection, cardMap cardmap) error {
 			Factor:       r.Factor,
 			ReviewType:   r.Type,
 		}
-		if err := util.LogReview(review); err != nil {
-			fmt.Printf("Error storing review: %s\n", err)
+		// Ignore conflict errors; it should be possible to re-import the same
+		// revlog without problem
+		if err := util.LogReview(review); err != nil && !pouchdb.IsConflict(err) {
 			return err
 		}
 	}

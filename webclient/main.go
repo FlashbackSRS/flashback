@@ -101,10 +101,13 @@ func RouterInit() {
 	beforeTransition.SetUriFunc(getJqmUri)
 	beforeTransition.HandleFunc("/login.html", login_handler.BeforeTransition)
 	beforeTransition.HandleFunc("/logout.html", logout_handler.BeforeTransition)
-	beforeTransition.HandleFunc("/sync.html", sync_handler.BeforeTransition)
 	beforeTransition.HandleFunc("/import.html", import_handler.BeforeTransition)
 	beforeTransition.HandleFunc("/study.html", study_handler.BeforeTransition)
 	jqeventrouter.Listen("pagecontainerbeforetransition", beforeTransition)
+
+	// beforeshow
+	beforeShow := jqeventrouter.NullHandler()
+	jqeventrouter.Listen("pagecontainerbeforeshow", sync_handler.SetupSyncButton(beforeShow))
 }
 
 func getJqmUri(_ *jquery.Event, ui *js.Object) string {
@@ -123,9 +126,6 @@ func MobileInit() {
 	// 	DebugEvents()
 	RouterInit()
 
-	jQuery(document).On("pagecontainerbeforechange", func(event *jquery.Event, ui *js.Object) {
-		console.Log("last beforechange event handler")
-	})
 	jQuery(document).One("pagecreate", func(event *jquery.Event) {
 		console.Log("Enhancing the panel")
 		// This should only be executed once, to initialize our "external"
