@@ -132,6 +132,10 @@ func SyncReviews(local, remote *pouchdb.PouchDB) (int, error) {
 	if err != nil {
 		return 0, err
 	}
+	if before.DocCount == 0 {
+		// Nothing at all to sync
+		return 0, nil
+	}
 	rdb := pouchdb.New(host + "/reviews-" + util.CurrentUser())
 	result, err := pouchdb.Replicate(ldb, rdb, pouchdb.Options{})
 	if err != nil {
