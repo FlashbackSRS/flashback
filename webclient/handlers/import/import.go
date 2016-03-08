@@ -9,6 +9,7 @@ import (
 	"errors"
 	"fmt"
 	"html/template"
+	"net/url"
 	"path/filepath"
 	"reflect"
 	"regexp"
@@ -26,7 +27,7 @@ import (
 
 var jQuery = jquery.NewJQuery
 
-func BeforeTransition(event *jquery.Event, ui *js.Object) bool {
+func BeforeTransition(event *jquery.Event, ui *js.Object, p url.Values) bool {
 	go func() {
 		container := jQuery(":mobile-pagecontainer")
 		jQuery("#importnow", container).On("click", func() {
@@ -56,7 +57,7 @@ func importFile(f file.File) error {
 	fmt.Printf("Gonna pretend to import %s now\n", f.Name())
 	z, err := zip.NewReader(bytes.NewReader(f.Bytes()), f.Size())
 	if err != nil {
-		return err
+		return fmt.Errorf("Cannot read zip file: %s", err)
 	}
 	zipMap := make(map[string]*zip.File)
 	for _, file := range z.File {
@@ -64,26 +65,30 @@ func importFile(f file.File) error {
 	}
 	mediaMap, err := extractMediaMap(zipMap)
 	if err != nil {
-		return err
+		return fmt.Errorf("Cannot extract media info: %s", err)
 	}
 	collection, err := extractCollection(zipMap)
 	if err != nil {
-		return err
+		return fmt.Errorf("Cannot extract collection data: %s", err)
 	}
 	modelMap, err := storeModels(collection)
 	if err != nil {
-		return err
+		return fmt.Errorf("Cannot store model: %s", err)
 	}
 	noteMap, err := storeNotes(collection, modelMap, mediaMap)
 	if err != nil {
-		return err
+		return fmt.Errorf("Cannot store notes: %s", err)
 	}
 	deckMap, err := storeDecks(collection)
 	if err != nil {
-		return err
+		return fmt.Errorf("Cannot store decks: %s", err)
 	}
-	if err := storeCards(collection, deckMap, noteMap); err != nil {
-		return err
+	cardMap, err := storeCards(collection, deckMap, noteMap)
+	if err != nil {
+		return fmt.Errorf("Cannot store cards: %s", err)
+	}
+	if err := storeReviews(collection, cardMap); err != nil {
+		return fmt.Errorf("Cannot store reviews: %s", err)
 	}
 	return nil
 }
@@ -155,7 +160,7 @@ func storeModels(c *anki.Collection) (idmap, error) {
 		var model data.Model
 		// Check for duplicates
 		if err := db.Get(modelId, &model, pouchdb.Options{}); err == nil {
-			if model.Modified.After(model.AnkiImported) {
+			if model.AnkiImported == nil || model.Modified.After(*model.AnkiImported) {
 				continue
 			}
 			if err := updateModel(&model, m); err != nil {
@@ -163,6 +168,7 @@ func storeModels(c *anki.Collection) (idmap, error) {
 			}
 			continue
 		}
+		now := time.Now()
 		model = data.Model{
 			Id:           modelId,
 			Rev:          model.Rev, // Preserve the Rev, if there is one, so the put succeeds
@@ -170,8 +176,8 @@ func storeModels(c *anki.Collection) (idmap, error) {
 			Description:  "Anki Model " + m.Name,
 			Type:         "model",
 			Modified:     m.Modified,
-			AnkiImported: time.Now(),
-			Comment:      "Imported from Anki on " + time.Now().String(),
+			AnkiImported: &now,
+			Comment:      "Imported from Anki on " + now.String(),
 		}
 		for _, f := range m.Fields {
 			model.Fields = append(model.Fields, &data.Field{
@@ -291,8 +297,9 @@ func updateModel(model *data.Model, m *anki.Model) error {
 	}
 
 	model.Modified = m.Modified
-	model.AnkiImported = time.Now()
-	model.Comment = "Imported from Anki on " + time.Now().String()
+	now := time.Now()
+	model.AnkiImported = &now
+	model.Comment = "Imported from Anki on " + now.String()
 
 	fmt.Printf("Now applying changes to model %d / %s\n", m.Id, model.Id)
 
@@ -307,7 +314,7 @@ func storeDecks(c *anki.Collection) (idmap, error) {
 		deckMap[d.Id] = deckId
 		var deck data.Deck
 		if err := db.Get(deckId, &deck, pouchdb.Options{}); err == nil {
-			if deck.Modified.After(deck.AnkiImported) {
+			if deck.AnkiImported == nil || deck.Modified.After(*deck.AnkiImported) {
 				continue
 			}
 			if err := updateDeck(&deck, d); err != nil {
@@ -315,14 +322,15 @@ func storeDecks(c *anki.Collection) (idmap, error) {
 			}
 			continue
 		}
+		now := time.Now()
 		deck = data.Deck{
 			Id:          deckId,
 			Name:        d.Name,
 			Description: d.Description,
 			Type:        "deck",
-			Modified:    time.Now(),
-			Created:     time.Now(),
-			Comment:     "Imported from Anki on " + time.Now().String(),
+			Modified:    &now,
+			Created:     &now,
+			Comment:     "Imported from Anki on " + now.String(),
 		}
 		_, err := db.Put(deck)
 		if err != nil {
@@ -352,9 +360,10 @@ func updateDeck(deck *data.Deck, d *anki.Deck) error {
 		return nil
 	}
 
+	now := time.Now()
 	deck.Modified = d.Modified
-	deck.AnkiImported = time.Now()
-	deck.Comment = "Imported from Anki on " + time.Now().String()
+	deck.AnkiImported = &now
+	deck.Comment = "Imported from Anki on " + now.String()
 
 	return updateDoc(deck, deck.Id, nil, nil)
 }
@@ -385,7 +394,7 @@ func storeDeckConfig(c *anki.Collection, dcId int64, deckId string) error {
 			confId := "deckconf-" + deckId
 			var conf data.DeckConfig
 			if err := db.Get(confId, &conf, pouchdb.Options{}); err == nil {
-				if conf.Modified.After(conf.AnkiImported) {
+				if conf.AnkiImported == nil || conf.Modified.After(*conf.AnkiImported) {
 					continue
 				}
 				if err := updateDeckConfig(&conf, dc); err != nil {
@@ -393,12 +402,13 @@ func storeDeckConfig(c *anki.Collection, dcId int64, deckId string) error {
 				}
 				continue
 			}
+			now := time.Now()
 			conf = data.DeckConfig{
 				Id:              confId,
 				Type:            "deckconf",
 				DeckId:          deckId,
-				Modified:        time.Now(),
-				Created:         time.Now(),
+				Modified:        &now,
+				Created:         &now,
 				MaxDailyReviews: dc.Reviews.PerDay,
 				MaxDailyNew:     dc.New.PerDay,
 			}
@@ -431,7 +441,8 @@ func updateDeckConfig(conf *data.DeckConfig, dc *anki.DeckConfig) error {
 	}
 
 	conf.Modified = dc.Modified
-	conf.AnkiImported = time.Now()
+	now := time.Now()
+	conf.AnkiImported = &now
 
 	return updateDoc(conf, conf.Id, nil, nil)
 }
@@ -459,7 +470,7 @@ func storeNotes(c *anki.Collection, modelMap idmap, mediaMap map[string]*zip.Fil
 		noteMap[n.Id] = noteNode{Id: noteId, Model: modelId}
 		var note data.Note
 		if err := db.Get(noteId, &note, pouchdb.Options{}); err == nil {
-			if note.Modified.After(note.AnkiImported) {
+			if note.AnkiImported == nil || note.Modified.After(*note.AnkiImported) {
 				continue
 			}
 			if note.ModelId != modelId {
@@ -470,6 +481,7 @@ func storeNotes(c *anki.Collection, modelMap idmap, mediaMap map[string]*zip.Fil
 			}
 			continue
 		}
+		now := time.Now()
 		note = data.Note{
 			Id:           noteId,
 			Rev:          note.Rev,
@@ -477,10 +489,10 @@ func storeNotes(c *anki.Collection, modelMap idmap, mediaMap map[string]*zip.Fil
 			ModelId:      modelId,
 			Created:      note.Created,
 			Modified:     n.Modified,
-			AnkiImported: time.Now(),
+			AnkiImported: &now,
 			Tags:         n.Tags,
 			FieldValues:  n.Fields,
-			Comment:      "Imported from Anki on " + time.Now().String(),
+			Comment:      "Imported from Anki on " + now.String(),
 		}
 		rev, err := db.Put(note)
 		if err != nil {
@@ -604,8 +616,9 @@ func updateNote(note *data.Note, n *anki.Note, mediaMap map[string]*zip.File) er
 	}
 
 	note.Modified = n.Modified
-	note.AnkiImported = time.Now()
-	note.Comment = "Imported from Anki on " + time.Now().String()
+	now := time.Now()
+	note.AnkiImported = &now
+	note.Comment = "Imported from Anki on " + now.String()
 
 	return updateDoc(note, note.Id, &changedAttachments, &deletedAttachments)
 }
@@ -624,7 +637,10 @@ var contentTypeMap = map[string]string{
 	"gif":  "image/gif",
 }
 
-func storeCards(c *anki.Collection, deckMap idmap, noteMap notemap) error {
+type cardmap map[int64]string
+
+func storeCards(c *anki.Collection, deckMap idmap, noteMap notemap) (cardmap, error) {
+	cardmap := make(map[int64]string)
 	related := make(map[string]*[]string)
 	var cards []data.Card
 	db := util.UserDb()
@@ -633,45 +649,44 @@ func storeCards(c *anki.Collection, deckMap idmap, noteMap notemap) error {
 		var deckId string
 		var ok bool
 		if deckId, ok = deckMap[c.DeckId]; !ok {
-			return errors.New("Found card that doesn't belong to a deck")
+			return nil, errors.New("Found card that doesn't belong to a deck")
 		}
 		if note, ok = noteMap[c.NoteId]; !ok {
 			// Probably due to cloze
 			continue
-			// 			return fmt.Errorf("Found card (%d) with no note", c.Id)
 		}
 		cardId := c.AnkiId(note.Id)
+		cardmap[c.Id] = cardId
 		if rel, ok := related[note.Id]; ok {
 			*rel = append(*rel, cardId)
 		} else {
 			related[note.Id] = &([]string{cardId})
 		}
+		now := time.Now()
 		card := data.Card{
 			Id:         cardId,
 			Type:       "card",
 			NoteId:     note.Id,
 			DeckId:     deckId,
-			Modified:   time.Now(),
-			Created:    time.Now(),
+			Modified:   &now,
+			Created:    &now,
+			Due:        c.Due,
 			Reviews:    c.Reps,
 			Lapses:     c.Lapses,
 			Interval:   c.Interval,
-			SRSFactor:  float32(c.Factor) / 1000,
+			SRSFactor:  c.Factor,
 			TemplateId: fmt.Sprintf("%s/%d", note.Model, c.Ord),
-			Suspended:  c.Queue == anki.QueueTypeSuspended,
-		}
-		switch c.Type {
-		case anki.CardTypeLearning:
-			card.Due = time.Unix(0, 0).AddDate(0, 0, int(c.Due))
-		case anki.CardTypeDue:
-			card.Due = time.Unix(c.Due, 0)
+			Suspended:  c.Queue == "suspended",
 		}
 		var existing data.Card
 		if err := db.Get(cardId, &existing, pouchdb.Options{}); err == nil {
 			if err := updateCard(&existing, &card); err != nil {
-				return err
+				return nil, err
 			}
 			continue
+		} else if !pouchdb.IsNotExist(err) {
+			fmt.Printf("Error checking for duplicate card: %s\n", err)
+			return nil, err
 		}
 		cards = append(cards, card)
 	}
@@ -686,14 +701,14 @@ func storeCards(c *anki.Collection, deckMap idmap, noteMap notemap) error {
 			}
 		}
 		if _, err := db.Put(card); err != nil {
-			return err
+			return nil, err
 		}
 	}
-	return nil
+	return cardmap, nil
 }
 
 func updateCard(doc, card *data.Card) error {
-	if doc.Modified.After(doc.AnkiImported) {
+	if doc.AnkiImported == nil || doc.Modified.After(*doc.AnkiImported) {
 		return nil
 	}
 
@@ -712,7 +727,7 @@ func updateCard(doc, card *data.Card) error {
 		changed = true
 	}
 
-	if !doc.Due.Equal(card.Due) {
+	if !doc.Due.Equal(*card.Due) {
 		doc.Due = card.Due
 		changed = true
 	}
@@ -752,7 +767,30 @@ func updateCard(doc, card *data.Card) error {
 	}
 
 	doc.Modified = card.Modified
-	doc.AnkiImported = time.Now()
+	now := time.Now()
+	doc.AnkiImported = &now
 
 	return updateDoc(card, card.Id, nil, nil)
+}
+
+func storeReviews(c *anki.Collection, cardMap cardmap) error {
+	for _, r := range c.Revlog {
+		review := &data.Review{
+			Id:           r.AnkiId(cardMap[r.CardId]),
+			Type:         "review",
+			CardId:       cardMap[r.CardId],
+			Timestamp:    r.Timestamp,
+			Answer:       r.Ease,
+			Interval:     r.Interval,
+			LastInterval: r.LastInterval,
+			Factor:       r.Factor,
+			ReviewType:   r.Type,
+		}
+		// Ignore conflict errors; it should be possible to re-import the same
+		// revlog without problem
+		if err := util.LogReview(review); err != nil && !pouchdb.IsConflict(err) {
+			return err
+		}
+	}
+	return nil
 }

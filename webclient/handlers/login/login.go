@@ -1,6 +1,8 @@
-package login
+package login_handler
 
 import (
+	"net/url"
+
 	"github.com/gopherjs/gopherjs/js"
 	"github.com/gopherjs/jquery"
 	"github.com/gopherjs/jsbuiltin"
@@ -13,7 +15,7 @@ import (
 
 var jQuery = jquery.NewJQuery
 
-func BeforeTransition(event *jquery.Event, ui *js.Object) bool {
+func BeforeTransition(event *jquery.Event, ui *js.Object, p url.Values) bool {
 	console.Log("login BEFORE")
 	api := flashback.New()
 

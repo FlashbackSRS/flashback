@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"html/template"
+	"net/url"
 	"strings"
 
 	"github.com/pborman/uuid"
@@ -18,12 +19,12 @@ import (
 
 	"github.com/flimzy/flashback/data"
 	"github.com/flimzy/flashback/util"
-	// 	"honnef.co/go/js/console"
 )
 
 var jQuery = jquery.NewJQuery
 
-func BeforeTransition(event *jquery.Event, ui *js.Object) bool {
+func BeforeTransition(event *jquery.Event, ui *js.Object, p url.Values) bool {
+	fmt.Printf("card = %s\n", p.Get("card"))
 	go func() {
 		container := jQuery(":mobile-pagecontainer")
 		// Ensure the indexes are created before trying to use them
@@ -114,11 +115,7 @@ func getCardBodies(card *data.Card) (string, string, error) {
 		return "", "", err
 	}
 	for filename, t := range templates {
-		content := fmt.Sprintf(`
-{{define "%s"}}
-%s
-{{end}}
-		`, filename, t)
+		content := fmt.Sprintf("{{define \"%s\"}}%s{{end}}", filename, t)
 		if _, err := tmpl.Parse(content); err != nil {
 			return "", "", err
 		}
@@ -211,7 +208,6 @@ func findContainer(n *html.Node, targetId, targetClass string) *html.Node {
 				break
 			}
 		}
-		fmt.Printf("considering element with id='%s'/'%s', id='%s'/'%s'\n", class, targetClass, id, targetId)
 		if class == targetClass && id == targetId {
 			return n
 		}

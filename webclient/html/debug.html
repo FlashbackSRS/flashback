@@ -3,10 +3,13 @@
 </head>
 <body>
     <div data-role="page" class="ui-responsive-panel">
-        <div data-role="header">
+        <div data-role="header" data-id="header" data-position="fixed">
             <a href="#menu" data-icon="bars" data-iconpos="notext">Menu</a>
             <h1>Flashback</h1>
-        </div>
+            <div data-type="horizontal" data-role="controlgroup" class="ui-btn-right">
+                <a data-id="syncbutton" data-icon="refresh" data-role="button">Sync</a>
+            </div>
+        </div><!-- /header -->
         <div data-role="content">
             <h1>Debug Info</h1>
             <div class="hide-until-load">

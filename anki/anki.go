@@ -12,22 +12,6 @@ import (
 	"time"
 )
 
-type CardType uint8
-
-const (
-	CardTypeNew CardType = iota
-	CardTypeLearning
-	CardTypeDue
-)
-
-type QueueType int8
-
-const (
-	QueueTypeSuspended QueueType = iota * -1
-	QueueTypeUserBuried
-	QueueTypeSchedBuried
-)
-
 /*
  * https://gist.github.com/sartak/3921255
  * https://github.com/ankidroid/Anki-Android/wiki/Database-Structure
@@ -50,12 +34,12 @@ const (
 // );
 
 type Collection struct {
-	Created        time.Time
-	Modified       time.Time
-	SchemaModified time.Time
+	Created        *time.Time
+	Modified       *time.Time
+	SchemaModified *time.Time
 	Ver            int
-	LastSync       time.Time
-	Config         Config
+	LastSync       *time.Time
+	Config         *Config
 	Models         []*Model
 	Decks          []*Deck
 	DeckConfig     []*DeckConfig
@@ -83,17 +67,23 @@ type Collection struct {
 // # Also found
 // newBury -- not used?
 
-func jsTime(ms int64) time.Time {
-	return time.Unix(int64(ms/1000), int64(ms%1000))
+func jsMilliseconds(ms int64) *time.Time {
+	t := time.Unix(int64(ms/1000), int64(ms%1000))
+	return &t
+}
+
+func jsSeconds(s int64) *time.Time {
+	t := time.Unix(s, 0)
+	return &t
 }
 
 func SqliteToCollection(row map[string]interface{}) (*Collection, error) {
 	c := &Collection{
-		Created:        time.Unix(int64(row["crt"].(float64)), 0),
-		Modified:       jsTime(int64(row["mod"].(float64))),
-		SchemaModified: jsTime(int64(row["scm"].(float64))),
+		Created:        jsSeconds(int64(row["crt"].(float64))),
+		Modified:       jsMilliseconds(int64(row["mod"].(float64))),
+		SchemaModified: jsMilliseconds(int64(row["scm"].(float64))),
 		Ver:            int(row["ver"].(float64)),
-		LastSync:       jsTime(int64(row["ls"].(float64))),
+		LastSync:       jsMilliseconds(int64(row["ls"].(float64))),
 	}
 	if err := c.parseConfig(row["conf"].(string)); err != nil {
 		return nil, fmt.Errorf("[conf] %s", err)
@@ -111,21 +101,28 @@ func SqliteToCollection(row map[string]interface{}) (*Collection, error) {
 }
 
 type Config struct {
-	ActiveDecks   []uint `json:"activeDecks"`
-	CurrentDeck   uint   `json:"curDeck"`
-	NewSpread     uint   `json:"newSpread"`
-	CollapseTime  uint   `json:"collapseTime"`
-	TimeLimit     uint   `json:"timeLim"`
+	ActiveDecks   []int `json:"activeDecks"`
+	CurrentDeck   int64 `json:"curDeck"`
+	NewSpread     int   `json:"newSpread"`
+	CollapseTime  int   `json:"collapseTime"`
+	timeLimit     int   `json:"timeLim"`
+	TimeLimit     time.Duration
 	EstTimes      bool   `json:"estTimes"`
 	DueCounts     bool   `json:"dueCounts"`
 	SortType      string `json:"sortType"`
 	SortBackwards bool   `json:"sortBackwards"`
 	// 	NextPos       uint   `json:"nextPos"`
-	// 	CurrentModel  uint   `json:"curModel"`
+	// 	CurrentModel  int64   `json:"curModel"`
 }
 
 func (c *Collection) parseConfig(jsonString string) error {
-	return json.Unmarshal([]byte(jsonString), &(c.Config))
+	var conf Config
+	if err := json.Unmarshal([]byte(jsonString), &conf); err != nil {
+		return err
+	}
+	conf.TimeLimit = time.Duration(int64(conf.timeLimit)) * time.Millisecond
+	c.Config = &conf
+	return nil
 }
 
 type ModelType uint
@@ -149,22 +146,25 @@ type Model struct {
 	LatexPost string      `json:"latexPost"`
 	CSS       string      `json:"css"`
 	Mod       int64       `json:"mod"`
-	Modified  time.Time
+	Modified  *time.Time
 	// Req string `json:"req"` -- Required fields? Possibly auto-generated after examining templates?
 }
 
-func idToBytes(id int64) []byte {
+func int64ToBytes(id int64) []byte {
 	buf := make([]byte, 6)
 	binary.PutVarint(buf, id)
 	return buf
 }
 
-func b64(str string) string {
-	return strings.Replace(base64.StdEncoding.EncodeToString([]byte(str)), "/", "_", -1)
+func b64(buf []byte) string {
+	return strings.Replace(base64.StdEncoding.EncodeToString(buf), "/", "_", -1)
 }
 
 func (m Model) AnkiId() string {
-	return "model-anki-" + b64(fmt.Sprintf("%s %d", idToBytes(m.Id), m.Type))
+	var buf bytes.Buffer
+	buf.Write(int64ToBytes(m.Id))
+	buf.Write([]byte{byte(m.Type)})
+	return "model-anki-" + b64(buf.Bytes())
 }
 
 type Field struct {
@@ -194,7 +194,7 @@ func (c *Collection) parseModels(jsonString string) error {
 		} else {
 			m.Id = id
 		}
-		m.Modified = time.Unix(m.Mod, 0)
+		m.Modified = jsSeconds(m.Mod)
 		for _, t := range m.Templates {
 			a, err := convertTemplate(t.AnswerFormat)
 			if err != nil {
@@ -265,27 +265,27 @@ func convertTemplate(ankiTmpl string) (string, error) {
 }
 
 type Deck struct {
-	Id               int64     `json:"-"`
-	Name             string    `json:"name"`
-	Mid              string    `json:"mid"`
-	ModelId          int64     `json:"-"`
-	Description      string    `json:"descr"`
-	ExtendedRev      uint8     `json:"extendedRev"`
-	Collapsed        bool      `json:"collapsed"`
-	BrowserCollapsed bool      `json:"browserCollapsed"`
-	NewToday         []int     `json:"newToday"`
-	timeToday        []int     `json:"timeToday"`
-	Dyn              int       `json:"dyn"`
-	ExtendedNew      int       `json:"extendedNew"`
-	ConfigId         int64     `json:"conf"`
-	ReviewToday      []int     `json:"revToday"`
-	LearnToday       []int     `json:"lrnToday"`
-	Mod              int64     `json:"mod"`
-	Modified         time.Time `json:"-"`
+	Id               int64      `json:"-"`
+	Name             string     `json:"name"`
+	Mid              string     `json:"mid"`
+	ModelId          int64      `json:"-"`
+	Description      string     `json:"descr"`
+	ExtendedRev      uint8      `json:"extendedRev"`
+	Collapsed        bool       `json:"collapsed"`
+	BrowserCollapsed bool       `json:"browserCollapsed"`
+	NewToday         []int      `json:"newToday"`
+	timeToday        []int      `json:"timeToday"`
+	Dyn              int        `json:"dyn"`
+	ExtendedNew      int        `json:"extendedNew"`
+	ConfigId         int64      `json:"conf"`
+	ReviewToday      []int      `json:"revToday"`
+	LearnToday       []int      `json:"lrnToday"`
+	Mod              int64      `json:"mod"`
+	Modified         *time.Time `json:"-"`
 }
 
 func (d Deck) AnkiId() string {
-	return "deck-anki-" + b64(string(idToBytes(d.Id)))
+	return "deck-anki-" + b64(int64ToBytes(d.Id))
 }
 
 func (c *Collection) parseDecks(jsonString string) error {
@@ -306,21 +306,21 @@ func (c *Collection) parseDecks(jsonString string) error {
 				d.ModelId = mid
 			}
 		}
-		d.Modified = time.Unix(d.Mod, 0)
+		d.Modified = jsSeconds(d.Mod)
 		c.Decks = append(c.Decks, &d)
 	}
 	return nil
 }
 
 type DeckConfig struct {
-	Id       int64     `json:"-"`
-	Name     string    `json:"name"`
-	ReplayQ  bool      `json:"replayq"`
-	Timer    int8      `json:"timer"`
-	MaxTaken int8      `json:"maxTaken"`
-	Mod      int64     `json:"mod"`
-	Modified time.Time `json:"-"`
-	Autoplay bool      `json:"autoplay"`
+	Id       int64      `json:"-"`
+	Name     string     `json:"name"`
+	ReplayQ  bool       `json:"replayq"`
+	Timer    int        `json:"timer"`
+	MaxTaken int        `json:"maxTaken"`
+	Mod      int64      `json:"mod"`
+	Modified *time.Time `json:"-"`
+	Autoplay bool       `json:"autoplay"`
 	Lapses   struct {
 		LeechFails  int   `json:"leechFails"`
 		MinInt      int   `json:"minInt"`
@@ -329,22 +329,22 @@ type DeckConfig struct {
 		Mult        int   `json:"mult"`
 	} `json:"lapse"`
 	Reviews struct {
-		PerDay      int     `json:"perDay"`
-		Fuzz        float32 `json:"fuzz"`
-		IntervalFct int     `json:"ivlFct"`
-		MaxInterval int     `json:"maxIvl"`
-		Ease4       float32 `json:"ease4"`
-		Bury        bool    `json:"bury"`
-		MinSpace    int     `json:"minSpace"`
+		PerDay      int           `json:"perDay"`
+		Fuzz        float32       `json:"fuzz"`
+		IntervalFct int           `json:"ivlFct"`
+		MaxInterval time.Duration `json:"maxIvl"`
+		Ease4       float32       `json:"ease4"`
+		Bury        bool          `json:"bury"`
+		MinSpace    int           `json:"minSpace"`
 	} `json:"rev"`
 	New struct {
-		PerDay        int   `json:"perDay"`
-		Delays        []int `json:"delays"`
-		Separate      bool  `json:"separate"`
-		Intervals     []int `json:"ints"`
-		InitialFactor int   `json:"initialFactor"`
-		Bury          bool  `json:"bury"`
-		Order         int   `json:"order"`
+		PerDay        int             `json:"perDay"`
+		Delays        []int           `json:"delays"`
+		Separate      bool            `json:"separate"`
+		Intervals     []time.Duration `json:"ints"`
+		InitialFactor float32         `json:"initialFactor"`
+		Bury          bool            `json:"bury"`
+		Order         int             `json:"order"`
 	} `json:"new"`
 }
 
@@ -359,7 +359,7 @@ func (c *Collection) parseDeckConfig(jsonString string) error {
 		} else {
 			dc.Id = id
 		}
-		dc.Modified = time.Unix(dc.Mod, 0)
+		dc.Modified = jsSeconds(dc.Mod)
 		c.DeckConfig = append(c.DeckConfig, &dc)
 	}
 	return nil
@@ -394,38 +394,59 @@ type Card struct {
 	NoteId   int64
 	DeckId   int64
 	Ord      int
-	Modified time.Time
-	Type     CardType
-	Queue    QueueType
-	Due      int64
-	Interval int
-	Factor   int
+	Modified *time.Time
+	Type     string
+	Queue    string
+	Due      *time.Time
+	Interval time.Duration
+	Factor   float32
 	Reps     int
 	Lapses   int
 	Left     int
 }
 
+var CardTypes = map[int]string{
+	0: "new",
+	1: "learning",
+	2: "due",
+}
+
+var QueueTypes = map[int]string{
+	0: "suspended",
+	1: "userburied",
+	2: "schedburied",
+}
+
 func (c Card) AnkiId(note string) string {
 	note = strings.TrimPrefix(note, "note-anki-")
-	return fmt.Sprintf("card-anki-%s-%s", b64(string(idToBytes(c.Id))), note)
+	return fmt.Sprintf("card-anki-%s-%s", b64(int64ToBytes(c.Id)), note)
 }
 
 func (c *Collection) AddCardFromSqlite(row map[string]interface{}) {
-	c.Cards = append(c.Cards, &Card{
+	card := &Card{
 		Id:       int64(row["id"].(float64)),
 		NoteId:   int64(row["nid"].(float64)),
 		DeckId:   int64(row["did"].(float64)),
 		Ord:      int(row["ord"].(float64)),
-		Modified: time.Unix(int64(row["ord"].(float64)), 0),
-		Type:     CardType(row["type"].(float64)),
-		Queue:    QueueType(row["queue"].(float64)),
-		Due:      int64(row["due"].(float64)),
-		Interval: int(row["ivl"].(float64)),
-		Factor:   int(row["factor"].(float64)),
+		Modified: jsSeconds(int64(row["ord"].(float64))),
+		Type:     CardTypes[int(row["type"].(float64))],
+		Queue:    QueueTypes[int(row["queue"].(float64))],
+		Interval: time.Duration(int64(row["ivl"].(float64))) * time.Hour * 24,
+		Factor:   float32(row["factor"].(float64)) / 1000,
 		Reps:     int(row["reps"].(float64)),
 		Lapses:   int(row["lapses"].(float64)),
 		Left:     int(row["left"].(float64)),
-	})
+	}
+	switch card.Type {
+	case "new":
+		// Due dates make no sense for new cards
+	case "due":
+		t := c.Created.AddDate(0, 0, int(row["due"].(float64)))
+		card.Due = &t
+	case "learning":
+		card.Due = jsSeconds(int64(row["due"].(float64)))
+	}
+	c.Cards = append(c.Cards, card)
 }
 
 // CREATE TABLE notes (
@@ -448,7 +469,7 @@ type Note struct {
 	Id        int64
 	Guid      string
 	ModelId   int64
-	Modified  time.Time
+	Modified  *time.Time
 	Tags      []string
 	Fields    []string
 	SortField string
@@ -456,7 +477,7 @@ type Note struct {
 }
 
 func (n Note) AnkiId() string {
-	return "note-anki-" + b64(fmt.Sprintf("%s %s", idToBytes(n.Id), n.Guid))
+	return fmt.Sprintf("note-anki-%s-%s", b64(int64ToBytes(n.Id)), b64([]byte(n.Guid)))
 }
 
 func (c *Collection) AddNoteFromSqlite(row map[string]interface{}) {
@@ -464,7 +485,7 @@ func (c *Collection) AddNoteFromSqlite(row map[string]interface{}) {
 		Id:        int64(row["id"].(float64)),
 		Guid:      row["guid"].(string),
 		ModelId:   int64(row["mid"].(float64)),
-		Modified:  time.Unix(int64(row["mod"].(float64)), 0),
+		Modified:  jsSeconds(int64(row["mod"].(float64))),
 		Tags:      strings.Fields(row["tags"].(string)),
 		Fields:    strings.Split(row["flds"].(string), "\x1f"),
 		SortField: row["sfld"].(string),
@@ -477,46 +498,63 @@ func (c *Collection) AddNoteFromSqlite(row map[string]interface{}) {
 //     cid             integer not null,
 //     usn             integer not null, -- update sequence number : used to figure out diffs when syncing, not useful for us
 //     ease            integer not null,
-//     ivl             integer not null,
-//     lastIvl         integer not null,
+//     ivl             integer not null, -- negative = seconds, positive = days
+//     lastIvl         integer not null, -- Same as ivl
 //     factor          integer not null,
 //     time            integer not null,
-//     type            integer not null
+//     type            integer not null  -- 0=lrn, 1=rev, 2=relrn, 3=cram
 // );
 // CREATE INDEX ix_revlog_usn on revlog (usn);
 // CREATE INDEX ix_revlog_cid on revlog (cid);
 
-type Ease int
-
-const (
-	EaseWrong Ease = iota
-	EaseHard
-	EaseOK
-	EaseEasy
-)
-
 type Review struct {
-	Id           int
+	Timestamp    *time.Time
 	CardId       int64
-	Ease         Ease
-	Interval     int
-	LastInterval int
-	Factor       int
-	Time         time.Duration
-	Type         int
+	Ease         string
+	Interval     time.Duration
+	LastInterval time.Duration
+	Factor       float32
+	ReviewTime   time.Duration
+	Type         string
+}
+
+var EaseTypes = map[int]string{
+	0: "wrong",
+	1: "hard",
+	2: "ok",
+	3: "easy",
+}
+
+var ReviewTypes = map[int]string{
+	0: "learn",
+	1: "review",
+	2: "relearn",
+	3: "cram",
+}
+
+func (r Review) AnkiId(cid string) string {
+	cardId := strings.TrimPrefix(cid, "card-anki-")
+	return fmt.Sprintf("review-%s-%s", cardId, b64(int64ToBytes(r.Timestamp.Unix())))
 }
 
 func (c *Collection) AddReviewFromSqlite(row map[string]interface{}) {
 	c.Revlog = append(c.Revlog, &Review{
-		Id:           int(row["id"].(float64)),
+		Timestamp:    jsMilliseconds(int64(row["id"].(float64))),
 		CardId:       int64(row["cid"].(float64)),
-		Ease:         Ease(row["ease"].(float64)),
-		Interval:     int(row["ivl"].(float64)),
-		LastInterval: int(row["lastIvl"].(float64)),
-		Factor:       int(row["factor"].(float64)),
-		Time:         time.Duration(row["time"].(float64)) * time.Millisecond,
-		Type:         int(row["type"].(float64)),
+		Ease:         EaseTypes[int(row["ease"].(float64))],
+		Interval:     intervalToDuration(int(row["ivl"].(float64))),
+		LastInterval: intervalToDuration(int(row["lastIvl"].(float64))),
+		Factor:       float32(row["factor"].(float64)) / 1000,
+		ReviewTime:   time.Duration(row["time"].(float64)) * time.Millisecond,
+		Type:         ReviewTypes[int(row["type"].(float64))],
 	})
+}
+
+func intervalToDuration(interval int) time.Duration {
+	if interval < 0 {
+		return -time.Duration(int64(interval)) * time.Second
+	}
+	return time.Duration(int64(interval)) * time.Hour * 24
 }
 
 func (c *Collection) DeleteDeck(id int64) {

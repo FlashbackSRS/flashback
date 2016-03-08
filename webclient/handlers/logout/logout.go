@@ -1,8 +1,9 @@
-package logout
+package logout_handler
 
 import (
 	"fmt"
 	"net/http"
+	"net/url"
 	"time"
 
 	"github.com/gopherjs/gopherjs/js"
@@ -11,7 +12,7 @@ import (
 
 var jQuery = jquery.NewJQuery
 
-func BeforeTransition(event *jquery.Event, ui *js.Object) bool {
+func BeforeTransition(event *jquery.Event, ui *js.Object, p url.Values) bool {
 	fmt.Printf("logout BEFORE\n")
 
 	button := jQuery("#logout")
