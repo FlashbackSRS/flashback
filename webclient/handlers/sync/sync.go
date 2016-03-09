@@ -8,9 +8,9 @@ import (
 	"github.com/flimzy/go-pouchdb"
 	"github.com/flimzy/jqeventrouter"
 	"github.com/gopherjs/gopherjs/js"
+	"github.com/gopherjs/jquery"
 
 	"github.com/flimzy/flashback/util"
-	"github.com/gopherjs/jquery"
 )
 
 var jQuery = jquery.NewJQuery

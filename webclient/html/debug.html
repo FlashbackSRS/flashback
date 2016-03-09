@@ -4,24 +4,14 @@
 <body>
     <div data-role="page" class="ui-responsive-panel">
         <div data-role="header" data-id="header" data-position="fixed">
-            <a href="#menu" data-icon="bars" data-iconpos="notext">Menu</a>
-            <h1>Flashback</h1>
+            <a href="#menu" data-icon="bars" data-iconpos="notext" data-lt="menu_button">Menu</a>
+            <h1 data-lt="debug_title">Debug Flashback</h1>
             <div data-type="horizontal" data-role="controlgroup" class="ui-btn-right">
-                <a data-id="syncbutton" data-icon="refresh" data-role="button">Sync</a>
+                <a data-id="syncbutton" data-icon="refresh" data-role="button" data-lt="sync_button">Sync</a>
             </div>
         </div><!-- /header -->
         <div data-role="content">
-            <h1>Debug Info</h1>
-            <div class="hide-until-load">
-                <p>You must log in before using Flashback. You may log in using any of the following providers. If this is your first time to use Flashback, you will be asked to authorize access.</p>
-                <ul class="login">
-                    <li class="google"><a rel="login-google"><img src="images/gplogin.png"></a></li>
-                    <li class="facebook"><a rel="login-facebook"><img src="images/fblogin.png"></a></li>
-                </ul>
-            </div>
-            <div class="show-until-load">
-                Initializing page...
-            </div>
+            <h1 data-lt="debug_heading">Debug Info</h1>
         </div>
     </div>
 </body>

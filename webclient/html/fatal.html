@@ -4,15 +4,15 @@
 <body>
     <div data-role="page">
         <div data-role="header" data-id="header" data-position="fixed">
-            <a href="#menu" data-icon="bars" data-iconpos="notext">Menu</a>
-            <h1>Flashback</h1>
+            <a href="#menu" data-icon="bars" data-iconpos="notext" data-lt="menu_button">Menu</a>
+            <h1 data-lt="fatal_error_title">Fatal Error</h1>
             <div data-type="horizontal" data-role="controlgroup" class="ui-btn-right">
-                <a data-id="syncbutton" data-icon="refresh" data-role="button">Sync</a>
+                <a data-id="syncbutton" data-icon="refresh" data-role="button" data-lt="sync_button">Sync</a>
             </div>
         </div><!-- /header -->
         <div data-role="content">
-            <h1 class="ui-btn ui-icon-alert ui-btn-icon-left">An unexpected error has occurred</span></h1>
-            <p id="error-message">We were not expecting this. Really.</p>
+            <h1 class="ui-btn ui-icon-alert ui-btn-icon-left" data-lt="unexpected_error">An unexpected error has occurred</h1>
+            <p id="error-message" data-lt="we_were_not_expecting">We were not expecting this. Really.</p>
         </div>
     </div>
 </body>

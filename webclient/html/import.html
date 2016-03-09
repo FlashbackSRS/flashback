@@ -4,20 +4,20 @@
 <body>
     <div data-role="page" class="ui-responsive-panel">
         <div data-role="header" data-id="header" data-position="fixed">
-            <a href="#menu" data-icon="bars" data-iconpos="notext">Menu</a>
-            <h1>Import from Anki</h1>
+            <a href="#menu" data-icon="bars" data-iconpos="notext" data-lt="menu_button">Menu</a>
+            <h1 data-lt="import_title">Import from Anki</h1>
             <div data-type="horizontal" data-role="controlgroup" class="ui-btn-right">
-                <a data-id="syncbutton" data-icon="refresh" data-role="button">Sync</a>
+                <a data-id="syncbutton" data-icon="refresh" data-role="button" data-lt="sync_button">Sync</a>
             </div>
         </div><!-- /header -->
         <div data-role="content">
-            <h1>Import Anki File</h1>
+            <h1 data-lt="import_heading">Import Anki File</h1>
             <div class="hide-until-load">
-                Select a file to import: <input type="file" id="apkg" />
-                <a id="importnow" class="ui-btn ui-icon-recycle ui-btn-icon-left">Import Now</a>
+                <span data-lt="select_import_file_prompt">Select a file to import:</span> <input type="file" id="apkg" />
+                <a id="importnow" class="ui-btn ui-icon-recycle ui-btn-icon-left" data-lt="import_now_button">Import Now</a>
                 <textarea id="log"></textarea>
             </div>
-            <div class="show-until-load">
+            <div class="show-until-load" data-lt="page_loading">
                 Initializing page...
             </div>
         </div>

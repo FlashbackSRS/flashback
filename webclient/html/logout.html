@@ -4,16 +4,16 @@
 <body>
     <div data-role="page" class="ui-responsive-panel">
         <div data-role="header" data-id="header" data-position="fixed">
-            <a href="#menu" data-icon="bars" data-iconpos="notext">Menu</a>
-            <h1>Log Out of Flashback</h1>
+            <a href="#menu" data-icon="bars" data-iconpos="notext" data-lt="menu_button">Menu</a>
+            <h1 data-lt="logout_title">Log Out of Flashback</h1>
             <div data-type="horizontal" data-role="controlgroup" class="ui-btn-right">
-                <a data-id="syncbutton" data-icon="refresh" data-role="button">Sync</a>
+                <a data-id="syncbutton" data-icon="refresh" data-role="button" data-lt="sync_button">Sync</a>
             </div>
         </div><!-- /header -->
         <div data-role="content">
-            <h1>Are you sure you wish to log out?</h1>
-            <p>Your data will be retained until the next time you log in.</p>
-            <p><b><i>Note:</b></i> At present this is only very useful for testing.</p>
+            <h1 data-lt="logout_are_you_sure">Are you sure you wish to log out?</h1>
+            <p data-lt="data_retained_notice">Your data will be retained until the next time you log in.</p>
+            <p data-lt="logout_only_for_testing"><b><i>Note:</i></b> At present this is only very useful for testing.</p>
             <button type="button" id="logout"><img src="images/exit.svg" width="30%"></button>
         </div>
     </div>

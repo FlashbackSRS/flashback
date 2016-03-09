@@ -1,0 +1,62 @@
+[
+  {
+    "id": "flashback_title",
+    "translation": "Flashback"
+  },
+  {
+    "id": "hello_world",
+    "translation": "¡Hola, mundo!"
+  },
+  {
+    "id": "logged_in_as",
+    "translation": "Conectado"
+  },
+  {
+    "id": "login_title",
+    "translation": "Iniciar sesión a Flashback"
+  },
+  {
+    "id": "menu_about",
+    "translation": "Acerca de"
+  },
+  {
+    "id": "menu_button",
+    "translation": "Menú"
+  },
+  {
+    "id": "menu_configure",
+    "translation": "Configuración"
+  },
+  {
+    "id": "menu_debug",
+    "translation": "Depuración"
+  },
+  {
+    "id": "menu_import",
+    "translation": "Importar de Anki"
+  },
+  {
+    "id": "menu_logout",
+    "translation": "Salir"
+  },
+  {
+    "id": "menu_statistics",
+    "translation": "Statistics"
+  },
+  {
+    "id": "menu_study",
+    "translation": "Estudiar"
+  },
+  {
+    "id": "must_login_description",
+    "translation": "Debes iniciar sesión antes de usar Flashback. Lo puedes hacer con cualquier de proveedor siguiente. Si es tu primera vez usar Flashback, tendrás que autorizar aceso."
+  },
+  {
+    "id": "page_loading",
+    "translation": "La página está cargando..."
+  },
+  {
+    "id": "sync_button",
+    "translation": "Sincronizar"
+  }
+]

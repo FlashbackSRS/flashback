@@ -3,6 +3,7 @@ CSS_FILES = $(shell find webclient/css/ -type f -name '*.css')
 PNG_FILES = $(shell find webclient/images/ -type f -name '*.png')
 SVG_FILES = $(shell find webclient/images/ -type f -name '*.svg')
 WEBP_FILES = $(shell find webclient/images/ -type f -name '*.webp')
+I18N_FILES = $(wildcard translations/*.all.json)
 
 COUCH_SERVER = $(shell echo $$FLASHBACK_COUCH_URL | sed -e 's|//.*@|//|')
 
@@ -88,9 +89,10 @@ images: $(PNG_FILES) $(WEBP_FILES) $(SVG_FILES) webclient/images/favicon.ico
 	cp webclient/images/favicon.ico www
 
 .PHONY: www
-www: javascript css images $(HTML_FILES)
-	mkdir -p www
+www: javascript css images $(HTML_FILES) $(I18N_FILES)
+	mkdir -p www/translations
 	cp $(HTML_FILES) www
+	cp $(I18N_FILES) www/translations
 	sed -i -e 's|__API_SERVER__|$(FLASHBACK_API_BASEURI)|g' www/index.html
 	sed -i -e 's|__COUCH_SERVER__|$(COUCH_SERVER)|g' www/index.html
 
