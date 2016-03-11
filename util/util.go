@@ -90,7 +90,6 @@ func LogReview(r *data.Review) error {
 	}
 	_, err = db.Put(r)
 	if err != nil {
-		fmt.Printf("Error storing review 0: %s\n", err)
 		return err
 	}
 	return nil

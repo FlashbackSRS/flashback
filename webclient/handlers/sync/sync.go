@@ -8,9 +8,9 @@ import (
 	"github.com/flimzy/go-pouchdb"
 	"github.com/flimzy/jqeventrouter"
 	"github.com/gopherjs/gopherjs/js"
+	"github.com/gopherjs/jquery"
 
 	"github.com/flimzy/flashback/util"
-	"github.com/gopherjs/jquery"
 )
 
 var jQuery = jquery.NewJQuery
@@ -131,6 +131,10 @@ func SyncReviews(local, remote *pouchdb.PouchDB) (int, error) {
 	before, err := ldb.Info()
 	if err != nil {
 		return 0, err
+	}
+	if before.DocCount == 0 {
+		// Nothing at all to sync
+		return 0, nil
 	}
 	rdb := pouchdb.New(host + "/reviews-" + util.CurrentUser())
 	result, err := pouchdb.Replicate(ldb, rdb, pouchdb.Options{})

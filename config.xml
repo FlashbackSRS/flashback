@@ -13,6 +13,7 @@
     <content src="cordova.html" />
     <plugin name="cordova-plugin-whitelist" version="1" />
     <plugin name="cordova-plugin-console" version="1" />
+    <plugin name="cordova-plugin-globalization" version="1" />
 <!-- FIXME: Limit this only to the actual domain(s) we care about! -->
     <access origin="*" />
     <allow-intent href="http://*/*" />

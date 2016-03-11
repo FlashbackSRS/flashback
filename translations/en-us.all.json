@@ -1,0 +1,54 @@
+[
+  {
+    "id": "flashback_title",
+    "translation": "Flashback"
+  },
+  {
+    "id": "hello_world",
+    "translation": "Hello, world!"
+  },
+  {
+    "id": "logged_in_as",
+    "translation": "Logged in"
+  },
+  {
+    "id": "menu_about",
+    "translation": "About"
+  },
+  {
+    "id": "menu_button",
+    "translation": "Menu"
+  },
+  {
+    "id": "menu_configure",
+    "translation": "Configure"
+  },
+  {
+    "id": "menu_debug",
+    "translation": "Debug Info"
+  },
+  {
+    "id": "menu_import",
+    "translation": "Import from Anki"
+  },
+  {
+    "id": "menu_logout",
+    "translation": "Log out"
+  },
+  {
+    "id": "menu_statistics",
+    "translation": "Statistics"
+  },
+  {
+    "id": "menu_study",
+    "translation": "Study"
+  },
+  {
+    "id": "page_loading",
+    "translation": "Initializing page..."
+  },
+  {
+    "id": "sync_button",
+    "translation": "Sync"
+  }
+]
