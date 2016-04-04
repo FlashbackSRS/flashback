@@ -1,6 +1,7 @@
 package login_handler
 
 import (
+	"fmt"
 	"net/url"
 
 	"github.com/gopherjs/gopherjs/js"
@@ -9,7 +10,7 @@ import (
 	"honnef.co/go/js/console"
 
 	"github.com/flimzy/flashback"
-	"github.com/flimzy/flashback/util"
+	"github.com/flimzy/flashback/model/user"
 	"github.com/flimzy/go-cordova"
 )
 
@@ -44,7 +45,12 @@ func CordovaLogin() bool {
 	console.Log("CordovaLogin()")
 	js.Global.Get("facebookConnectPlugin").Call("login", []string{}, func() {
 		console.Log("Success logging in")
-		util.InitUserDb()
+		u, err := user.CurrentUser()
+		if err != nil {
+			fmt.Printf("No user logged in?? %s\n", err)
+		} else {
+			u.InitDB()
+		}
 	}, func() {
 		console.Log("Failure logging in")
 	})

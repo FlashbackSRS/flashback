@@ -11,24 +11,29 @@ import (
 	"github.com/pborman/uuid"
 
 	"github.com/flimzy/go-pouchdb"
-	"github.com/flimzy/go-pouchdb/plugins/find"
 	"github.com/gopherjs/gopherjs/js"
 	"github.com/gopherjs/jquery"
 	"github.com/gopherjs/jsbuiltin"
 	"golang.org/x/net/html"
 
 	"github.com/flimzy/flashback/data"
+	"github.com/flimzy/flashback/model/user"
 	"github.com/flimzy/flashback/util"
 )
 
 var jQuery = jquery.NewJQuery
 
 func BeforeTransition(event *jquery.Event, ui *js.Object, p url.Values) bool {
+	u, err := user.CurrentUser()
+	if err != nil {
+		fmt.Printf("No user logged in: %s\n", err)
+		return false
+	}
 	fmt.Printf("card = %s\n", p.Get("card"))
 	go func() {
 		container := jQuery(":mobile-pagecontainer")
 		// Ensure the indexes are created before trying to use them
-		<-util.InitUserDb()
+		<-u.InitDB()
 
 		card, err := getCard()
 		if err != nil {
@@ -56,13 +61,17 @@ func BeforeTransition(event *jquery.Event, ui *js.Object, p url.Values) bool {
 }
 
 func getCard() (*data.Card, error) {
-	dbfind := find.New(util.UserDb())
-	doc := make(map[string][]data.Card)
-	err := dbfind.Find(map[string]interface{}{
-		"selector": map[string]string{"$type": "card"},
-		"limit":    1,
-	}, &doc)
+	u, err := user.CurrentUser()
 	if err != nil {
+		return nil, err
+	}
+	db := u.UserDB()
+	doc := make(map[string][]data.Card)
+	query := map[string]interface{}{
+		"selector": map[string]string{"type": "card"},
+		"limit":    1,
+	}
+	if err := db.Find(query, &doc); err != nil {
 		return nil, err
 	}
 	card := doc["docs"][0]

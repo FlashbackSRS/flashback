@@ -7,10 +7,10 @@ import (
 	"strings"
 
 	"github.com/flimzy/go-pouchdb"
-	"github.com/flimzy/go-pouchdb/plugins/find"
 	"github.com/gopherjs/gopherjs/js"
 
 	"github.com/flimzy/flashback/data"
+	"github.com/flimzy/flashback/model"
 )
 
 // JqmTargetUri determines the target URI based on a jQuery Mobile event 'ui' object
@@ -121,7 +121,7 @@ func setReviewsDbList(list DbList) error {
 	return err
 }
 
-func ReviewsSyncDbs() (*pouchdb.PouchDB, error) {
+func ReviewsSyncDbs() (*model.DB, error) {
 	list, err := getReviewsDbList()
 	if err != nil {
 		return nil, err
@@ -131,7 +131,7 @@ func ReviewsSyncDbs() (*pouchdb.PouchDB, error) {
 		return nil, nil
 	}
 	dbName := list.Dbs[0]
-	db := pouchdb.New(dbName)
+	db := model.NewDB(dbName)
 	if len(list.Dbs) > 1 {
 		fmt.Printf("WARNING: More than one active reviews database!\n")
 		return db, nil
@@ -147,7 +147,7 @@ func ReviewsSyncDbs() (*pouchdb.PouchDB, error) {
 	return db, nil
 }
 
-func ZapReviewsDb(db *pouchdb.PouchDB) error {
+func ZapReviewsDb(db *model.DB) error {
 	info, err := db.Info()
 	if err != nil {
 		return err
@@ -183,34 +183,6 @@ func ReviewsDb() (*pouchdb.PouchDB, error) {
 }
 
 var initMap = make(map[string]<-chan struct{})
-
-// InitUserDb will do any db initialization necessary after account
-// creation/login such as setting up indexes. The return value is a channel,
-// which will be closed when initialization is complete
-func InitUserDb() <-chan struct{} {
-	user := CurrentUser()
-	if done, ok := initMap[user]; ok {
-		// Initialization has already been started, so return the existing
-		// channel (which may already be closed)
-		return done
-	}
-	done := make(chan struct{})
-	initMap[user] = done
-	go func() {
-		db := UserDb()
-		dbFind := find.New(db)
-		fmt.Printf("Creating index...\n")
-		err := dbFind.CreateIndex(find.Index{
-			Name:   "type",
-			Fields: []string{"$type"},
-		})
-		if err != nil && !find.IsIndexExists(err) {
-			fmt.Printf("Error creating index: %s\n", err)
-		}
-		close(done)
-	}()
-	return done
-}
 
 func BaseURI() string {
 	rawUri := js.Global.Get("jQuery").Get("mobile").Get("path").Call("getDocumentBase").String()

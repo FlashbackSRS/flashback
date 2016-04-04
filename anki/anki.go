@@ -160,11 +160,11 @@ func b64(buf []byte) string {
 	return strings.Replace(base64.StdEncoding.EncodeToString(buf), "/", "_", -1)
 }
 
-func (m Model) AnkiId() string {
+func (m *Model) AnkiID() []byte {
 	var buf bytes.Buffer
 	buf.Write(int64ToBytes(m.Id))
 	buf.Write([]byte{byte(m.Type)})
-	return "model-anki-" + b64(buf.Bytes())
+	return buf.Bytes()
 }
 
 type Field struct {

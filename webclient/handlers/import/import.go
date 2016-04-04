@@ -18,6 +18,7 @@ import (
 
 	"github.com/flimzy/flashback/anki"
 	"github.com/flimzy/flashback/data"
+	"github.com/flimzy/flashback/model/theme"
 	"github.com/flimzy/flashback/util"
 	"github.com/flimzy/go-pouchdb"
 	"github.com/flimzy/web/file"
@@ -149,58 +150,62 @@ var nameToIdRE = regexp.MustCompile("[[:space:]]")
 
 func storeModels(c *anki.Collection) (idmap, error) {
 	modelMap := make(idmap)
-	db := util.UserDb()
+	//	db := util.UserDb()
 	for _, m := range c.Models {
 		if m.Type == anki.ModelTypeCloze {
 			fmt.Printf("Cloze Models not yet supported\n")
 			continue
 		}
-		modelId := m.AnkiId()
-		modelMap[m.Id] = modelId
-		var model data.Model
-		// Check for duplicates
-		if err := db.Get(modelId, &model, pouchdb.Options{}); err == nil {
-			if model.AnkiImported == nil || model.Modified.After(*model.AnkiImported) {
-				continue
-			}
-			if err := updateModel(&model, m); err != nil {
-				return nil, err
-			}
-			continue
+		fmt.Printf("Attempting to import a model\n")
+		if err := theme.ImportAnkiModel(m); err != nil {
+			fmt.Printf("Error importing model: %s\n", err)
 		}
-		now := time.Now()
-		model = data.Model{
-			Id:           modelId,
-			Rev:          model.Rev, // Preserve the Rev, if there is one, so the put succeeds
-			Name:         m.Name,
-			Description:  "Anki Model " + m.Name,
-			Type:         "model",
-			Modified:     m.Modified,
-			AnkiImported: &now,
-			Comment:      "Imported from Anki on " + now.String(),
-		}
-		for _, f := range m.Fields {
-			model.Fields = append(model.Fields, &data.Field{
-				Name: f.Name,
-			})
-		}
-		attachments, err := modelAttachments(m)
-		if err != nil {
-			return nil, err
-		}
-		rev, err := db.Put(model)
-		if err != nil {
-			return nil, err
-		}
-		for _, a := range *attachments {
-			rev, err = db.PutAttachment(model.Id, &a, rev)
-			if err != nil {
-				return nil, err
-			}
-		}
-		if err != nil {
-			return nil, err
-		}
+		// 		modelId := m.AnkiId()
+		// 		modelMap[m.Id] = modelId
+		// 		var model data.Model
+		// 		// Check for duplicates
+		// 		if err := db.Get(modelId, &model, pouchdb.Options{}); err == nil {
+		// 			if model.AnkiImported == nil || model.Modified.After(*model.AnkiImported) {
+		// 				continue
+		// 			}
+		// 			if err := updateModel(&model, m); err != nil {
+		// 				return nil, err
+		// 			}
+		// 			continue
+		// 		}
+		// 		now := time.Now()
+		// 		model = data.Model{
+		// 			Id:           modelId,
+		// 			Rev:          model.Rev, // Preserve the Rev, if there is one, so the put succeeds
+		// 			Name:         m.Name,
+		// 			Description:  "Anki Model " + m.Name,
+		// 			Type:         "model",
+		// 			Modified:     m.Modified,
+		// 			AnkiImported: &now,
+		// 			Comment:      "Imported from Anki on " + now.String(),
+		// 		}
+		// 		for _, f := range m.Fields {
+		// 			model.Fields = append(model.Fields, &data.Field{
+		// 				Name: f.Name,
+		// 			})
+		// 		}
+		// 		attachments, err := modelAttachments(m)
+		// 		if err != nil {
+		// 			return nil, err
+		// 		}
+		// 		rev, err := db.Put(model)
+		// 		if err != nil {
+		// 			return nil, err
+		// 		}
+		// 		for _, a := range *attachments {
+		// 			rev, err = db.PutAttachment(model.Id, &a, rev)
+		// 			if err != nil {
+		// 				return nil, err
+		// 			}
+		// 		}
+		// 		if err != nil {
+		// 			return nil, err
+		// 		}
 	}
 	return modelMap, nil
 }
@@ -307,40 +312,41 @@ func updateModel(model *data.Model, m *anki.Model) error {
 }
 
 func storeDecks(c *anki.Collection) (idmap, error) {
-	deckMap := make(idmap)
-	db := util.UserDb()
-	for _, d := range c.Decks {
-		deckId := d.AnkiId()
-		deckMap[d.Id] = deckId
-		var deck data.Deck
-		if err := db.Get(deckId, &deck, pouchdb.Options{}); err == nil {
-			if deck.AnkiImported == nil || deck.Modified.After(*deck.AnkiImported) {
-				continue
-			}
-			if err := updateDeck(&deck, d); err != nil {
-				return nil, err
-			}
-			continue
-		}
-		now := time.Now()
-		deck = data.Deck{
-			Id:          deckId,
-			Name:        d.Name,
-			Description: d.Description,
-			Type:        "deck",
-			Modified:    &now,
-			Created:     &now,
-			Comment:     "Imported from Anki on " + now.String(),
-		}
-		_, err := db.Put(deck)
-		if err != nil {
-			return nil, err
-		}
-		if err := storeDeckConfig(c, d.ConfigId, deckId); err != nil {
-			return nil, err
-		}
-	}
-	return deckMap, nil
+	return nil, nil
+	// 	deckMap := make(idmap)
+	// 	db := util.UserDb()
+	// 	for _, d := range c.Decks {
+	// 		deckId := d.AnkiId()
+	// 		deckMap[d.Id] = deckId
+	// 		var deck data.Deck
+	// 		if err := db.Get(deckId, &deck, pouchdb.Options{}); err == nil {
+	// 			if deck.AnkiImported == nil || deck.Modified.After(*deck.AnkiImported) {
+	// 				continue
+	// 			}
+	// 			if err := updateDeck(&deck, d); err != nil {
+	// 				return nil, err
+	// 			}
+	// 			continue
+	// 		}
+	// 		now := time.Now()
+	// 		deck = data.Deck{
+	// 			Id:          deckId,
+	// 			Name:        d.Name,
+	// 			Description: d.Description,
+	// 			Type:        "deck",
+	// 			Modified:    &now,
+	// 			Created:     &now,
+	// 			Comment:     "Imported from Anki on " + now.String(),
+	// 		}
+	// 		_, err := db.Put(deck)
+	// 		if err != nil {
+	// 			return nil, err
+	// 		}
+	// 		if err := storeDeckConfig(c, d.ConfigId, deckId); err != nil {
+	// 			return nil, err
+	// 		}
+	// 	}
+	// 	return deckMap, nil
 }
 
 func updateDeck(deck *data.Deck, d *anki.Deck) error {
@@ -388,39 +394,40 @@ func updateDoc(doc interface{}, id string, chAtt *[]pouchdb.Attachment, delAtt *
 }
 
 func storeDeckConfig(c *anki.Collection, dcId int64, deckId string) error {
-	db := util.UserDb()
-	for _, dc := range c.DeckConfig {
-		if dc.Id == dcId {
-			confId := "deckconf-" + deckId
-			var conf data.DeckConfig
-			if err := db.Get(confId, &conf, pouchdb.Options{}); err == nil {
-				if conf.AnkiImported == nil || conf.Modified.After(*conf.AnkiImported) {
-					continue
-				}
-				if err := updateDeckConfig(&conf, dc); err != nil {
-					return err
-				}
-				continue
-			}
-			now := time.Now()
-			conf = data.DeckConfig{
-				Id:              confId,
-				Type:            "deckconf",
-				DeckId:          deckId,
-				Modified:        &now,
-				Created:         &now,
-				MaxDailyReviews: dc.Reviews.PerDay,
-				MaxDailyNew:     dc.New.PerDay,
-			}
-			if _, err := db.Put(conf); err != nil {
-				return err
-			}
-		}
-		// There's only ever one DeckConfig per Deck, so return as soon as
-		// we find it
-		return nil
-	}
 	return nil
+	// 	db := util.UserDb()
+	// 	for _, dc := range c.DeckConfig {
+	// 		if dc.Id == dcId {
+	// 			confId := "deckconf-" + deckId
+	// 			var conf data.DeckConfig
+	// 			if err := db.Get(confId, &conf, pouchdb.Options{}); err == nil {
+	// 				if conf.AnkiImported == nil || conf.Modified.After(*conf.AnkiImported) {
+	// 					continue
+	// 				}
+	// 				if err := updateDeckConfig(&conf, dc); err != nil {
+	// 					return err
+	// 				}
+	// 				continue
+	// 			}
+	// 			now := time.Now()
+	// 			conf = data.DeckConfig{
+	// 				Id:              confId,
+	// 				Type:            "deckconf",
+	// 				DeckId:          deckId,
+	// 				Modified:        &now,
+	// 				Created:         &now,
+	// 				MaxDailyReviews: dc.Reviews.PerDay,
+	// 				MaxDailyNew:     dc.New.PerDay,
+	// 			}
+	// 			if _, err := db.Put(conf); err != nil {
+	// 				return err
+	// 			}
+	// 		}
+	// 		// There's only ever one DeckConfig per Deck, so return as soon as
+	// 		// we find it
+	// 		return nil
+	// 	}
+	// 	return nil
 }
 
 func updateDeckConfig(conf *data.DeckConfig, dc *anki.DeckConfig) error {
@@ -457,65 +464,66 @@ var soundRe = regexp.MustCompile("\\[sound:(.*?)\\]")
 var imageRe = regexp.MustCompile("<img src=\"(.*?)\" />")
 
 func storeNotes(c *anki.Collection, modelMap idmap, mediaMap map[string]*zip.File) (notemap, error) {
-	noteMap := make(notemap)
-	db := util.UserDb()
-	for _, n := range c.Notes {
-		modelId, ok := modelMap[n.ModelId]
-		if !ok {
-			// This isn't necessarily an error, since we skip cloze models, so just ignore for now
-			continue
-			// 			return nil, fmt.Errorf("Found note (id=%d) with no model", n.Id)
-		}
-		noteId := n.AnkiId()
-		noteMap[n.Id] = noteNode{Id: noteId, Model: modelId}
-		var note data.Note
-		if err := db.Get(noteId, &note, pouchdb.Options{}); err == nil {
-			if note.AnkiImported == nil || note.Modified.After(*note.AnkiImported) {
-				continue
-			}
-			if note.ModelId != modelId {
-				return nil, errors.New("Changing a note's model is not supported")
-			}
-			if err := updateNote(&note, n, mediaMap); err != nil {
-				return nil, err
-			}
-			continue
-		}
-		now := time.Now()
-		note = data.Note{
-			Id:           noteId,
-			Rev:          note.Rev,
-			Type:         "note",
-			ModelId:      modelId,
-			Created:      note.Created,
-			Modified:     n.Modified,
-			AnkiImported: &now,
-			Tags:         n.Tags,
-			FieldValues:  n.Fields,
-			Comment:      "Imported from Anki on " + now.String(),
-		}
-		rev, err := db.Put(note)
-		if err != nil {
-			return nil, err
-		}
-
-		attachments, err := noteAttachments(n)
-		if err != nil {
-			return nil, err
-		}
-
-		for _, att := range *attachments {
-			filename := att.Name
-			rc, err := mediaMap[filename].Open()
-			if err != nil {
-				return nil, err
-			}
-			defer rc.Close()
-			att.Body = rc
-			rev, err = db.PutAttachment(note.Id, &att, rev)
-		}
-	}
-	return noteMap, nil
+	return nil, nil
+	// 	noteMap := make(notemap)
+	// 	db := util.UserDb()
+	// 	for _, n := range c.Notes {
+	// 		modelId, ok := modelMap[n.ModelId]
+	// 		if !ok {
+	// 			// This isn't necessarily an error, since we skip cloze models, so just ignore for now
+	// 			continue
+	// 			// 			return nil, fmt.Errorf("Found note (id=%d) with no model", n.Id)
+	// 		}
+	// 		noteId := n.AnkiId()
+	// 		noteMap[n.Id] = noteNode{Id: noteId, Model: modelId}
+	// 		var note data.Note
+	// 		if err := db.Get(noteId, &note, pouchdb.Options{}); err == nil {
+	// 			if note.AnkiImported == nil || note.Modified.After(*note.AnkiImported) {
+	// 				continue
+	// 			}
+	// 			if note.ModelId != modelId {
+	// 				return nil, errors.New("Changing a note's model is not supported")
+	// 			}
+	// 			if err := updateNote(&note, n, mediaMap); err != nil {
+	// 				return nil, err
+	// 			}
+	// 			continue
+	// 		}
+	// 		now := time.Now()
+	// 		note = data.Note{
+	// 			Id:           noteId,
+	// 			Rev:          note.Rev,
+	// 			Type:         "note",
+	// 			ModelId:      modelId,
+	// 			Created:      note.Created,
+	// 			Modified:     n.Modified,
+	// 			AnkiImported: &now,
+	// 			Tags:         n.Tags,
+	// 			FieldValues:  n.Fields,
+	// 			Comment:      "Imported from Anki on " + now.String(),
+	// 		}
+	// 		rev, err := db.Put(note)
+	// 		if err != nil {
+	// 			return nil, err
+	// 		}
+	//
+	// 		attachments, err := noteAttachments(n)
+	// 		if err != nil {
+	// 			return nil, err
+	// 		}
+	//
+	// 		for _, att := range *attachments {
+	// 			filename := att.Name
+	// 			rc, err := mediaMap[filename].Open()
+	// 			if err != nil {
+	// 				return nil, err
+	// 			}
+	// 			defer rc.Close()
+	// 			att.Body = rc
+	// 			rev, err = db.PutAttachment(note.Id, &att, rev)
+	// 		}
+	// 	}
+	// 	return noteMap, nil
 }
 
 func noteAttachments(n *anki.Note) (*[]pouchdb.Attachment, error) {
@@ -640,71 +648,72 @@ var contentTypeMap = map[string]string{
 type cardmap map[int64]string
 
 func storeCards(c *anki.Collection, deckMap idmap, noteMap notemap) (cardmap, error) {
-	cardmap := make(map[int64]string)
-	related := make(map[string]*[]string)
-	var cards []data.Card
-	db := util.UserDb()
-	for _, c := range c.Cards {
-		var note noteNode
-		var deckId string
-		var ok bool
-		if deckId, ok = deckMap[c.DeckId]; !ok {
-			return nil, errors.New("Found card that doesn't belong to a deck")
-		}
-		if note, ok = noteMap[c.NoteId]; !ok {
-			// Probably due to cloze
-			continue
-		}
-		cardId := c.AnkiId(note.Id)
-		cardmap[c.Id] = cardId
-		if rel, ok := related[note.Id]; ok {
-			*rel = append(*rel, cardId)
-		} else {
-			related[note.Id] = &([]string{cardId})
-		}
-		now := time.Now()
-		card := data.Card{
-			Id:         cardId,
-			Type:       "card",
-			NoteId:     note.Id,
-			DeckId:     deckId,
-			Modified:   &now,
-			Created:    &now,
-			Due:        c.Due,
-			Reviews:    c.Reps,
-			Lapses:     c.Lapses,
-			Interval:   c.Interval,
-			SRSFactor:  c.Factor,
-			TemplateId: fmt.Sprintf("%s/%d", note.Model, c.Ord),
-			Suspended:  c.Queue == "suspended",
-		}
-		var existing data.Card
-		if err := db.Get(cardId, &existing, pouchdb.Options{}); err == nil {
-			if err := updateCard(&existing, &card); err != nil {
-				return nil, err
-			}
-			continue
-		} else if !pouchdb.IsNotExist(err) {
-			fmt.Printf("Error checking for duplicate card: %s\n", err)
-			return nil, err
-		}
-		cards = append(cards, card)
-	}
-	for _, card := range cards {
-		rel := related[card.NoteId]
-		card.RelatedCards = make([]string, len(*rel)-1)
-		var i int
-		for _, r := range *rel {
-			if r != card.Id {
-				card.RelatedCards[i] = r
-				i++
-			}
-		}
-		if _, err := db.Put(card); err != nil {
-			return nil, err
-		}
-	}
-	return cardmap, nil
+	return nil, nil
+	// 	cardmap := make(map[int64]string)
+	// 	related := make(map[string]*[]string)
+	// 	var cards []data.Card
+	// 	db := util.UserDb()
+	// 	for _, c := range c.Cards {
+	// 		var note noteNode
+	// 		var deckId string
+	// 		var ok bool
+	// 		if deckId, ok = deckMap[c.DeckId]; !ok {
+	// 			return nil, errors.New("Found card that doesn't belong to a deck")
+	// 		}
+	// 		if note, ok = noteMap[c.NoteId]; !ok {
+	// 			// Probably due to cloze
+	// 			continue
+	// 		}
+	// 		cardId := c.AnkiId(note.Id)
+	// 		cardmap[c.Id] = cardId
+	// 		if rel, ok := related[note.Id]; ok {
+	// 			*rel = append(*rel, cardId)
+	// 		} else {
+	// 			related[note.Id] = &([]string{cardId})
+	// 		}
+	// 		now := time.Now()
+	// 		card := data.Card{
+	// 			Id:         cardId,
+	// 			Type:       "card",
+	// 			NoteId:     note.Id,
+	// 			DeckId:     deckId,
+	// 			Modified:   &now,
+	// 			Created:    &now,
+	// 			Due:        c.Due,
+	// 			Reviews:    c.Reps,
+	// 			Lapses:     c.Lapses,
+	// 			Interval:   c.Interval,
+	// 			SRSFactor:  c.Factor,
+	// 			TemplateId: fmt.Sprintf("%s/%d", note.Model, c.Ord),
+	// 			Suspended:  c.Queue == "suspended",
+	// 		}
+	// 		var existing data.Card
+	// 		if err := db.Get(cardId, &existing, pouchdb.Options{}); err == nil {
+	// 			if err := updateCard(&existing, &card); err != nil {
+	// 				return nil, err
+	// 			}
+	// 			continue
+	// 		} else if !pouchdb.IsNotExist(err) {
+	// 			fmt.Printf("Error checking for duplicate card: %s\n", err)
+	// 			return nil, err
+	// 		}
+	// 		cards = append(cards, card)
+	// 	}
+	// 	for _, card := range cards {
+	// 		rel := related[card.NoteId]
+	// 		card.RelatedCards = make([]string, len(*rel)-1)
+	// 		var i int
+	// 		for _, r := range *rel {
+	// 			if r != card.Id {
+	// 				card.RelatedCards[i] = r
+	// 				i++
+	// 			}
+	// 		}
+	// 		if _, err := db.Put(card); err != nil {
+	// 			return nil, err
+	// 		}
+	// 	}
+	// 	return cardmap, nil
 }
 
 func updateCard(doc, card *data.Card) error {
