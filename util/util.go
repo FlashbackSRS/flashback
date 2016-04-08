@@ -2,6 +2,7 @@ package util
 
 import (
 	"encoding/base64"
+	"errors"
 	"fmt"
 	"net/url"
 	"strings"
@@ -72,9 +73,12 @@ func findLink(rel string) string {
 	return ""
 }
 
-func UserDb() *pouchdb.PouchDB {
-	dbName := "user-" + CurrentUser()
-	return pouchdb.New(dbName)
+func UserDb() (*pouchdb.PouchDB, error) {
+	userName := CurrentUser()
+	if userName == "" {
+		return nil, errors.New("Not logged in")
+	}
+	return pouchdb.New("user-" + userName), nil
 }
 
 type reviewDoc struct {
@@ -103,9 +107,11 @@ type DbList struct {
 
 func getReviewsDbList() (DbList, error) {
 	var list DbList
-	db := UserDb()
-	err := db.Get("_local/ReviewsDbs", &list, pouchdb.Options{})
-	if err != nil && pouchdb.IsNotExist(err) {
+	db, err := UserDb()
+	if err != nil {
+		return list, err
+	}
+	if err := db.Get("_local/ReviewsDbs", &list, pouchdb.Options{}); err != nil && pouchdb.IsNotExist(err) {
 		return DbList{Id: "_local/ReviewsDbs"}, nil
 	}
 	return list, err
@@ -116,12 +122,19 @@ func setReviewsDbList(list DbList) error {
 		return fmt.Errorf("Invalid id '%s' for ReviewsDbs", list.Id)
 	}
 	fmt.Printf("Setting list to: %v\n", list.Dbs)
-	db := UserDb()
-	_, err := db.Put(list)
+	db, err := UserDb()
+	if err != nil {
+		return err
+	}
+	_, err = db.Put(list)
 	return err
 }
 
 func ReviewsSyncDbs() (*model.DB, error) {
+	userName := CurrentUser()
+	if userName == "" {
+		return nil, errors.New("Not logged in")
+	}
 	list, err := getReviewsDbList()
 	if err != nil {
 		return nil, err
@@ -140,7 +153,7 @@ func ReviewsSyncDbs() (*model.DB, error) {
 	if strings.HasPrefix(dbName, "reviews-1-") {
 		newDbPrefix = "reviews-0-"
 	}
-	list.Dbs = append(list.Dbs, newDbPrefix+CurrentUser())
+	list.Dbs = append(list.Dbs, newDbPrefix+userName)
 	if err := setReviewsDbList(list); err != nil {
 		return nil, err
 	}

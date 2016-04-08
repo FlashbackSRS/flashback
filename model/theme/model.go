@@ -7,12 +7,13 @@ import (
 type modelDoc struct {
 	ID          string     `json:"_id"`
 	Rev         string     `json:"_rev,omitempty"`
-	Type        string     `json:"$Type"`
-	Created     *time.Time `json:"$Created,omitempty"`
-	Modified    *time.Time `json:"$Modified"`
-	Imported    *time.Time `json:"$Imported,omitempty"`
-	Name        *string    `json:"$Name"`
-	Description *string    `json:"$Description,omitempty"`
+	Type        string     `json:"type"`
+	Created     *time.Time `json:"created,omitempty"`
+	Modified    *time.Time `json:"modified"`
+	Imported    *time.Time `json:"imported,omitempty"`
+	Name        *string    `json:"name"`
+	Description *string    `json:"description,omitempty"`
+	Filenames   *[]string  `json:"filenames"`
 }
 
 type Model struct {
@@ -20,11 +21,13 @@ type Model struct {
 	theme       *Theme
 	Name        string
 	Description string
+	Filenames   []string
 }
 
 func NewModel(t *Theme) *Model {
 	m := &Model{
-		theme: t,
+		theme:     t,
+		Filenames: make([]string, 0),
 	}
 	m.newModelDoc()
 	return m
@@ -34,5 +37,6 @@ func (m *Model) newModelDoc() {
 	m.doc = modelDoc{
 		Name:        &m.Name,
 		Description: &m.Description,
+		Filenames:   &m.Filenames,
 	}
 }

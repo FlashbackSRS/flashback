@@ -122,8 +122,8 @@ func DoSync() {
 	fmt.Printf("Compacting complete\n")
 }
 
-func Sync(local, remote *model.DB) (int32, error) {
-	result, err := pouchdb.Replicate(remote.PouchDB, local.PouchDB, pouchdb.Options{})
+func Sync(source, target *model.DB) (int32, error) {
+	result, err := pouchdb.Replicate(source.PouchDB, target.PouchDB, pouchdb.Options{})
 	if err != nil {
 		return 0, err
 	}
@@ -169,6 +169,7 @@ func AuxSync(local, remote *model.DB) (int32, int32, error) {
 			}
 		}()
 	}
+	wg.Wait()
 	fmt.Printf("Auxilary sync complete\n")
 	return written, read, nil
 }
