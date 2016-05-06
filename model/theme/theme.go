@@ -9,8 +9,6 @@ import (
 	"html/template"
 	"time"
 
-	"github.com/pborman/uuid"
-
 	"github.com/flimzy/go-pouchdb"
 
 	"github.com/flimzy/flashback/anki"
@@ -57,7 +55,7 @@ func New(owner *user.User) *Theme {
 	return &t
 }
 
-func (t *Theme) setID(subtype string, id uuid.UUID) {
+func (t *Theme) setID(subtype string, id []byte) {
 	var buf bytes.Buffer
 	buf.Write(t.owner.UUID())
 	buf.Write(id)
@@ -83,11 +81,11 @@ func (t *Theme) newThemeDoc() {
 
 // ImportAnkiModel processes and stores an Anki model, updating any existing
 // copy, if appropriate.
-func ImportAnkiModel(m *anki.Model) error {
+func ImportAnkiModel(m *anki.Model) (*Theme, error) {
 	u, err := user.CurrentUser()
 	if err != nil {
 		fmt.Printf("User not logged in\n")
-		return err
+		return nil, err
 	}
 	now := time.Now()
 	t := New(u)
@@ -98,11 +96,11 @@ func ImportAnkiModel(m *anki.Model) error {
 	t.doc.Imported = &now
 	if m.CSS != "" {
 		if err := t.AddAttachment("$main.css", "text/css", []byte(m.CSS)); err != nil {
-			return err
+			return nil, err
 		}
 	}
 	// Add the template
-	tName := "$template.0.hmtl"
+	tName := "$template.0.html"
 	thisT := &Model{Name: m.Name, Filenames: []string{tName}}
 	t.doc.Models = append(t.doc.Models, thisT)
 	tmpls := make([]string, len(m.Templates))
@@ -110,43 +108,41 @@ func ImportAnkiModel(m *anki.Model) error {
 		qName := "!" + m.Name + "." + tmpl.Name + " question.html"
 		aName := "!" + m.Name + "." + tmpl.Name + " answer.html"
 		if err := t.AddAttachment(qName, HTMLTemplateContentType, []byte(tmpl.QuestionFormat)); err != nil {
-			return err
+			return nil, err
 		}
 		if err := t.AddAttachment(aName, HTMLTemplateContentType, []byte(tmpl.AnswerFormat)); err != nil {
-			return err
+			return nil, err
 		}
 		thisT.Filenames = append(thisT.Filenames, qName, aName)
 		tmpls[i] = t.Name
 	}
 	buf := new(bytes.Buffer)
 	if err := masterTmpl.Execute(buf, tmpls); err != nil {
-		return err
+		return nil, err
 	}
 	t.AddAttachment(tName, HTMLTemplateContentType, buf.Bytes())
 	if err := t.Save(); err != nil {
-		fmt.Printf("Error with first save: %s\n", err)
 		if pouchdb.IsConflict(err) {
-			fmt.Printf("it was a conflict error\n")
 			existing, err2 := FetchTheme(t.ID())
 			if err2 != nil {
 				fmt.Printf("Error fetching existing doc: %s\n", err2)
-				return fmt.Errorf("Fetching theme: %s\n", err2)
+				return nil, fmt.Errorf("Fetching theme: %s\n", err2)
 			}
 			if err := existing.MergeImport(t); err != nil {
 				fmt.Printf("merge failed: %s\n", err)
-				return err
+				return nil, err
 			}
 			if err := existing.Save(); err != nil {
 				fmt.Printf("Second save failed: %s\n", err)
-				return err
+				return nil, err
 			}
 		} else {
 			fmt.Printf("Error saving theme: %s\n", err)
-			return err
+			return nil, err
 		}
 	}
 	fmt.Printf("Save was finally successful\n")
-	return nil
+	return t, nil
 }
 
 var masterTmpl = template.Must(template.New("template.html").Delims("[[", "]]").Parse(`
@@ -172,14 +168,82 @@ func (t *Theme) AddAttachment(name, ctype string, body []byte) error {
 	return nil
 }
 
-// Read-only getters
+func (t *Theme) MarshalJSON() ([]byte, error) {
+	return json.Marshal(t.doc)
+}
 
+func (t *Theme) UnmarshalJSON(data []byte) error {
+	t.newThemeDoc()
+	return json.Unmarshal(data, &t.doc)
+}
+
+func (t *Theme) stub() *model.Stub {
+	return &model.Stub{
+		ID:         t.doc.ID,
+		Type:       "stub",
+		ParentType: "theme",
+	}
+}
+
+func (t *Theme) Save() error {
+	u, err := user.CurrentUser()
+	if err != nil {
+		fmt.Printf("No current user\n")
+		return err
+	}
+	db := model.NewDB(t.ID())
+	if rev, err := db.Put(t); err != nil {
+		// 		fmt.Printf("Doc: %v", t)
+		// 		b, e := json.Marshal(t)
+		// 		fmt.Printf("JSON err: %s\n", e)
+		// 		fmt.Printf("JSON: %s\n", b)
+		return err
+	} else {
+		t.doc.Rev = rev
+	}
+	udb := model.NewDB(u.DBName())
+	s := t.stub()
+	if _, err := udb.Put(s); err != nil && !pouchdb.IsConflict(err) {
+		fmt.Printf("Error saving stub: %s\n", err)
+		return err
+	}
+	return nil
+}
+
+func FetchTheme(id string) (*Theme, error) {
+	db := model.NewDB(id)
+	t := &Theme{}
+	err := db.Get(id, t, pouchdb.Options{})
+	return t, err
+}
+
+func (t *Theme) MergeImport(n *Theme) error {
+	if t.Imported() == nil {
+		return errors.New("Conflict. Cannot MergeImport to a non-imported theme")
+	}
+	if t.Modified().After(*n.Imported()) {
+		return errors.New("The theme has been modified since last import. Merge not possible.")
+	}
+	t.Name = n.Name
+	t.Description = n.Description
+	t.doc.Modified = n.doc.Modified
+	t.doc.Imported = n.doc.Imported
+	t.doc.Models = n.doc.Models
+	t.doc.Attachments = n.doc.Attachments
+	return nil
+}
+
+// Read-only getters
 func (t *Theme) ID() string {
 	return t.doc.ID
 }
 
 func (t *Theme) Rev() string {
 	return t.doc.Rev
+}
+
+func (t *Theme) Owner() *user.User {
+	return t.owner
 }
 
 func (t *Theme) Created() *time.Time {
@@ -204,69 +268,4 @@ func (t *Theme) Imported() *time.Time {
 	}
 	ts := *t.doc.Imported
 	return &ts
-}
-
-func (t *Theme) MarshalJSON() ([]byte, error) {
-	return json.Marshal(t.doc)
-}
-
-func (t *Theme) UnmarshalJSON(data []byte) error {
-	t.newThemeDoc()
-	return json.Unmarshal(data, &t.doc)
-}
-
-func (t *Theme) stub() *model.Stub {
-	return &model.Stub{
-		ID:         t.doc.ID,
-		Type:       "stub",
-		ParentType: "theme",
-	}
-}
-
-func (t *Theme) Save() error {
-	u, err := user.CurrentUser()
-	if err != nil {
-		fmt.Printf("No current user\n")
-		return err
-	}
-	db := pouchdb.New(t.ID())
-	if rev, err := db.Put(t); err != nil {
-		fmt.Printf("Doc: %v", t)
-		b, e := json.Marshal(t)
-		fmt.Printf("JSON err: %s\n", e)
-		fmt.Printf("JSON: %s\n", b)
-		return err
-	} else {
-		t.doc.Rev = rev
-	}
-	udb := pouchdb.New(u.DBName())
-	s := t.stub()
-	if _, err := udb.Put(s); err != nil && !pouchdb.IsConflict(err) {
-		fmt.Printf("Error saving stub: %s\n", err)
-		return err
-	}
-	return nil
-}
-
-func FetchTheme(id string) (*Theme, error) {
-	db := pouchdb.New(id)
-	t := &Theme{}
-	err := db.Get(id, t, pouchdb.Options{})
-	return t, err
-}
-
-func (t *Theme) MergeImport(n *Theme) error {
-	if t.Imported() == nil {
-		return errors.New("Conflict. Cannot MergeImport to a non-imported theme")
-	}
-	if t.Modified().After(*n.Imported()) {
-		return errors.New("The theme has been modified since last import. Merge not possible.")
-	}
-	t.Name = n.Name
-	t.Description = n.Description
-	t.doc.Modified = n.doc.Modified
-	t.doc.Imported = n.doc.Imported
-	t.doc.Models = n.doc.Models
-	t.doc.Attachments = n.doc.Attachments
-	return nil
 }

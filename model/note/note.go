@@ -1,25 +1,192 @@
 package note
 
-import ()
+import (
+	"bytes"
+	"encoding/hex"
+	"encoding/json"
+	"errors"
+	"fmt"
+	"strconv"
+	"strings"
+	"time"
+
+	"github.com/flimzy/go-pouchdb"
+
+	"github.com/flimzy/flashback/anki"
+	"github.com/flimzy/flashback/model"
+	"github.com/flimzy/flashback/model/theme"
+	"github.com/flimzy/flashback/model/user"
+)
 
 type noteDoc struct {
-	ID          string     `json:"_id"`
-	Rev         string     `json:"_rev,omitempty"`
-	Type        string     `json:"type"`
-	Created     *time.Time `json:"created,omitempty"`
-	Imported    *time.Time `json:"imported,omitempty"`
-	Modified    *time.Time `json:"modified,omitempty"`
-	ModelId     string     `json:"modelID"`
-	Tags        []string   `json:"tags,omitempty"`
-	FieldValues []string   `json:"fieldValues"`
-	Comment     *string    `json:"comment,omitempty"`
+	ID          string                       `json:"_id"`
+	Rev         string                       `json:"_rev,omitempty"`
+	Type        string                       `json:"type"`
+	Created     *time.Time                   `json:"created,omitempty"`
+	Imported    *time.Time                   `json:"imported,omitempty"`
+	Modified    *time.Time                   `json:"modified,omitempty"`
+	ModelID     string                       `json:"modelID"`
+	Tags        []string                     `json:"tags,omitempty"`
+	FieldValues []string                     `json:"fieldValues"`
+	Comment     *string                      `json:"comment,omitempty"`
 	Attachments map[string]*model.Attachment `json:"_attachments"`
 }
 
 type Note struct {
 	doc     noteDoc
+	Theme   *theme.Theme
 	Comment string
 }
 
-func New() *Note {
+func New(t *theme.Theme, ModelID int) *Note {
+	n := Note{
+		Theme: t,
+	}
+	n.newNoteDoc()
+	now := time.Now()
+	n.doc.Modified = &now
+	n.doc.Created = &now
+	n.doc.ModelID = strings.TrimPrefix(t.ID(), "theme-") + "/" + strconv.Itoa(ModelID)
+	return &n
+}
+
+func (n *Note) setID(subtype string, id []byte) {
+	var buf bytes.Buffer
+	buf.Write(n.Theme.Owner().UUID())
+	buf.Write(id)
+	prefix := "note-"
+	if subtype != "" {
+		prefix = prefix + subtype + "-"
+	}
+	n.doc.ID = prefix + hex.EncodeToString(buf.Bytes())
+}
+
+func (n *Note) newNoteDoc() {
+	n.doc = noteDoc{
+		Comment:     &n.Comment,
+		Attachments: make(map[string]*model.Attachment),
+	}
+}
+
+func (n *Note) MarshalJSON() ([]byte, error) {
+	return json.Marshal(n.doc)
+}
+
+func (n *Note) UnmarshalJSON(data []byte) error {
+	n.newNoteDoc()
+	return json.Unmarshal(data, &n.doc)
+}
+
+func ImportAnkiNote(t *theme.Theme, note *anki.Note) (*Note, error) {
+	now := time.Now()
+	n := New(t, 0)
+	n.setID("anki", note.AnkiID())
+	n.doc.Created = nil
+	n.doc.Modified = note.Modified
+	n.doc.Imported = &now
+	if err := n.Save(); err != nil {
+		if pouchdb.IsConflict(err) {
+			fmt.Printf("conflict error\n")
+			existing, err2 := FetchNote(n.ID())
+			if err2 != nil {
+				fmt.Printf("Error fetching existing note: %s\n", err2)
+				return nil, fmt.Errorf("Fetching note: %s\n", err2)
+			}
+			if err := existing.MergeImport(n); err != nil {
+				fmt.Printf("merge failed: %s\n", err)
+				return nil, err
+			}
+			fmt.Printf("Doc: %v", existing)
+			b, e := json.Marshal(existing)
+			fmt.Printf("JSON err: %s\n", e)
+			fmt.Printf("JSON: %s\n", b)
+			if err := existing.Save(); err != nil {
+				fmt.Printf("Second save failed: %s\n", err)
+				return nil, err
+			}
+			fmt.Printf("re-save worked\n")
+		} else {
+			fmt.Printf("Error saving note: %s\n", err)
+			return nil, err
+		}
+	}
+	fmt.Printf("Note save successful\n")
+	return n, nil
+}
+
+func (n *Note) Save() error {
+	u, err := user.CurrentUser()
+	if err != nil {
+		fmt.Printf("No current user\n")
+		return err
+	}
+	db := model.NewDB(u.DBName())
+	if rev, err := db.Put(n); err != nil {
+		fmt.Printf("Error storing note: %s\n", err)
+		return err
+	} else {
+		n.doc.Rev = rev
+	}
+	return nil
+}
+
+func FetchNote(id string) (*Note, error) {
+	u, err := user.CurrentUser()
+	if err != nil {
+		fmt.Printf("No current user\n")
+		return nil, err
+	}
+	db := model.NewDB(u.DBName())
+	n := &Note{}
+	return n, db.Get(id, n, pouchdb.Options{})
+}
+
+func (n *Note) MergeImport(newNote *Note) error {
+	if n.Imported() == nil {
+		return errors.New("Conflict. Cannot MergeImport to a non-imported note")
+	}
+	if n.Modified().After(*newNote.Imported()) {
+		return errors.New("The note has been modified since last import. Merge not possible.")
+	}
+	n.Comment = newNote.Comment
+	n.doc.Modified = newNote.doc.Modified
+	n.doc.Imported = newNote.doc.Imported
+	n.doc.ModelID = newNote.doc.ModelID
+	n.doc.Tags = newNote.doc.Tags
+	n.doc.FieldValues = newNote.doc.FieldValues
+	n.doc.Attachments = newNote.doc.Attachments
+	return nil
+}
+
+// Read-only getters
+func (n *Note) ID() string {
+	return n.doc.ID
+}
+
+func (n *Note) Rev() string {
+	return n.doc.Rev
+}
+
+func (n *Note) Created() *time.Time {
+	if n.doc.Created == nil {
+		return nil
+	}
+	ts := *n.doc.Created
+	return &ts
+}
+
+func (n *Note) Modified() *time.Time {
+	if n.doc.Modified == nil {
+		return nil
+	}
+	ts := *n.doc.Modified
+	return &ts
+}
+
+func (n *Note) Imported() *time.Time {
+	if n.doc.Imported == nil {
+		return nil
+	}
+	ts := *n.doc.Imported
+	return &ts
 }

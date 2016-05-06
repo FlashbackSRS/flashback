@@ -79,7 +79,6 @@ func (u *User) UnmarshalJSON(data []byte) error {
 
 func (u *User) MarshalJSON() ([]byte, error) {
 	x, err := json.Marshal(u.doc)
-	fmt.Printf("%s\n", x)
 	return x, err
 }
 
@@ -106,7 +105,6 @@ func (u *User) DocID() string {
 }
 
 func (u *User) DBName() string {
-	fmt.Printf("%v\n", u)
 	return "user-" + u.ID()
 }
 

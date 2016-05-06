@@ -19,6 +19,7 @@ import (
 	"github.com/flimzy/flashback/anki"
 	"github.com/flimzy/flashback/data"
 	"github.com/flimzy/flashback/model/theme"
+	"github.com/flimzy/flashback/model/note"
 	"github.com/flimzy/flashback/util"
 	"github.com/flimzy/go-pouchdb"
 	"github.com/flimzy/web/file"
@@ -72,11 +73,11 @@ func importFile(f file.File) error {
 	if err != nil {
 		return fmt.Errorf("Cannot extract collection data: %s", err)
 	}
-	modelMap, err := storeModels(collection)
+	themeMap, err := storeModels(collection)
 	if err != nil {
 		return fmt.Errorf("Cannot store model: %s", err)
 	}
-	noteMap, err := storeNotes(collection, modelMap, mediaMap)
+	noteMap, err := storeNotes(collection, themeMap, mediaMap)
 	if err != nil {
 		return fmt.Errorf("Cannot store notes: %s", err)
 	}
@@ -145,11 +146,12 @@ var masterTmpl = template.Must(template.New("template.html").Delims("[[", "]]").
 `))
 
 type idmap map[int64]string
+type thememap map[int64]*theme.Theme
 
 var nameToIdRE = regexp.MustCompile("[[:space:]]")
 
-func storeModels(c *anki.Collection) (idmap, error) {
-	modelMap := make(idmap)
+func storeModels(c *anki.Collection) (thememap, error) {
+	themeMap := make(thememap)
 	//	db := util.UserDb()
 	for _, m := range c.Models {
 		if m.Type == anki.ModelTypeCloze {
@@ -157,9 +159,13 @@ func storeModels(c *anki.Collection) (idmap, error) {
 			continue
 		}
 		fmt.Printf("Attempting to import a model\n")
-		if err := theme.ImportAnkiModel(m); err != nil {
-			fmt.Printf("Error importing model: %s\n", err)
+		if t,err := theme.ImportAnkiModel(m); err != nil {
+			return themeMap, err
+		} else {
+			themeMap[m.ID] = t
 		}
+	}
+	return themeMap, nil
 		// 		modelId := m.AnkiId()
 		// 		modelMap[m.Id] = modelId
 		// 		var model data.Model
@@ -206,8 +212,7 @@ func storeModels(c *anki.Collection) (idmap, error) {
 		// 		if err != nil {
 		// 			return nil, err
 		// 		}
-	}
-	return modelMap, nil
+// }
 }
 
 func modelAttachments(m *anki.Model) (*[]pouchdb.Attachment, error) {
@@ -245,71 +250,71 @@ func modelAttachments(m *anki.Model) (*[]pouchdb.Attachment, error) {
 	return &attachments, nil
 }
 
-func updateModel(model *data.Model, m *anki.Model) error {
-	var changed bool
-	if m.Name != model.Name {
-		model.Name = m.Name
-		model.Description = "Anki Model " + m.Name
-		changed = true
-	}
-	var fields []*data.Field
-	for _, f := range m.Fields {
-		fields = append(fields, &data.Field{
-			Name: f.Name,
-		})
-	}
-	if !reflect.DeepEqual(fields, model.Fields) {
-		model.Fields = fields
-		changed = true
-	}
-
-	attachments, err := modelAttachments(m)
-	if err != nil {
-		return err
-	}
-	deletedAttachments := make(map[string]bool)
-	for filename, _ := range model.Attachments {
-		deletedAttachments[filename] = true
-	}
-	changedAttachments := make([]pouchdb.Attachment, 0)
-	for _, pouchAtt := range *attachments {
-		delete(deletedAttachments, pouchAtt.Name)
-		att, ok := model.Attachments[pouchAtt.Name]
-		if ok {
-			oldMd5, err := base64.StdEncoding.DecodeString(att.MD5[4:])
-			if err != nil {
-				return err
-			}
-			buf := new(bytes.Buffer)
-			buf.ReadFrom(pouchAtt.Body)
-			body := buf.Bytes()
-			newMd5 := md5.Sum(body)
-
-			if bytes.Equal(newMd5[:], oldMd5) {
-				// This attachment has not changed
-				continue
-			}
-			// The attachment has been updated, so restore the pouch attachment body
-			pouchAtt.Body = bytes.NewReader(body)
-		}
-		fmt.Printf("Attachment '%s' changed\n", pouchAtt.Name)
-		changed = true
-		changedAttachments = append(changedAttachments, pouchAtt)
-	}
-
-	if !changed && len(deletedAttachments) == 0 {
-		return nil
-	}
-
-	model.Modified = m.Modified
-	now := time.Now()
-	model.AnkiImported = &now
-	model.Comment = "Imported from Anki on " + now.String()
-
-	fmt.Printf("Now applying changes to model %d / %s\n", m.Id, model.Id)
-
-	return updateDoc(model, model.Id, &changedAttachments, &deletedAttachments)
-}
+// func updateModel(model *data.Model, m *anki.Model) error {
+// 	var changed bool
+// 	if m.Name != model.Name {
+// 		model.Name = m.Name
+// 		model.Description = "Anki Model " + m.Name
+// 		changed = true
+// 	}
+// 	var fields []*data.Field
+// 	for _, f := range m.Fields {
+// 		fields = append(fields, &data.Field{
+// 			Name: f.Name,
+// 		})
+// 	}
+// 	if !reflect.DeepEqual(fields, model.Fields) {
+// 		model.Fields = fields
+// 		changed = true
+// 	}
+// 
+// 	attachments, err := modelAttachments(m)
+// 	if err != nil {
+// 		return err
+// 	}
+// 	deletedAttachments := make(map[string]bool)
+// 	for filename, _ := range model.Attachments {
+// 		deletedAttachments[filename] = true
+// 	}
+// 	changedAttachments := make([]pouchdb.Attachment, 0)
+// 	for _, pouchAtt := range *attachments {
+// 		delete(deletedAttachments, pouchAtt.Name)
+// 		att, ok := model.Attachments[pouchAtt.Name]
+// 		if ok {
+// 			oldMd5, err := base64.StdEncoding.DecodeString(att.MD5[4:])
+// 			if err != nil {
+// 				return err
+// 			}
+// 			buf := new(bytes.Buffer)
+// 			buf.ReadFrom(pouchAtt.Body)
+// 			body := buf.Bytes()
+// 			newMd5 := md5.Sum(body)
+// 
+// 			if bytes.Equal(newMd5[:], oldMd5) {
+// 				// This attachment has not changed
+// 				continue
+// 			}
+// 			// The attachment has been updated, so restore the pouch attachment body
+// 			pouchAtt.Body = bytes.NewReader(body)
+// 		}
+// 		fmt.Printf("Attachment '%s' changed\n", pouchAtt.Name)
+// 		changed = true
+// 		changedAttachments = append(changedAttachments, pouchAtt)
+// 	}
+// 
+// 	if !changed && len(deletedAttachments) == 0 {
+// 		return nil
+// 	}
+// 
+// 	model.Modified = m.Modified
+// 	now := time.Now()
+// 	model.AnkiImported = &now
+// 	model.Comment = "Imported from Anki on " + now.String()
+// 
+// 	fmt.Printf("Now applying changes to model %d / %s\n", m.Id, model.Id)
+// 
+// 	return updateDoc(model, model.Id, &changedAttachments, &deletedAttachments)
+// }
 
 func storeDecks(c *anki.Collection) (idmap, error) {
 	return nil, nil
@@ -375,7 +380,10 @@ func updateDeck(deck *data.Deck, d *anki.Deck) error {
 }
 
 func updateDoc(doc interface{}, id string, chAtt *[]pouchdb.Attachment, delAtt *map[string]bool) error {
-	db := util.UserDb()
+	db,err := util.UserDb()
+	if err != nil {
+		return err
+	}
 	rev, err := db.Put(doc)
 	if err != nil {
 		return fmt.Errorf("Error updating doc %s: %s", id, err)
@@ -454,17 +462,27 @@ func updateDeckConfig(conf *data.DeckConfig, dc *anki.DeckConfig) error {
 	return updateDoc(conf, conf.Id, nil, nil)
 }
 
-type noteNode struct {
-	Id    string
-	Model string
-}
-type notemap map[int64]noteNode
+type notemap map[int64]*note.Note
 
 var soundRe = regexp.MustCompile("\\[sound:(.*?)\\]")
 var imageRe = regexp.MustCompile("<img src=\"(.*?)\" />")
 
-func storeNotes(c *anki.Collection, modelMap idmap, mediaMap map[string]*zip.File) (notemap, error) {
-	return nil, nil
+func storeNotes(c *anki.Collection, themeMap thememap, mediaMap map[string]*zip.File) (notemap, error) {
+	noteMap := make(notemap)
+	for _,n := range c.Notes {
+		t, ok := themeMap[n.ModelID]
+		if !ok {
+			// This isn't necessarily an error, since we skip cloze models, so just ignore for now
+			continue
+			// 			return nil, fmt.Errorf("Found note (id=%d) with no model", n.Id)
+		}
+		if note, err := note.ImportAnkiNote(t,n); err != nil {
+			return noteMap, err
+		} else {
+			noteMap[n.ID] = note
+		}
+	}
+	return noteMap, nil
 	// 	noteMap := make(notemap)
 	// 	db := util.UserDb()
 	// 	for _, n := range c.Notes {

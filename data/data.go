@@ -13,7 +13,7 @@ type Attachment struct {
 }
 
 type Model struct {
-	Id           string                `json:"_id"`
+	ID           string                `json:"_id"`
 	Rev          string                `json:"_rev,omitempty"`
 	Attachments  map[string]Attachment `json:"_attachments,omitempty"`
 	Type         string                `json:"$type"`

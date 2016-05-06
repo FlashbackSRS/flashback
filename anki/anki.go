@@ -134,7 +134,7 @@ const (
 
 // AKA "Note Type"
 type Model struct {
-	Id        int64       `json:"-"`
+	ID        int64       `json:"-"`
 	Name      string      `json:"name"`
 	Tags      []string    `json:"tags"`
 	DeckId    int64       `json:"did"`
@@ -162,7 +162,7 @@ func b64(buf []byte) string {
 
 func (m *Model) AnkiID() []byte {
 	var buf bytes.Buffer
-	buf.Write(int64ToBytes(m.Id))
+	buf.Write(int64ToBytes(m.ID))
 	buf.Write([]byte{byte(m.Type)})
 	return buf.Bytes()
 }
@@ -192,7 +192,7 @@ func (c *Collection) parseModels(jsonString string) error {
 		if id, err := strconv.ParseInt(i, 10, 64); err != nil {
 			return err
 		} else {
-			m.Id = id
+			m.ID = id
 		}
 		m.Modified = jsSeconds(m.Mod)
 		for _, t := range m.Templates {
@@ -466,9 +466,9 @@ func (c *Collection) AddCardFromSqlite(row map[string]interface{}) {
 // CREATE INDEX ix_notes_csum on notes (csum);
 
 type Note struct {
-	Id        int64
+	ID        int64
 	Guid      string
-	ModelId   int64
+	ModelID   int64
 	Modified  *time.Time
 	Tags      []string
 	Fields    []string
@@ -476,15 +476,15 @@ type Note struct {
 	Csum      int64
 }
 
-func (n Note) AnkiId() string {
-	return fmt.Sprintf("note-anki-%s-%s", b64(int64ToBytes(n.Id)), b64([]byte(n.Guid)))
+func (n Note) AnkiID() []byte {
+	return int64ToBytes(n.ID)
 }
 
 func (c *Collection) AddNoteFromSqlite(row map[string]interface{}) {
 	c.Notes = append(c.Notes, &Note{
-		Id:        int64(row["id"].(float64)),
+		ID:        int64(row["id"].(float64)),
 		Guid:      row["guid"].(string),
-		ModelId:   int64(row["mid"].(float64)),
+		ModelID:   int64(row["mid"].(float64)),
 		Modified:  jsSeconds(int64(row["mod"].(float64))),
 		Tags:      strings.Fields(row["tags"].(string)),
 		Fields:    strings.Split(row["flds"].(string), "\x1f"),

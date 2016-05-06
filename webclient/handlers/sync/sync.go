@@ -3,7 +3,6 @@ package sync_handler
 import (
 	"fmt"
 	"net/url"
-	"sync"
 	"sync/atomic"
 
 	"github.com/flimzy/go-pouchdb"
@@ -68,51 +67,42 @@ func DoSync() {
 	ldb := model.NewDB(dbName)
 	rdb := model.NewDB(host + "/" + dbName)
 
-	var wg sync.WaitGroup
 	var docsWritten, docsRead, reviewsWritten int32
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		fmt.Printf("Syncing down...\n")
-		if r, err := Sync(rdb, ldb); err != nil {
-			fmt.Printf("Error syncing to server: %s\n", err)
-			return
-		} else {
-			atomic.AddInt32(&docsRead, r)
-		}
-		fmt.Printf("Initial down sync complete\n")
-		<-u.InitDB() // Make sure the index is built before we try to use it
-		if w, r, err := AuxSync(ldb, rdb); err != nil {
-			fmt.Printf("Error doing aux sync: %s\n", err)
-			return
-		} else {
-			atomic.AddInt32(&docsRead, r)
-			atomic.AddInt32(&docsWritten, w)
-		}
-	}()
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		fmt.Printf("Syncing up...\n")
-		if w, err := Sync(ldb, rdb); err != nil {
-			fmt.Printf("Error syncing from serveR: %s\n", err)
-		} else {
-			atomic.AddInt32(&docsWritten, w)
-		}
-		fmt.Printf("Up sync complete\n")
-	}()
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		fmt.Printf("Syncing reviews...\n")
-		if rw, err := SyncReviews(ldb, rdb); err != nil {
-			fmt.Printf("Error syncing reviews: %s\n", err)
-		} else {
-			atomic.AddInt32(&reviewsWritten, rw)
-		}
-		fmt.Printf("Review sync complete\n")
-	}()
-	wg.Wait()
+	fmt.Printf("Syncing down...\n")
+	if r, err := Sync(rdb, ldb); err != nil {
+		fmt.Printf("Error syncing to server: %s\n", err)
+		return
+	} else {
+		atomic.AddInt32(&docsRead, r)
+	}
+	fmt.Printf("Down sync complete\n")
+	<-u.InitDB() // Make sure the index is built before we try to use it
+	if w, r, err := AuxSync(ldb, rdb); err != nil {
+		fmt.Printf("Error doing aux sync: %s\n", err)
+		return
+	} else {
+		fmt.Printf("aux did %d reads, %d writes\n", r, w)
+		atomic.AddInt32(&docsRead, r)
+		atomic.AddInt32(&docsWritten, w)
+	}
+
+	fmt.Printf("Syncing up...\n")
+	if w, err := Sync(ldb, rdb); err != nil {
+		fmt.Printf("Error syncing from serveR: %s\n", err)
+	} else {
+		fmt.Printf("up %d docs written\n", w)
+		atomic.AddInt32(&docsWritten, w)
+	}
+	fmt.Printf("Up sync complete\n")
+
+	fmt.Printf("Syncing reviews...\n")
+	if rw, err := SyncReviews(ldb, rdb); err != nil {
+		fmt.Printf("Error syncing reviews: %s\n", err)
+	} else {
+		atomic.AddInt32(&reviewsWritten, rw)
+	}
+	fmt.Printf("Review sync complete\n")
+
 	fmt.Printf("Synced %d docs from server, %d to server, and %d review logs\n", docsRead, docsWritten, reviewsWritten)
 	fmt.Printf("Compacting...\n")
 	if err := ldb.Compact(); err != nil {
@@ -144,32 +134,23 @@ func AuxSync(local, remote *model.DB) (int32, int32, error) {
 	}
 	var written, read int32
 	host := util.CouchHost()
-	var wg sync.WaitGroup
 	for _, stub := range doc["docs"] {
 		fmt.Printf("stub = %v\n", stub)
 		local := model.NewDB(stub.ID)
 		remote := model.NewDB(host + "/" + stub.ID)
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			if w, err := Sync(local, remote); err != nil {
-				fmt.Printf("Error syncing '%s' up: %s\n", stub.ID, err)
-				return
-			} else {
-				atomic.AddInt32(&written, w)
-			}
-		}()
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			if r, err := Sync(remote, local); err != nil {
-				fmt.Printf("Error syncing '%s' down: %s\n", stub.ID, err)
-			} else {
-				atomic.AddInt32(&read, r)
-			}
-		}()
+		if w, err := Sync(local, remote); err != nil {
+			fmt.Printf("Error syncing '%s' up: %s\n", stub.ID, err)
+			return written, read, err
+		} else {
+			atomic.AddInt32(&written, w)
+		}
+
+		if r, err := Sync(remote, local); err != nil {
+			fmt.Printf("Error syncing '%s' down: %s\n", stub.ID, err)
+		} else {
+			atomic.AddInt32(&read, r)
+		}
 	}
-	wg.Wait()
 	fmt.Printf("Auxilary sync complete\n")
 	return written, read, nil
 }
