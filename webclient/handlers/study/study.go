@@ -79,16 +79,22 @@ func getCard() (*data.Card, error) {
 }
 
 func getModel(id string) (*data.Model, error) {
-	db := util.UserDb()
+	db, err := util.UserDb()
+	if err != nil {
+		return nil, err
+	}
 	var model data.Model
-	err := db.Get(id, &model, pouchdb.Options{})
+	err = db.Get(id, &model, pouchdb.Options{})
 	return &model, err
 }
 
 func getNote(id string) (*data.Note, error) {
-	db := util.UserDb()
+	db, err := util.UserDb()
+	if err != nil {
+		return nil, err
+	}
 	var note data.Note
-	err := db.Get(id, &note, pouchdb.Options{})
+	err = db.Get(id, &note, pouchdb.Options{})
 	return &note, err
 }
 
@@ -102,12 +108,15 @@ func getCardBodies(card *data.Card) (string, string, error) {
 		return "", "", err
 	}
 
-	db := util.UserDb()
+	db, err := util.UserDb()
+	if err != nil {
+		return "", "", err
+	}
 
 	templates := make(map[string]string)
 	for filename, a := range model.Attachments {
 		if a.Type == data.HTMLTemplateContentType || a.Type == "text/css" || a.Type == "script/javascript" {
-			att, err := db.Attachment(model.Id, filename, model.Rev)
+			att, err := db.Attachment(model.ID, filename, model.Rev)
 			if err != nil {
 				return "", "", err
 			}

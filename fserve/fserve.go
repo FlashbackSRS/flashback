@@ -77,7 +77,10 @@ func encodeFile(contentType string, data []byte) *string {
 }
 
 func fetchAttachment(id, filename string) (*string, error) {
-	db := util.UserDb()
+	db, err := util.UserDb()
+	if err != nil {
+		return nil, err
+	}
 
 	var note data.Note
 	if err := db.Get(id, &note, pouchdb.Options{}); err != nil {

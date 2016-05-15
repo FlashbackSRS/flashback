@@ -86,14 +86,14 @@ func ImportAnkiNote(t *theme.Theme, note *anki.Note) (*Note, error) {
 	n.doc.Imported = &now
 	if err := n.Save(); err != nil {
 		if pouchdb.IsConflict(err) {
-			fmt.Printf("conflict error\n")
 			existing, err2 := FetchNote(n.ID())
 			if err2 != nil {
-				fmt.Printf("Error fetching existing note: %s\n", err2)
 				return nil, fmt.Errorf("Fetching note: %s\n", err2)
 			}
 			if err := existing.MergeImport(n); err != nil {
-				fmt.Printf("merge failed: %s\n", err)
+				if model.NoChange(err) {
+					return existing, nil
+				}
 				return nil, err
 			}
 			fmt.Printf("Doc: %v", existing)
@@ -101,28 +101,22 @@ func ImportAnkiNote(t *theme.Theme, note *anki.Note) (*Note, error) {
 			fmt.Printf("JSON err: %s\n", e)
 			fmt.Printf("JSON: %s\n", b)
 			if err := existing.Save(); err != nil {
-				fmt.Printf("Second save failed: %s\n", err)
 				return nil, err
 			}
-			fmt.Printf("re-save worked\n")
 		} else {
-			fmt.Printf("Error saving note: %s\n", err)
 			return nil, err
 		}
 	}
-	fmt.Printf("Note save successful\n")
 	return n, nil
 }
 
 func (n *Note) Save() error {
 	u, err := user.CurrentUser()
 	if err != nil {
-		fmt.Printf("No current user\n")
 		return err
 	}
 	db := model.NewDB(u.DBName())
 	if rev, err := db.Put(n); err != nil {
-		fmt.Printf("Error storing note: %s\n", err)
 		return err
 	} else {
 		n.doc.Rev = rev
@@ -147,6 +141,9 @@ func (n *Note) MergeImport(newNote *Note) error {
 	}
 	if n.Modified().After(*newNote.Imported()) {
 		return errors.New("The note has been modified since last import. Merge not possible.")
+	}
+	if n.Modified().Equal(*newNote.Modified()) {
+		return model.NewModelErrorNoChange()
 	}
 	n.Comment = newNote.Comment
 	n.doc.Modified = newNote.doc.Modified
