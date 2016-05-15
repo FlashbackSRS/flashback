@@ -3,17 +3,13 @@ package import_handler
 import (
 	"archive/zip"
 	"bytes"
-	"crypto/md5"
-	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"html/template"
 	"net/url"
-	"path/filepath"
 	"reflect"
 	"regexp"
-	"strings"
 	"time"
 
 	"github.com/flimzy/flashback/anki"
@@ -46,8 +42,7 @@ func BeforeTransition(event *jquery.Event, ui *js.Object, p url.Values) bool {
 func DoImport() {
 	files := jQuery("#apkg", ":mobile-pagecontainer").Get(0).Get("files")
 	for i := 0; i < files.Length(); i++ {
-		err := importFile(file.Internalize(files.Index(i)))
-		if err != nil {
+		if err := importFile(file.Internalize(files.Index(i))); err != nil {
 			fmt.Printf("Error importing file: %s\n", err)
 			return
 		}
@@ -92,6 +87,7 @@ func importFile(f file.File) error {
 	if err := storeReviews(collection, cardMap); err != nil {
 		return fmt.Errorf("Cannot store reviews: %s", err)
 	}
+	fmt.Printf("Import complete\n")
 	return nil
 }
 
@@ -160,11 +156,13 @@ func storeModels(c *anki.Collection) (thememap, error) {
 		}
 		fmt.Printf("Attempting to import a model\n")
 		if t, err := theme.ImportAnkiModel(m); err != nil {
+			fmt.Printf("Error importing model: %s\n", err)
 			return themeMap, err
 		} else {
 			themeMap[m.ID] = t
 		}
 	}
+	fmt.Printf("Models imported successfully\n")
 	return themeMap, nil
 }
 
@@ -321,6 +319,7 @@ var imageRe = regexp.MustCompile("<img src=\"(.*?)\" />")
 
 func storeNotes(c *anki.Collection, themeMap thememap, mediaMap map[string]*zip.File) (notemap, error) {
 	noteMap := make(notemap)
+	fmt.Printf("Attempting to import notes\n")
 	for _, n := range c.Notes {
 		t, ok := themeMap[n.ModelID]
 		if !ok {
@@ -335,6 +334,7 @@ func storeNotes(c *anki.Collection, themeMap thememap, mediaMap map[string]*zip.
 			noteMap[n.ID] = note
 		}
 	}
+	fmt.Printf("Notes successfully imported\n")
 	return noteMap, nil
 }
 

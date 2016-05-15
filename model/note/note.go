@@ -46,8 +46,12 @@ func New(t *theme.Theme, ModelID int) *Note {
 	now := time.Now()
 	n.doc.Modified = &now
 	n.doc.Created = &now
-	n.doc.ModelID = strings.TrimPrefix(t.ID(), "theme-") + "/" + strconv.Itoa(ModelID)
+	n.doc.ModelID = n.baseModelID() + "/" + strconv.Itoa(ModelID)
 	return &n
+}
+
+func (n *Note) baseModelID() string {
+	return strings.TrimPrefix(n.Theme.ID(), "theme-")
 }
 
 func (n *Note) setID(subtype string, id []byte) {
@@ -86,7 +90,7 @@ func ImportAnkiNote(t *theme.Theme, note *anki.Note) (*Note, error) {
 	n.doc.Imported = &now
 	if err := n.Save(); err != nil {
 		if pouchdb.IsConflict(err) {
-			existing, err2 := FetchNote(n.ID())
+			existing, err2 := FetchNote(n.Theme, n.ID())
 			if err2 != nil {
 				return nil, fmt.Errorf("Fetching note: %s\n", err2)
 			}
@@ -102,6 +106,8 @@ func ImportAnkiNote(t *theme.Theme, note *anki.Note) (*Note, error) {
 			fmt.Printf("JSON: %s\n", b)
 			if err := existing.Save(); err != nil {
 				return nil, err
+			} else {
+				return existing, nil
 			}
 		} else {
 			return nil, err
@@ -124,7 +130,7 @@ func (n *Note) Save() error {
 	return nil
 }
 
-func FetchNote(id string) (*Note, error) {
+func FetchNote(t *theme.Theme, id string) (*Note, error) {
 	u, err := user.CurrentUser()
 	if err != nil {
 		fmt.Printf("No current user\n")
@@ -132,7 +138,23 @@ func FetchNote(id string) (*Note, error) {
 	}
 	db := model.NewDB(u.DBName())
 	n := &Note{}
-	return n, db.Get(id, n, pouchdb.Options{})
+	if err := db.Get(id, n, pouchdb.Options{}); err != nil {
+		fmt.Printf("10: id  = %s\n", id)
+		fmt.Printf("10: err = %s\n", err)
+		return nil, err
+	}
+	n.Theme = t
+	if err := n.check(); err != nil {
+		return nil, err
+	}
+	return n, nil
+}
+
+func (n *Note) check() error {
+	if !strings.HasPrefix(n.doc.ModelID, n.baseModelID()) {
+		return errors.New("ModelID does not match expected")
+	}
+	return nil
 }
 
 func (n *Note) MergeImport(newNote *Note) error {

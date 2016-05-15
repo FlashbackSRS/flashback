@@ -123,25 +123,25 @@ func ImportAnkiModel(m *anki.Model) (*Theme, error) {
 	t.AddAttachment(tName, HTMLTemplateContentType, buf.Bytes())
 	if err := t.Save(); err != nil {
 		if pouchdb.IsConflict(err) {
-			existing, err2 := FetchTheme(t.ID())
+			existing, err2 := FetchTheme(t.owner, t.ID())
 			if err2 != nil {
-				fmt.Printf("Error fetching existing doc: %s\n", err2)
 				return nil, fmt.Errorf("Fetching theme: %s\n", err2)
 			}
 			if err := existing.MergeImport(t); err != nil {
-				fmt.Printf("merge failed: %s\n", err)
+				if model.NoChange(err) {
+					return existing, nil
+				}
 				return nil, err
 			}
 			if err := existing.Save(); err != nil {
-				fmt.Printf("Second save failed: %s\n", err)
 				return nil, err
+			} else {
+				return existing, nil
 			}
 		} else {
-			fmt.Printf("Error saving theme: %s\n", err)
 			return nil, err
 		}
 	}
-	fmt.Printf("Save was finally successful\n")
 	return t, nil
 }
 
@@ -210,11 +210,24 @@ func (t *Theme) Save() error {
 	return nil
 }
 
-func FetchTheme(id string) (*Theme, error) {
+func FetchTheme(u *user.User, id string) (*Theme, error) {
 	db := model.NewDB(id)
 	t := &Theme{}
-	err := db.Get(id, t, pouchdb.Options{})
-	return t, err
+	if err := db.Get(id, t, pouchdb.Options{}); err != nil {
+		return nil, err
+	}
+	t.owner = u
+	if err := t.check(); err != nil {
+		return nil, err
+	}
+	return t, nil
+}
+
+func (t *Theme) check() error {
+	if t.doc.Owner != t.owner.ID() {
+		return errors.New("Theme owner does not match expected")
+	}
+	return nil
 }
 
 func (t *Theme) MergeImport(n *Theme) error {
@@ -223,6 +236,9 @@ func (t *Theme) MergeImport(n *Theme) error {
 	}
 	if t.Modified().After(*n.Imported()) {
 		return errors.New("The theme has been modified since last import. Merge not possible.")
+	}
+	if t.Modified().Equal(*n.Modified()) {
+		return model.NewModelErrorNoChange()
 	}
 	t.Name = n.Name
 	t.Description = n.Description
