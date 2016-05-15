@@ -84,7 +84,6 @@ func (t *Theme) newThemeDoc() {
 func ImportAnkiModel(m *anki.Model) (*Theme, error) {
 	u, err := user.CurrentUser()
 	if err != nil {
-		fmt.Printf("User not logged in\n")
 		return nil, err
 	}
 	now := time.Now()
@@ -122,24 +121,23 @@ func ImportAnkiModel(m *anki.Model) (*Theme, error) {
 	}
 	t.AddAttachment(tName, HTMLTemplateContentType, buf.Bytes())
 	if err := t.Save(); err != nil {
-		if pouchdb.IsConflict(err) {
-			existing, err2 := FetchTheme(t.owner, t.ID())
-			if err2 != nil {
-				return nil, fmt.Errorf("Fetching theme: %s\n", err2)
-			}
-			if err := existing.MergeImport(t); err != nil {
-				if model.NoChange(err) {
-					return existing, nil
-				}
-				return nil, err
-			}
-			if err := existing.Save(); err != nil {
-				return nil, err
-			} else {
+		if !pouchdb.IsConflict(err) {
+			return nil, err
+		}
+		existing, err2 := FetchTheme(t.owner, t.ID())
+		if err2 != nil {
+			return nil, fmt.Errorf("Fetching theme: %s\n", err2)
+		}
+		if err := existing.MergeImport(t); err != nil {
+			if model.NoChange(err) {
 				return existing, nil
 			}
-		} else {
 			return nil, err
+		}
+		if err := existing.Save(); err != nil {
+			return nil, err
+		} else {
+			return existing, nil
 		}
 	}
 	return t, nil
@@ -188,7 +186,6 @@ func (t *Theme) stub() *model.Stub {
 func (t *Theme) Save() error {
 	u, err := user.CurrentUser()
 	if err != nil {
-		fmt.Printf("No current user\n")
 		return err
 	}
 	db := model.NewDB(t.ID())
@@ -204,7 +201,6 @@ func (t *Theme) Save() error {
 	udb := model.NewDB(u.DBName())
 	s := t.stub()
 	if _, err := udb.Put(s); err != nil && !pouchdb.IsConflict(err) {
-		fmt.Printf("Error saving stub: %s\n", err)
 		return err
 	}
 	return nil
@@ -235,13 +231,15 @@ func (t *Theme) MergeImport(n *Theme) error {
 		return errors.New("Conflict. Cannot MergeImport to a non-imported theme")
 	}
 	if t.Modified().After(*n.Imported()) {
-		return errors.New("The theme has been modified since last import. Merge not possible.")
+		return errors.New("The theme has been modified since import. Merge not possible.")
 	}
 	if t.Modified().Equal(*n.Modified()) {
 		return model.NewModelErrorNoChange()
 	}
 	t.Name = n.Name
 	t.Description = n.Description
+	t.doc.Owner = n.doc.Owner
+	t.doc.Created = n.doc.Created
 	t.doc.Modified = n.doc.Modified
 	t.doc.Imported = n.doc.Imported
 	t.doc.Models = n.doc.Models

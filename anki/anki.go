@@ -265,7 +265,7 @@ func convertTemplate(ankiTmpl string) (string, error) {
 }
 
 type Deck struct {
-	Id               int64      `json:"-"`
+	ID               int64      `json:"-"`
 	Name             string     `json:"name"`
 	Mid              string     `json:"mid"`
 	ModelId          int64      `json:"-"`
@@ -284,8 +284,8 @@ type Deck struct {
 	Modified         *time.Time `json:"-"`
 }
 
-func (d Deck) AnkiId() string {
-	return "deck-anki-" + b64(int64ToBytes(d.Id))
+func (d Deck) AnkiID() []byte {
+	return int64ToBytes(d.ID)
 }
 
 func (c *Collection) parseDecks(jsonString string) error {
@@ -297,7 +297,7 @@ func (c *Collection) parseDecks(jsonString string) error {
 		if id, err := strconv.ParseInt(i, 10, 64); err != nil {
 			return err
 		} else {
-			d.Id = id
+			d.ID = id
 		}
 		if d.Mid != "" {
 			if mid, err := strconv.ParseInt(d.Mid, 10, 64); err != nil {

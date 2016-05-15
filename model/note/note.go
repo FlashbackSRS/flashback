@@ -89,28 +89,27 @@ func ImportAnkiNote(t *theme.Theme, note *anki.Note) (*Note, error) {
 	n.doc.Modified = note.Modified
 	n.doc.Imported = &now
 	if err := n.Save(); err != nil {
-		if pouchdb.IsConflict(err) {
-			existing, err2 := FetchNote(n.Theme, n.ID())
-			if err2 != nil {
-				return nil, fmt.Errorf("Fetching note: %s\n", err2)
-			}
-			if err := existing.MergeImport(n); err != nil {
-				if model.NoChange(err) {
-					return existing, nil
-				}
-				return nil, err
-			}
-			fmt.Printf("Doc: %v", existing)
-			b, e := json.Marshal(existing)
-			fmt.Printf("JSON err: %s\n", e)
-			fmt.Printf("JSON: %s\n", b)
-			if err := existing.Save(); err != nil {
-				return nil, err
-			} else {
+		if !pouchdb.IsConflict(err) {
+			return nil, err
+		}
+		existing, err2 := FetchNote(n.Theme, n.ID())
+		if err2 != nil {
+			return nil, fmt.Errorf("Fetching note: %s\n", err2)
+		}
+		if err := existing.MergeImport(n); err != nil {
+			if model.NoChange(err) {
 				return existing, nil
 			}
-		} else {
 			return nil, err
+		}
+		fmt.Printf("Doc: %v", existing)
+		b, e := json.Marshal(existing)
+		fmt.Printf("JSON err: %s\n", e)
+		fmt.Printf("JSON: %s\n", b)
+		if err := existing.Save(); err != nil {
+			return nil, err
+		} else {
+			return existing, nil
 		}
 	}
 	return n, nil
@@ -162,12 +161,13 @@ func (n *Note) MergeImport(newNote *Note) error {
 		return errors.New("Conflict. Cannot MergeImport to a non-imported note")
 	}
 	if n.Modified().After(*newNote.Imported()) {
-		return errors.New("The note has been modified since last import. Merge not possible.")
+		return errors.New("The note has been modified since import. Merge not possible.")
 	}
 	if n.Modified().Equal(*newNote.Modified()) {
 		return model.NewModelErrorNoChange()
 	}
 	n.Comment = newNote.Comment
+	n.doc.Created = newNote.doc.Created
 	n.doc.Modified = newNote.doc.Modified
 	n.doc.Imported = newNote.doc.Imported
 	n.doc.ModelID = newNote.doc.ModelID

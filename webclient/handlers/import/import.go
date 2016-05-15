@@ -14,6 +14,7 @@ import (
 
 	"github.com/flimzy/flashback/anki"
 	"github.com/flimzy/flashback/data"
+	"github.com/flimzy/flashback/model/deck"
 	"github.com/flimzy/flashback/model/note"
 	"github.com/flimzy/flashback/model/theme"
 	"github.com/flimzy/flashback/util"
@@ -166,8 +167,19 @@ func storeModels(c *anki.Collection) (thememap, error) {
 	return themeMap, nil
 }
 
-func storeDecks(c *anki.Collection) (idmap, error) {
-	return nil, nil
+type deckmap map[int64]*deck.Deck
+
+func storeDecks(c *anki.Collection) (deckmap, error) {
+	deckMap := make(deckmap)
+	for _, d := range c.Decks {
+		if deck, err := deck.ImportAnkiDeck(d); err != nil {
+			return deckMap, err
+		} else {
+			deckMap[d.ID] = deck
+		}
+	}
+	fmt.Printf("Decks imported successfully\n")
+	return deckMap, nil
 	// 	deckMap := make(idmap)
 	// 	db := util.UserDb()
 	// 	for _, d := range c.Decks {
@@ -354,7 +366,7 @@ var contentTypeMap = map[string]string{
 
 type cardmap map[int64]string
 
-func storeCards(c *anki.Collection, deckMap idmap, noteMap notemap) (cardmap, error) {
+func storeCards(c *anki.Collection, deckMap deckmap, noteMap notemap) (cardmap, error) {
 	return nil, nil
 	// 	cardmap := make(map[int64]string)
 	// 	related := make(map[string]*[]string)
