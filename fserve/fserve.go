@@ -1,7 +1,7 @@
 package fserve
 
 import (
-	"bytes"
+	// 	"bytes"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
@@ -10,10 +10,9 @@ import (
 	"github.com/flimzy/go-pouchdb"
 	"github.com/gopherjs/gopherjs/js"
 	"github.com/gopherjs/jsbuiltin"
-	// 	"honnef.co/go/js/console"
 
-	"github.com/flimzy/flashback/data"
-	"github.com/flimzy/flashback/util"
+	"github.com/flimzy/flashback-model"
+	"github.com/flimzy/flashback/repository"
 )
 
 func Init(wg *sync.WaitGroup) {
@@ -77,26 +76,31 @@ func encodeFile(contentType string, data []byte) *string {
 }
 
 func fetchAttachment(id, filename string) (*string, error) {
-	db, err := util.UserDb()
+	u, err := repo.CurrentUser()
+	if err != nil {
+		return nil, err
+	}
+	db, err := u.DB()
 	if err != nil {
 		return nil, err
 	}
 
-	var note data.Note
+	var note fb.Note
 	if err := db.Get(id, &note, pouchdb.Options{}); err != nil {
 		return nil, fmt.Errorf("Error fetching note: %s\n", err)
 	}
-	for attName, attInfo := range note.Attachments {
-		if attName == filename {
-			att, err := db.Attachment(note.Id, filename, note.Rev)
-			if err != nil {
-				return nil, fmt.Errorf("Error fetching attachment '%s' from note: %s\n", attName, err)
-			}
-			buf := new(bytes.Buffer)
-			buf.ReadFrom(att.Body)
-			return encodeFile(attInfo.Type, buf.Bytes()), nil
-		}
-	}
+	// 	att, ok := note.Attachments.GetFile(filename)
+	// 	for attName, attInfo := range note.Attachments {
+	// 		if attName == filename {
+	// 			att, err := db.Attachment(note.Id, filename, note.Rev)
+	// 			if err != nil {
+	// 				return nil, fmt.Errorf("Error fetching attachment '%s' from note: %s\n", attName, err)
+	// 			}
+	// 			buf := new(bytes.Buffer)
+	// 			buf.ReadFrom(att.Body)
+	// 			return encodeFile(attInfo.Type, buf.Bytes()), nil
+	// 		}
+	// 	}
 	return nil, nil
 }
 

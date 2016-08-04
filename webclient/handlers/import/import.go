@@ -1,25 +1,22 @@
 package import_handler
 
 import (
-	"archive/zip"
+	"compress/gzip"
+// 	"archive/zip"
 	"bytes"
 	"encoding/json"
-	"errors"
+// 	"errors"
 	"fmt"
-	"html/template"
+// 	"html/template"
 	"net/url"
-	"reflect"
-	"regexp"
-	"time"
+// 	"regexp"
+// 	"time"
 
-	"github.com/flimzy/flashback/anki"
-	"github.com/flimzy/flashback/data"
-	"github.com/flimzy/flashback/model/deck"
-	"github.com/flimzy/flashback/model/note"
-	"github.com/flimzy/flashback/model/theme"
-	"github.com/flimzy/flashback/util"
-	"github.com/flimzy/go-pouchdb"
-	"github.com/flimzy/web/file"
+// 	"github.com/flimzy/flashback/util"
+// 	"github.com/flimzy/go-pouchdb"
+	"github.com/flimzy/flashback/repository"
+	"github.com/flimzy/flashback-model"
+	"github.com/flimzy/goweb/file"
 	"github.com/gopherjs/gopherjs/js"
 	"github.com/gopherjs/jquery"
 )
@@ -31,7 +28,12 @@ func BeforeTransition(event *jquery.Event, ui *js.Object, p url.Values) bool {
 		container := jQuery(":mobile-pagecontainer")
 		jQuery("#importnow", container).On("click", func() {
 			fmt.Printf("Attempting to import something...\n")
-			go DoImport()
+			go func() {
+				if err := DoImport(); err != nil {
+					fmt.Printf("Error importing: %s\n", err)
+				}
+				fmt.Printf("DoImport() returned\n")
+			}()
 		})
 		jQuery(".show-until-load", container).Hide()
 		jQuery(".hide-until-load", container).Show()
@@ -40,19 +42,90 @@ func BeforeTransition(event *jquery.Event, ui *js.Object, p url.Values) bool {
 	return true
 }
 
-func DoImport() {
-	files := jQuery("#apkg", ":mobile-pagecontainer").Get(0).Get("files")
-	for i := 0; i < files.Length(); i++ {
-		if err := importFile(file.Internalize(files.Index(i))); err != nil {
-			fmt.Printf("Error importing file: %s\n", err)
-			return
+func DoImport() error {
+	files := file.InternalizeFileList( jQuery("#apkg", ":mobile-pagecontainer").Get(0).Get("files") )
+	for i := 0; i < files.Length; i++ {
+		if err := importFile(files.Item(i)); err != nil {
+			return err
 		}
 	}
-	fmt.Printf("Done with import\n")
+// 	for i := 0; i < files.Length(); i++ {
+// 		if err := importFile(file.Internalize(files.Index(i))); err != nil {
+// 			fmt.Printf("Error importing file: %s\n", err)
+// 			return
+// 		}
+// 	}
+// 	fmt.Printf("Done with import\n")
+	return nil
 }
 
-func importFile(f file.File) error {
-	fmt.Printf("Gonna pretend to import %s now\n", f.Name())
+func importFile(f *file.File) error {
+	u, err := repo.CurrentUser()
+	if err != nil {
+		return err
+	}
+	fmt.Printf("Gonna pretend to import %s now\n", f.Name)
+	b, err := f.Bytes()
+	if err != nil {
+		return err
+	}
+	z, err := gzip.NewReader(bytes.NewReader(b))
+	if err != nil {
+		return err
+	}
+	buf := new(bytes.Buffer)
+	buf.ReadFrom(z)
+	z.Close()
+	pkg := &fb.Package{}
+	if err := json.Unmarshal( buf.Bytes(), pkg); err != nil {
+		return err
+	}
+
+	bundle := pkg.Bundle
+	udb, err := u.DB()
+	if err != nil {
+		return err
+	}
+fmt.Printf("Saving bundle to user database\n")
+	if err := udb.Save(bundle); err != nil {
+		return err
+	}
+	bundle.Rev = nil
+	bdb, err := repo.BundleDB(bundle)
+	if err != nil {
+		return err
+	}
+fmt.Printf("Saving bundle to bundle database\n")
+	if err := bdb.Save(bundle); err != nil {
+		return err
+	}
+
+	// From this point on, we plow through the errors
+	errs := make([]error,0)
+
+	for _, t := range pkg.Themes {
+		fmt.Printf("Saving theme: %v\n", t)
+		if err := bdb.Save(t); err != nil {
+			errs = append(errs, err)
+		}
+	}
+	for _, n := range pkg.Notes {
+		fmt.Printf("Saving note: %v\n", n)
+		if err := bdb.Save(n); err != nil {
+			errs = append(errs, err)
+		}
+	}
+
+
+	// Did we have errors?
+	if len(errs) > 0 {
+		for i, e := range errs {
+			fmt.Printf("Error %d: %s\n", i, e)
+		}
+		return fmt.Errorf("%d errors encountered", len(errs))
+	}
+
+/*
 	z, err := zip.NewReader(bytes.NewReader(f.Bytes()), f.Size())
 	if err != nil {
 		return fmt.Errorf("Cannot read zip file: %s", err)
@@ -89,9 +162,11 @@ func importFile(f file.File) error {
 		return fmt.Errorf("Cannot store reviews: %s", err)
 	}
 	fmt.Printf("Import complete\n")
+*/
 	return nil
 }
 
+/*
 func extractMediaMap(z map[string]*zip.File) (map[string]*zip.File, error) {
 	file, ok := z["media"]
 	if !ok {
@@ -125,9 +200,7 @@ func extractCollection(z map[string]*zip.File) (*anki.Collection, error) {
 		return nil, err
 	}
 	defer rc.Close()
-	buf := new(bytes.Buffer)
-	buf.ReadFrom(rc)
-	return readSQLite(buf.Bytes())
+	return readSQLite(rc)
 }
 
 var masterTmpl = template.Must(template.New("template.html").Delims("[[", "]]").Parse(`
@@ -521,4 +594,4 @@ func storeReviews(c *anki.Collection, cardMap cardmap) error {
 		}
 	}
 	return nil
-}
+}*/

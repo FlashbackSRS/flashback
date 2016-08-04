@@ -10,7 +10,8 @@ import (
 	"honnef.co/go/js/console"
 
 	"github.com/flimzy/flashback"
-	"github.com/flimzy/flashback/model/user"
+	"github.com/flimzy/flashback/repository"
+	// 	"github.com/flimzy/flashback-model"
 	"github.com/flimzy/go-cordova"
 )
 
@@ -45,11 +46,12 @@ func CordovaLogin() bool {
 	console.Log("CordovaLogin()")
 	js.Global.Get("facebookConnectPlugin").Call("login", []string{}, func() {
 		console.Log("Success logging in")
-		u, err := user.CurrentUser()
+		u, err := repo.CurrentUser()
 		if err != nil {
 			fmt.Printf("No user logged in?? %s\n", err)
 		} else {
-			u.InitDB()
+			// To make sure the DB is initialized as soon as possible
+			u.DB()
 		}
 	}, func() {
 		console.Log("Failure logging in")

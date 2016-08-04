@@ -2,16 +2,15 @@ package util
 
 import (
 	"encoding/base64"
-	"errors"
-	"fmt"
+	// 	"errors"
+	// 	"fmt"
 	"net/url"
 	"strings"
 
-	"github.com/flimzy/go-pouchdb"
+	// 	"github.com/flimzy/go-pouchdb"
 	"github.com/gopherjs/gopherjs/js"
-
-	"github.com/flimzy/flashback/data"
-	"github.com/flimzy/flashback/model"
+	// 	"github.com/flimzy/flashback-model"
+	// 	"github.com/flimzy/flashback/repository"
 )
 
 // JqmTargetUri determines the target URI based on a jQuery Mobile event 'ui' object
@@ -54,15 +53,11 @@ func ExtractUserID(cookieValue string) string {
 	return values[0]
 }
 
-func CouchHost() string {
-	return findLink("flashbackdb")
-}
-
 func FlashbackHost() string {
-	return findLink("flashback")
+	return FindLink("flashback")
 }
 
-func findLink(rel string) string {
+func FindLink(rel string) string {
 	links := js.Global.Get("document").Call("getElementsByTagName", "head").Index(0).Call("getElementsByTagName", "link")
 	for i := 0; i < links.Length(); i++ {
 		link := links.Index(i)
@@ -73,6 +68,7 @@ func findLink(rel string) string {
 	return ""
 }
 
+/*
 func UserDb() (*pouchdb.PouchDB, error) {
 	userName := CurrentUser()
 	if userName == "" {
@@ -80,6 +76,7 @@ func UserDb() (*pouchdb.PouchDB, error) {
 	}
 	return pouchdb.New("user-" + userName), nil
 }
+*/
 
 type reviewDoc struct {
 	Id        string `json:"_id"`
@@ -87,7 +84,8 @@ type reviewDoc struct {
 	CurrentDb string `json:"CurrentDb"`
 }
 
-func LogReview(r *data.Review) error {
+/*
+func LogReview(r *fb.Review) error {
 	db, err := ReviewsDb()
 	if err != nil {
 		return err
@@ -130,7 +128,7 @@ func setReviewsDbList(list DbList) error {
 	return err
 }
 
-func ReviewsSyncDbs() (*model.DB, error) {
+func ReviewsSyncDbs() (*repo.DB, error) {
 	userName := CurrentUser()
 	if userName == "" {
 		return nil, errors.New("Not logged in")
@@ -144,7 +142,7 @@ func ReviewsSyncDbs() (*model.DB, error) {
 		return nil, nil
 	}
 	dbName := list.Dbs[0]
-	db := model.NewDB(dbName)
+	db := repo.NewDB(dbName)
 	if len(list.Dbs) > 1 {
 		fmt.Printf("WARNING: More than one active reviews database!\n")
 		return db, nil
@@ -160,7 +158,7 @@ func ReviewsSyncDbs() (*model.DB, error) {
 	return db, nil
 }
 
-func ZapReviewsDb(db *model.DB) error {
+func ZapReviewsDb(db *repo.DB) error {
 	info, err := db.Info()
 	if err != nil {
 		return err
@@ -194,7 +192,7 @@ func ReviewsDb() (*pouchdb.PouchDB, error) {
 	dbName := list.Dbs[len(list.Dbs)-1]
 	return pouchdb.New(dbName), nil
 }
-
+*/
 var initMap = make(map[string]<-chan struct{})
 
 func BaseURI() string {
