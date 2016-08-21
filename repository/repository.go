@@ -158,6 +158,9 @@ func (db *DB) Save(doc FlashbackDoc) error {
 				if err := doc.Update(existing); err != nil {
 					return err
 				}
+				if rev, err = db.Put(doc); err != nil {
+					return err
+				}
 			}
 		}
 	} else {
