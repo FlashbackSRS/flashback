@@ -138,7 +138,7 @@ type FlashbackDoc interface {
 	SetRev(string)
 	ImportedTime() *time.Time
 	ModifiedTime() *time.Time
-	Update(interface{}) error
+	MergeImport(interface{}) (bool, error)
 	UnmarshalJSON([]byte) error
 }
 
@@ -149,17 +149,23 @@ func (db *DB) Save(doc FlashbackDoc) error {
 			if err := db.Get(doc.DocID(), &existing, pouchdb.Options{}); err != nil {
 				return err
 			}
-			if existing.ImportedTime() == nil {
+			if doc.ImportedTime() == nil {
+				// Don't attempt to merge a non-import
+				return err
+			}
+			if imported := existing.ImportedTime(); imported == nil {
 				return err
 			} else {
-				if imported := doc.ImportedTime(); imported == nil || existing.ModifiedTime().After(*imported) {
+				if existing.ModifiedTime().After(*imported) {
+					// The existing document was mosified after import, so we won't allow further importing
 					return err
 				}
-				if err := doc.Update(existing); err != nil {
+				if changed, err := doc.MergeImport(existing); err != nil {
 					return err
-				}
-				if rev, err = db.Put(doc); err != nil {
-					return err
+				} else if changed {
+					if rev, err = db.Put(doc); err != nil {
+						return err
+					}
 				}
 			}
 		}

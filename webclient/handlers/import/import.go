@@ -90,32 +90,33 @@ func importFile(f *file.File) error {
 
 	// Themes
 	for _, t := range pkg.Themes {
-		fmt.Printf("Saving theme: %v\n", t)
 		if err := bdb.Save(t); err != nil {
+			fmt.Printf("Error saving theme: %s\n", err)
 			errs = append(errs, err)
 		}
 	}
 	// Notes
 	for _, n := range pkg.Notes {
-		fmt.Printf("Saving note: %v\n", n)
 		if err := bdb.Save(n); err != nil {
+			fmt.Printf("Error saving note: %s\n", err)
 			errs = append(errs, err)
 		}
 	}
 	// Decks
 	for _, d := range pkg.Decks {
-		fmt.Printf("Saving deck: %v\n", d)
 		if err := bdb.Save(d); err != nil {
+			fmt.Printf("Error saving deck: %s\n", err)
 			errs = append(errs, err)
 		}
 	}
 	// Cards
-	for _, c := range pkg.Cards {
-		fmt.Printf("Saving card: %v\n", c)
-		if err := udb.Save(c); err != nil {
-			errs = append(errs, err)
-		}
-	}
+	// 	for _, c := range pkg.Cards {
+	// 		fmt.Printf("Saving card: %v\n", c)
+	// 		if err := udb.Save(c); err != nil {
+	// 			fmt.Printf("Error saving card: %s\n", err)
+	// 			errs = append(errs, err)
+	// 		}
+	// 	}
 
 	// Did we have errors?
 	if len(errs) > 0 {
