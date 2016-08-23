@@ -2,15 +2,15 @@ package util
 
 import (
 	"encoding/base64"
-	"fmt"
+	// 	"errors"
+	// 	"fmt"
 	"net/url"
 	"strings"
 
-	"github.com/flimzy/go-pouchdb"
-	"github.com/flimzy/go-pouchdb/plugins/find"
+	// 	"github.com/flimzy/go-pouchdb"
 	"github.com/gopherjs/gopherjs/js"
-
-	"github.com/flimzy/flashback/data"
+	// 	"github.com/flimzy/flashback-model"
+	// 	"github.com/flimzy/flashback/repository"
 )
 
 // JqmTargetUri determines the target URI based on a jQuery Mobile event 'ui' object
@@ -53,15 +53,11 @@ func ExtractUserID(cookieValue string) string {
 	return values[0]
 }
 
-func CouchHost() string {
-	return findLink("flashbackdb")
-}
-
 func FlashbackHost() string {
-	return findLink("flashback")
+	return FindLink("flashback")
 }
 
-func findLink(rel string) string {
+func FindLink(rel string) string {
 	links := js.Global.Get("document").Call("getElementsByTagName", "head").Index(0).Call("getElementsByTagName", "link")
 	for i := 0; i < links.Length(); i++ {
 		link := links.Index(i)
@@ -72,10 +68,15 @@ func findLink(rel string) string {
 	return ""
 }
 
-func UserDb() *pouchdb.PouchDB {
-	dbName := "user-" + CurrentUser()
-	return pouchdb.New(dbName)
+/*
+func UserDb() (*pouchdb.PouchDB, error) {
+	userName := CurrentUser()
+	if userName == "" {
+		return nil, errors.New("Not logged in")
+	}
+	return pouchdb.New("user-" + userName), nil
 }
+*/
 
 type reviewDoc struct {
 	Id        string `json:"_id"`
@@ -83,7 +84,8 @@ type reviewDoc struct {
 	CurrentDb string `json:"CurrentDb"`
 }
 
-func LogReview(r *data.Review) error {
+/*
+func LogReview(r *fb.Review) error {
 	db, err := ReviewsDb()
 	if err != nil {
 		return err
@@ -103,9 +105,11 @@ type DbList struct {
 
 func getReviewsDbList() (DbList, error) {
 	var list DbList
-	db := UserDb()
-	err := db.Get("_local/ReviewsDbs", &list, pouchdb.Options{})
-	if err != nil && pouchdb.IsNotExist(err) {
+	db, err := UserDb()
+	if err != nil {
+		return list, err
+	}
+	if err := db.Get("_local/ReviewsDbs", &list, pouchdb.Options{}); err != nil && pouchdb.IsNotExist(err) {
 		return DbList{Id: "_local/ReviewsDbs"}, nil
 	}
 	return list, err
@@ -116,12 +120,19 @@ func setReviewsDbList(list DbList) error {
 		return fmt.Errorf("Invalid id '%s' for ReviewsDbs", list.Id)
 	}
 	fmt.Printf("Setting list to: %v\n", list.Dbs)
-	db := UserDb()
-	_, err := db.Put(list)
+	db, err := UserDb()
+	if err != nil {
+		return err
+	}
+	_, err = db.Put(list)
 	return err
 }
 
-func ReviewsSyncDbs() (*pouchdb.PouchDB, error) {
+func ReviewsSyncDbs() (*repo.DB, error) {
+	userName := CurrentUser()
+	if userName == "" {
+		return nil, errors.New("Not logged in")
+	}
 	list, err := getReviewsDbList()
 	if err != nil {
 		return nil, err
@@ -131,7 +142,7 @@ func ReviewsSyncDbs() (*pouchdb.PouchDB, error) {
 		return nil, nil
 	}
 	dbName := list.Dbs[0]
-	db := pouchdb.New(dbName)
+	db := repo.NewDB(dbName)
 	if len(list.Dbs) > 1 {
 		fmt.Printf("WARNING: More than one active reviews database!\n")
 		return db, nil
@@ -140,14 +151,14 @@ func ReviewsSyncDbs() (*pouchdb.PouchDB, error) {
 	if strings.HasPrefix(dbName, "reviews-1-") {
 		newDbPrefix = "reviews-0-"
 	}
-	list.Dbs = append(list.Dbs, newDbPrefix+CurrentUser())
+	list.Dbs = append(list.Dbs, newDbPrefix+userName)
 	if err := setReviewsDbList(list); err != nil {
 		return nil, err
 	}
 	return db, nil
 }
 
-func ZapReviewsDb(db *pouchdb.PouchDB) error {
+func ZapReviewsDb(db *repo.DB) error {
 	info, err := db.Info()
 	if err != nil {
 		return err
@@ -181,36 +192,8 @@ func ReviewsDb() (*pouchdb.PouchDB, error) {
 	dbName := list.Dbs[len(list.Dbs)-1]
 	return pouchdb.New(dbName), nil
 }
-
+*/
 var initMap = make(map[string]<-chan struct{})
-
-// InitUserDb will do any db initialization necessary after account
-// creation/login such as setting up indexes. The return value is a channel,
-// which will be closed when initialization is complete
-func InitUserDb() <-chan struct{} {
-	user := CurrentUser()
-	if done, ok := initMap[user]; ok {
-		// Initialization has already been started, so return the existing
-		// channel (which may already be closed)
-		return done
-	}
-	done := make(chan struct{})
-	initMap[user] = done
-	go func() {
-		db := UserDb()
-		dbFind := find.New(db)
-		fmt.Printf("Creating index...\n")
-		err := dbFind.CreateIndex(find.Index{
-			Name:   "type",
-			Fields: []string{"$type"},
-		})
-		if err != nil && !find.IsIndexExists(err) {
-			fmt.Printf("Error creating index: %s\n", err)
-		}
-		close(done)
-	}()
-	return done
-}
 
 func BaseURI() string {
 	rawUri := js.Global.Get("jQuery").Get("mobile").Get("path").Call("getDocumentBase").String()
