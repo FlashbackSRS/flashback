@@ -1,15 +1,15 @@
 package state
 
 import (
-	"time"
 	"github.com/flimzy/go-pouchdb"
 	"honnef.co/go/js/console"
+	"time"
 )
 
 type State struct {
 	currentUser string
 	lastRead    time.Time
-	lastError	error
+	lastError   error
 }
 
 var state *State
