@@ -16,6 +16,7 @@ type FlashbackClient struct {
 }
 
 var defaultFbClient *FlashbackClient
+
 func NewWithURI(uri string) *FlashbackClient {
 	return &FlashbackClient{
 		map[string]string{
