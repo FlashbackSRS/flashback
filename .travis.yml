@@ -10,4 +10,4 @@ before_install:
 
 script:
     - diff -u <(echo -n) <(gofmt -d ./)
-    - gopherjs test github.com/flimzy/flashback/util
+    - gopherjs test github.com/flimzy/flashback/util github.com/flimzy/flashback/repository/test
