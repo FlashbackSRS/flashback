@@ -1,4 +1,6 @@
-package study_handler
+// +build js
+
+package studyhandler
 
 import (
 	// 	"bytes"
@@ -13,16 +15,16 @@ import (
 	// 	"github.com/flimzy/go-pouchdb"
 	"github.com/gopherjs/gopherjs/js"
 	"github.com/gopherjs/jquery"
-	"github.com/gopherjs/jsbuiltin"
+	// 	"github.com/gopherjs/jsbuiltin"
 	// 	"golang.org/x/net/html"
 
-	"github.com/flimzy/flashback-model"
 	// 	"github.com/flimzy/flashback/util"
 	"github.com/flimzy/flashback/repository"
 )
 
 var jQuery = jquery.NewJQuery
 
+// BeforeTransition prepares the page to study
 func BeforeTransition(event *jquery.Event, ui *js.Object, p url.Values) bool {
 	u, err := repo.CurrentUser()
 	if err != nil {
@@ -35,23 +37,29 @@ func BeforeTransition(event *jquery.Event, ui *js.Object, p url.Values) bool {
 		// Ensure the indexes are created before trying to use them
 		u.DB()
 
-		card, err := getCard()
+		card, err := repo.GetCard()
 		if err != nil {
-			fmt.Printf("Error fetching card: %s\n", err)
+			fmt.Printf("Error fetching card: %+v\n", err)
 			return
 		}
-		body, iframeId, err := getCardBodies(card)
+		fmt.Printf("card = %s\n", card)
+		body, iframeID, err := card.Body()
 		if err != nil {
-			fmt.Printf("Error reading card: %s\n", err)
+			fmt.Printf("Error parsing body: %+v\n", err)
 		}
+		fmt.Printf("body = %s\niframe = %s\n", body, iframeID)
+		// 		body, iframeId, err := getCardBodies(card)
+		// 		if err != nil {
+		// 			fmt.Printf("Error reading card: %s\n", err)
+		// 		}
 
-		iframe := js.Global.Get("document").Call("createElement", "iframe")
-		iframe.Call("setAttribute", "sandbox", "allow-scripts")
-		iframe.Call("setAttribute", "seamless", nil)
-		iframe.Set("id", iframeId)
-		iframe.Set("src", "data:text/html;charset=utf-8,"+jsbuiltin.EncodeURI(body))
+		// 		iframe := js.Global.Get("document").Call("createElement", "iframe")
+		// 		iframe.Call("setAttribute", "sandbox", "allow-scripts")
+		// 		iframe.Call("setAttribute", "seamless", nil)
+		// 		iframe.Set("id", iframeId)
+		// 		iframe.Set("src", "data:text/html;charset=utf-8,"+jsbuiltin.EncodeURI(body))
 
-		js.Global.Get("document").Call("getElementById", "cardframe").Call("appendChild", iframe)
+		// 		js.Global.Get("document").Call("getElementById", "cardframe").Call("appendChild", iframe)
 
 		jQuery(".show-until-load", container).Hide()
 		jQuery(".hide-until-load", container).Show()
@@ -60,68 +68,21 @@ func BeforeTransition(event *jquery.Event, ui *js.Object, p url.Values) bool {
 	return true
 }
 
-func getCard() (*fb.Card, error) {
-	// 	u, err := repo.CurrentUser()
-	// 	if err != nil {
-	// 		return nil, err
-	// 	}
-	// 	db, err := repo.UserDB(u)
-	// 	if err != nil {
-	// 		return nil, err
-	// 	}
-	// 	doc := make(map[string][]fb.Card)
-	// 	query := map[string]interface{}{
-	// 		"selector": map[string]string{"type": "card"},
-	// 		"limit":    1,
-	// 	}
-	// 	if err := db.Find(query, &doc); err != nil {
-	// 		return nil, err
-	// 	}
-	// 	card := doc["docs"][0]
-	// 	return &card, nil
-	return nil, nil
-}
-
 /*
-func getModel(id string) (*fb.Model, error) {
-	db, err := util.UserDb()
+func renderBody(c *repo.Card) (body, iframe string, e error) {
+	t, err := c.Theme()
 	if err != nil {
-		return nil, err
+		return "", "", errors.Wrap(err, "Error fetching theme")
 	}
-	var model fb.Model
-	err = db.Get(id, &model, pouchdb.Options{})
-	return &model, err
-}
+	modelID := c.ModelID()
 
-func getNote(id string) (*fb.Note, error) {
-	db, err := util.UserDb()
-	if err != nil {
-		return nil, err
-	}
-	var note fb.Note
-	err = db.Get(id, &note, pouchdb.Options{})
-	return &note, err
 }
-*/
 
 func getCardBodies(card *fb.Card) (string, string, error) {
 	return "", "", nil
 }
-
+*/
 /*
-	note, err := getNote("") // FIXME: this isn't right; and this logic should move to repository.go
-	if err != nil {
-		return "", "", err
-	}
-	model, err := getModel("") // FIXME: this isn't right, and this logic should move to repository.go
-	if err != nil {
-		return "", "", err
-	}
-
-	db, err := util.UserDb()
-	if err != nil {
-		return "", "", err
-	}
 
 	templates := make(map[string]string)
 	for filename, a := range model.Attachments {

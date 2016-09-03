@@ -3,6 +3,7 @@
 package main
 
 import (
+	"fmt"
 	"strconv"
 	"sync"
 
@@ -10,7 +11,6 @@ import (
 	"github.com/flimzy/jqeventrouter"
 	"github.com/gopherjs/gopherjs/js"
 	"github.com/gopherjs/jquery"
-	"honnef.co/go/js/console"
 
 	"github.com/flimzy/flashback/fserve"
 	"github.com/flimzy/flashback/util"
@@ -31,8 +31,6 @@ var jQMobile *js.Object
 var document *js.Object = js.Global.Get("document")
 
 func main() {
-	console.Log("in main()")
-
 	RouterInit()
 
 	var wg sync.WaitGroup
@@ -43,7 +41,6 @@ func main() {
 
 	// Wait for the above modules to initialize before we initialize jQuery Mobile
 	wg.Wait()
-	console.Log("Done with main()")
 	// This is what actually loads jQuery Mobile. We have to register our 'mobileinit'
 	// event handler above first, though.
 	js.Global.Call("loadjqueryMobile")
@@ -67,7 +64,6 @@ func initCordova(wg *sync.WaitGroup) {
 	wg.Add(1)
 	document.Call("addEventListener", "deviceready", func() {
 		defer wg.Done()
-		console.Log("Cordova device ready")
 	}, false)
 }
 
@@ -89,7 +85,6 @@ func resizeContent() {
 func RouterInit() {
 	// mobileinit
 	jQuery(document).On("mobileinit", func() {
-		console.Log("mobileinit")
 		MobileInit()
 		l10n_handler.MobileInit()
 	})
@@ -101,15 +96,15 @@ func RouterInit() {
 	// beforetransition
 	beforeTransition := jqeventrouter.NewEventMux()
 	beforeTransition.SetUriFunc(getJqmUri)
-	beforeTransition.HandleFunc("/login.html", login_handler.BeforeTransition)
-	beforeTransition.HandleFunc("/logout.html", logout_handler.BeforeTransition)
-	beforeTransition.HandleFunc("/import.html", import_handler.BeforeTransition)
-	beforeTransition.HandleFunc("/study.html", study_handler.BeforeTransition)
+	beforeTransition.HandleFunc("/login.html", loginhandler.BeforeTransition)
+	beforeTransition.HandleFunc("/logout.html", logouthandler.BeforeTransition)
+	beforeTransition.HandleFunc("/import.html", importhandler.BeforeTransition)
+	beforeTransition.HandleFunc("/study.html", studyhandler.BeforeTransition)
 	jqeventrouter.Listen("pagecontainerbeforetransition", beforeTransition)
 
 	// beforeshow
 	beforeShow := jqeventrouter.NullHandler()
-	jqeventrouter.Listen("pagecontainerbeforeshow", l10n_handler.LocalizePage(sync_handler.SetupSyncButton(beforeShow)))
+	jqeventrouter.Listen("pagecontainerbeforeshow", l10n_handler.LocalizePage(synchandler.SetupSyncButton(beforeShow)))
 }
 
 func getJqmUri(_ *jquery.Event, ui *js.Object) string {
@@ -128,14 +123,12 @@ func MobileInit() {
 	// 	DebugEvents()
 
 	jQuery(document).One("pagecreate", func(event *jquery.Event) {
-		console.Log("Enhancing the panel")
 		// This should only be executed once, to initialize our "external"
 		// panel. This is the kind of thing that should go in document.ready,
 		// but I don't have any guarantee that document.ready will run after
 		// mobileinit
 		jQuery("body>[data-role='panel']").Underlying().Call("panel").Call("enhanceWithin")
 	})
-	console.Log("Done with MobileInit()")
 }
 
 func ConsoleEvent(name string, event *jquery.Event, data *js.Object) {
@@ -143,11 +136,11 @@ func ConsoleEvent(name string, event *jquery.Event, data *js.Object) {
 	if page == "[object Object]" {
 		page = data.Get("toPage").Call("jqmData", "url").String()
 	}
-	console.Log("Event: %s, Current page: %s", name, page)
+	fmt.Printf("Event: %s, Current page: %s", name, page)
 }
 
 func ConsolePageEvent(name string, event *jquery.Event) {
-	console.Log("Event: %s", name)
+	fmt.Printf("Event: %s", name)
 }
 
 func DebugEvents() {

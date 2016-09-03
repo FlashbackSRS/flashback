@@ -1,4 +1,6 @@
-package import_handler
+// +build js
+
+package importhandler
 
 import (
 	"bytes"
@@ -16,6 +18,7 @@ import (
 
 var jQuery = jquery.NewJQuery
 
+// BeforeTransition prepares import page
 func BeforeTransition(event *jquery.Event, ui *js.Object, p url.Values) bool {
 	go func() {
 		container := jQuery(":mobile-pagecontainer")
@@ -35,6 +38,7 @@ func BeforeTransition(event *jquery.Event, ui *js.Object, p url.Values) bool {
 	return true
 }
 
+// DoImport does an import of a *.fbb package
 func DoImport() error {
 	files := file.InternalizeFileList(jQuery("#apkg", ":mobile-pagecontainer").Get(0).Get("files"))
 	for i := 0; i < files.Length; i++ {
@@ -73,8 +77,8 @@ func importFile(f *file.File) error {
 	if err != nil {
 		return err
 	}
-	if err := udb.Save(bundle); err != nil {
-		return err
+	if e := udb.Save(bundle); e != nil {
+		return e
 	}
 	bundle.Rev = nil
 	bdb, err := repo.BundleDB(bundle)
@@ -86,7 +90,7 @@ func importFile(f *file.File) error {
 	}
 
 	// From this point on, we plow through the errors
-	errs := make([]error, 0)
+	var errs []error
 
 	// Themes
 	for _, t := range pkg.Themes {
@@ -107,6 +111,16 @@ func importFile(f *file.File) error {
 		if err := bdb.Save(d); err != nil {
 			fmt.Printf("Error saving deck: %s\n", err)
 			errs = append(errs, err)
+		}
+		for _, id := range d.Cards.All() {
+			fmt.Printf("Found card %s\n", id)
+			c, err := fb.NewCard(id)
+			if err != nil {
+				fmt.Printf("Error creaitng card: %s\n", err)
+			}
+			if err := udb.Save(c); err != nil {
+				fmt.Printf("Error saving card: %s\n", err)
+			}
 		}
 	}
 	// Cards

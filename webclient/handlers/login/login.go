@@ -1,4 +1,6 @@
-package login_handler
+// +build js
+
+package loginhandler
 
 import (
 	"fmt"
