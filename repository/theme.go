@@ -64,7 +64,7 @@ var templateTypes = map[string]struct{}{
 }
 
 func extractTemplateFiles(v *fb.FileCollectionView) (map[string]string, error) {
-	var templates map[string]string
+	templates := make(map[string]string)
 	for _, filename := range v.FileList() {
 		fmt.Printf("Filename: %s\n", filename)
 		att, ok := v.GetFile(filename)
