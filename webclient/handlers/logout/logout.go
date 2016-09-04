@@ -1,4 +1,4 @@
-package logout_handler
+package logouthandler
 
 import (
 	"fmt"
@@ -12,6 +12,7 @@ import (
 
 var jQuery = jquery.NewJQuery
 
+// BeforeTransition prepares the logout page before display.
 func BeforeTransition(event *jquery.Event, ui *js.Object, p url.Values) bool {
 	fmt.Printf("logout BEFORE\n")
 

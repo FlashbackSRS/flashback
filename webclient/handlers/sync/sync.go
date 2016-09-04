@@ -1,4 +1,6 @@
-package sync_handler
+// +build js
+
+package synchandler
 
 import (
 	"errors"
@@ -120,6 +122,7 @@ func DoSync() error {
 	return nil
 }
 
+// Sync synchronizes local changes with the server
 func Sync(source, target *repo.DB) (int32, error) {
 	result, err := pouchdb.Replicate(source.PouchDB, target.PouchDB, pouchdb.Options{})
 	if err != nil {
@@ -128,6 +131,7 @@ func Sync(source, target *repo.DB) (int32, error) {
 	return int32(result["docs_written"].(float64)), nil
 }
 
+// BundleSync syncs auxilary bundles to the remote server.
 func BundleSync(udb *repo.DB) (int32, int32, error) {
 	fmt.Printf("Reading bundles from user database...\n")
 	doc := make(map[string][]map[string]string)

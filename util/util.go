@@ -9,6 +9,7 @@ import (
 
 	// 	"github.com/flimzy/go-pouchdb"
 	"github.com/gopherjs/gopherjs/js"
+	"github.com/gopherjs/jsbuiltin"
 	// 	"github.com/flimzy/flashback-model"
 	// 	"github.com/flimzy/flashback/repository"
 )
@@ -57,8 +58,14 @@ func FlashbackHost() string {
 	return FindLink("flashback")
 }
 
+// FindLink returns a header link element matching the requested rel tag, if present.
 func FindLink(rel string) string {
-	links := js.Global.Get("document").Call("getElementsByTagName", "head").Index(0).Call("getElementsByTagName", "link")
+	doc := js.Global.Get("document")
+	if jsbuiltin.TypeOf(doc) == "undefined" {
+		// Likely running from node.js, as during testing
+		return ""
+	}
+	links := doc.Call("getElementsByTagName", "head").Index(0).Call("getElementsByTagName", "link")
 	for i := 0; i < links.Length(); i++ {
 		link := links.Index(i)
 		if link.Get("rel").String() == rel {
