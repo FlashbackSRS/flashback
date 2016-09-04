@@ -12,36 +12,42 @@ var expected = map[string][]byte{
 				"content_type": "text/html",
 				"digest": "md5-YlV7U3+5mn8PgtTlYJtBag==",
 				"length": 39,
+				"revpos": 1,
 				"stub": true
 			},
 			"!Basic-24b78.Card 1 question.html": {
 				"content_type": "text/html",
 				"digest": "md5-zewTs33apIsRnUmKVamjTQ==",
 				"length": 9,
+				"revpos": 1,
 				"stub": true
 			},
 			"!Basic-24b78.Card 2 answer.html": {
 				"content_type": "text/html",
 				"digest": "md5-0/zfWJKFdloaJlrI3iEtug==",
 				"length": 30,
+				"revpos": 1,
 				"stub": true
 			},
 			"!Basic-24b78.Card 2 question.html": {
 				"content_type": "text/html",
 				"digest": "md5-mgRWpLnP9x+DzS/9yN+roQ==",
 				"length": 8,
+				"revpos": 1,
 				"stub": true
 			},
 			"$main.css": {
 				"content_type": "text/css",
 				"digest": "md5-DUokkbXkY57LnAfJ6uvUTA==",
 				"length": 111,
+				"revpos": 1,
 				"stub": true
 			},
 			"$template.0.html": {
 				"content_type": "text/html",
 				"digest": "md5-gyH1Ahu+xfkDHf8Y5lydSA==",
 				"length": 348,
+				"revpos": 1,
 				"stub": true
 			}
 		},

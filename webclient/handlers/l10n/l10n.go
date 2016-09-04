@@ -11,12 +11,12 @@ import (
 	"github.com/nicksnyder/go-i18n/i18n/bundle"
 	"golang.org/x/text/language"
 
+	"github.com/flimzy/go-cordova"
 	"github.com/flimzy/jqeventrouter"
 	"github.com/gopherjs/gopherjs/js"
 	"github.com/gopherjs/jquery"
 
-	"github.com/flimzy/flashback/util"
-	"github.com/flimzy/go-cordova"
+	"github.com/FlashbackSRS/flashback/util"
 )
 
 var localeName string

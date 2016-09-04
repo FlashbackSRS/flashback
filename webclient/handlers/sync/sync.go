@@ -13,7 +13,7 @@ import (
 	"github.com/gopherjs/gopherjs/js"
 	"github.com/gopherjs/jquery"
 
-	"github.com/flimzy/flashback/repository"
+	"github.com/FlashbackSRS/flashback/repository"
 )
 
 var jQuery = jquery.NewJQuery

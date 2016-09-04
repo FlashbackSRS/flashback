@@ -6,7 +6,7 @@ import (
 
 	"github.com/pkg/errors"
 
-	"github.com/flimzy/flashback-model"
+	"github.com/FlashbackSRS/flashback-model"
 )
 
 // Theme is a wrapper around a fb.Theme object

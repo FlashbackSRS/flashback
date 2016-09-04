@@ -17,9 +17,9 @@ before_install:
     - ( cd $GOPATH/src/github.com/gopherjs/gopherjs/node-syscall && node-gyp rebuild && mkdir -p ~/.node_libraries/ && cp build/Release/syscall.node ~/.node_libraries/syscall.node )
 
 install:
-    - npm install
+    - go get -u github.com/pmezard/go-difflib/difflib
     - go get -u -d -tags=js ./...
 
 script:
     - diff -u <(echo -n) <(gofmt -d ./)
-    - gopherjs test github.com/FlashbackSRS/flashback/util github.com/FlashbackSRS/flashback/repository/test
+    - make test

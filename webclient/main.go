@@ -12,17 +12,17 @@ import (
 	"github.com/gopherjs/gopherjs/js"
 	"github.com/gopherjs/jquery"
 
-	"github.com/flimzy/flashback/fserve"
-	"github.com/flimzy/flashback/util"
+	"github.com/FlashbackSRS/flashback/fserve"
+	"github.com/FlashbackSRS/flashback/util"
 
-	"github.com/flimzy/flashback/webclient/handlers/auth"
-	"github.com/flimzy/flashback/webclient/handlers/general"
-	"github.com/flimzy/flashback/webclient/handlers/import"
-	"github.com/flimzy/flashback/webclient/handlers/l10n"
-	"github.com/flimzy/flashback/webclient/handlers/login"
-	"github.com/flimzy/flashback/webclient/handlers/logout"
-	"github.com/flimzy/flashback/webclient/handlers/study"
-	"github.com/flimzy/flashback/webclient/handlers/sync"
+	"github.com/FlashbackSRS/flashback/webclient/handlers/auth"
+	"github.com/FlashbackSRS/flashback/webclient/handlers/general"
+	"github.com/FlashbackSRS/flashback/webclient/handlers/import"
+	"github.com/FlashbackSRS/flashback/webclient/handlers/l10n"
+	"github.com/FlashbackSRS/flashback/webclient/handlers/login"
+	"github.com/FlashbackSRS/flashback/webclient/handlers/logout"
+	"github.com/FlashbackSRS/flashback/webclient/handlers/study"
+	"github.com/FlashbackSRS/flashback/webclient/handlers/sync"
 )
 
 // Some spiffy shortcuts

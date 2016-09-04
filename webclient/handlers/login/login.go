@@ -6,15 +6,14 @@ import (
 	"fmt"
 	"net/url"
 
+	"github.com/flimzy/go-cordova"
 	"github.com/gopherjs/gopherjs/js"
 	"github.com/gopherjs/jquery"
 	"github.com/gopherjs/jsbuiltin"
 	"honnef.co/go/js/console"
 
-	"github.com/flimzy/flashback"
-	"github.com/flimzy/flashback/repository"
-	// 	"github.com/flimzy/flashback-model"
-	"github.com/flimzy/go-cordova"
+	"github.com/FlashbackSRS/flashback"
+	"github.com/FlashbackSRS/flashback/repository"
 )
 
 var jQuery = jquery.NewJQuery

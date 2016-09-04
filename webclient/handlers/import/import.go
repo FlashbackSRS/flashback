@@ -9,11 +9,12 @@ import (
 	"fmt"
 	"net/url"
 
-	"github.com/flimzy/flashback-model"
-	"github.com/flimzy/flashback/repository"
 	"github.com/flimzy/goweb/file"
 	"github.com/gopherjs/gopherjs/js"
 	"github.com/gopherjs/jquery"
+
+	"github.com/FlashbackSRS/flashback-model"
+	"github.com/FlashbackSRS/flashback/repository"
 )
 
 var jQuery = jquery.NewJQuery

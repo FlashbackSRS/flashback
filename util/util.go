@@ -10,8 +10,8 @@ import (
 	// 	"github.com/flimzy/go-pouchdb"
 	"github.com/gopherjs/gopherjs/js"
 	"github.com/gopherjs/jsbuiltin"
-	// 	"github.com/flimzy/flashback-model"
-	// 	"github.com/flimzy/flashback/repository"
+	// 	"github.com/FlashbackSRS/flashback-model"
+	// 	"github.com/FlashbackSRS/flashback/repository"
 )
 
 // JqmTargetUri determines the target URI based on a jQuery Mobile event 'ui' object
