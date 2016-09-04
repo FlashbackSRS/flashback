@@ -33,10 +33,7 @@ android: cordova-init cordova-www
 	cordova run android
 
 go-test:
-	go test
-	gopherjs test
-	gopherjs test github.com/flimzy/flashback/webclient/pages/all/
-# 	go test
+	gopherjs test github.com/FlashbackSRS/flashback/util github.com/FlashbackSRS/flashback/repository/test
 
 test: go-test
 

@@ -22,4 +22,4 @@ install:
 
 script:
     - diff -u <(echo -n) <(gofmt -d ./)
-    - gopherjs test github.com/FlashbackSRS/flashback/util github.com/FlashbackSRS/flashback/repository/test
+    - make test

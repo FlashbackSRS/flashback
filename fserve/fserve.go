@@ -11,8 +11,8 @@ import (
 	"github.com/gopherjs/gopherjs/js"
 	"github.com/gopherjs/jsbuiltin"
 
-	"github.com/flimzy/flashback-model"
-	"github.com/flimzy/flashback/repository"
+	"github.com/FlashbackSRS/flashback-model"
+	"github.com/FlashbackSRS/flashback/repository"
 )
 
 func Init(wg *sync.WaitGroup) {
