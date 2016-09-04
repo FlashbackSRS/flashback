@@ -5,7 +5,7 @@ import (
 	"net/url"
 	"strings"
 
-	"github.com/flimzy/flashback/util"
+	"github.com/FlashbackSRS/flashback/util"
 	"github.com/flimzy/jqeventrouter"
 	"github.com/gopherjs/gopherjs/js"
 	"github.com/gopherjs/jquery"

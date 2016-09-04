@@ -13,8 +13,8 @@ import (
 	"github.com/flimzy/go-pouchdb"
 	"github.com/pkg/errors"
 
-	"github.com/flimzy/flashback-model"
-	"github.com/flimzy/flashback/util"
+	"github.com/FlashbackSRS/flashback-model"
+	"github.com/FlashbackSRS/flashback/util"
 )
 
 // Card provides a convenient interface to fb.Card and dependencies

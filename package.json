@@ -6,10 +6,10 @@
     "main": "./webclient/main.js",
     "repository": {
         "type": "git",
-        "url": "https://github.com/flimzy/flashback"
+        "url": "https://github.com/FlashbackSRS/flashback"
     },
     "dependencies": {
-        "pouchdb": ">=5.2.0",
+        "pouchdb": ">=5.3.2",
         "pouchdb-find": "*",
         "browserify-shim": "*"
     },

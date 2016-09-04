@@ -18,6 +18,7 @@ before_install:
 
 install:
     - npm install
+    - go get -u github.com/pmezard/go-difflib/difflib github.com/stretchr/testify/require
     - go get -u -d -tags=js ./...
 
 script:

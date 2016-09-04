@@ -5,15 +5,15 @@ import (
 	"io/ioutil"
 	"testing"
 
-	repo "github.com/flimzy/flashback/repository"
 	"github.com/flimzy/go-pouchdb"
 	"github.com/flimzy/go-pouchdb/plugins/find"
 	"github.com/gopherjs/gopherjs/js"
 	// "github.com/stretchr/testify/assert"
-	. "github.com/flimzy/flashback-model/test/util"
+	. "github.com/FlashbackSRS/flashback-model/test/util"
 	"github.com/stretchr/testify/require"
 
-	"github.com/flimzy/flashback-model"
+	"github.com/FlashbackSRS/flashback-model"
+	"github.com/FlashbackSRS/flashback/repository"
 )
 
 var memdown *js.Object

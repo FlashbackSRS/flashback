@@ -1,7 +1,7 @@
 package repo
 
 import (
-	"github.com/flimzy/flashback-model"
+	"github.com/FlashbackSRS/flashback-model"
 )
 
 // Deck wraps an fb.Deck object

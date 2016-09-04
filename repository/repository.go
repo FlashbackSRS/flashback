@@ -15,8 +15,8 @@ import (
 	"github.com/flimzy/go-pouchdb/plugins/find"
 	"github.com/gopherjs/gopherjs/js"
 
-	"github.com/flimzy/flashback-model"
-	"github.com/flimzy/flashback/util"
+	"github.com/FlashbackSRS/flashback-model"
+	"github.com/FlashbackSRS/flashback/util"
 )
 
 var couchHost string

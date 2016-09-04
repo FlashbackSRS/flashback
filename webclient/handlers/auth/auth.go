@@ -3,11 +3,11 @@ package auth
 import (
 	"net/url"
 
+	"github.com/flimzy/jqeventrouter"
 	"github.com/gopherjs/gopherjs/js"
 	"github.com/gopherjs/jquery"
 
-	"github.com/flimzy/flashback/util"
-	"github.com/flimzy/jqeventrouter"
+	"github.com/FlashbackSRS/flashback/util"
 )
 
 func CheckAuth(h jqeventrouter.Handler) jqeventrouter.Handler {

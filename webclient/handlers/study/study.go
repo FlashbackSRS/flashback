@@ -18,8 +18,8 @@ import (
 	// 	"github.com/gopherjs/jsbuiltin"
 	// 	"golang.org/x/net/html"
 
-	// 	"github.com/flimzy/flashback/util"
-	"github.com/flimzy/flashback/repository"
+	// 	"github.com/FlashbackSRS/flashback/util"
+	"github.com/FlashbackSRS/flashback/repository"
 )
 
 var jQuery = jquery.NewJQuery
