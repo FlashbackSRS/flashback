@@ -17,8 +17,7 @@ before_install:
     - ( cd $GOPATH/src/github.com/gopherjs/gopherjs/node-syscall && node-gyp rebuild && mkdir -p ~/.node_libraries/ && cp build/Release/syscall.node ~/.node_libraries/syscall.node )
 
 install:
-    - npm install
-    - go get -u github.com/pmezard/go-difflib/difflib github.com/stretchr/testify/require
+    - go get -u github.com/pmezard/go-difflib/difflib
     - go get -u -d -tags=js ./...
 
 script:

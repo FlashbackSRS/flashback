@@ -5,12 +5,10 @@ import (
 	"io/ioutil"
 	"testing"
 
+	. "github.com/FlashbackSRS/flashback-model/test/util"
 	"github.com/flimzy/go-pouchdb"
 	"github.com/flimzy/go-pouchdb/plugins/find"
 	"github.com/gopherjs/gopherjs/js"
-	// "github.com/stretchr/testify/assert"
-	. "github.com/FlashbackSRS/flashback-model/test/util"
-	"github.com/stretchr/testify/require"
 
 	"github.com/FlashbackSRS/flashback-model"
 	"github.com/FlashbackSRS/flashback/repository"
@@ -34,20 +32,23 @@ func DB() *repo.DB {
 }
 
 func TestRepo(t *testing.T) {
-	// assert := assert.New(t)
-	require := require.New(t)
-
 	fbb, err := ioutil.ReadFile("Art.fbb")
-	require.Nil(err, "Error reading Art.fbb: %s", err)
+	if err != nil {
+		t.Fatalf("Error reading Art.fbb: %s", err)
+	}
 
 	pkg := &fb.Package{}
 	err = json.Unmarshal(fbb, pkg)
-	require.Nil(err, "Error unmarshaling Art.fbb: %s", err)
+	if err != nil {
+		t.Fatalf("Error unmarshaling Art.fbb: %s", err)
+	}
 
 	db := DB()
 	th := pkg.Themes[0]
 	err = db.Save(th)
-	require.Nil(err, "Error saving theme: %s", err)
+	if err != nil {
+		t.Fatalf("Error saving theme: %s", err)
+	}
 
 	var i interface{}
 	if err := db.Get(th.DocID(), &i, pouchdb.Options{}); err != nil {
