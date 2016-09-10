@@ -18,6 +18,7 @@ before_install:
 
 install:
     - go get -u github.com/pmezard/go-difflib/difflib
+    - go get -u github.com/flimzy/testify
     - go get -u -d -tags=js ./...
 
 script:

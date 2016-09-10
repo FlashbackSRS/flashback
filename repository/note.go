@@ -3,6 +3,8 @@ package repo
 import (
 	"fmt"
 
+	"github.com/flimzy/log"
+
 	"github.com/FlashbackSRS/flashback-model"
 	pouchdb "github.com/flimzy/go-pouchdb"
 	"github.com/pkg/errors"
@@ -38,10 +40,12 @@ func (n *Note) fetchTheme() error {
 		// Nothing to do
 		return nil
 	}
+	ThemeID := "theme-" + n.ThemeID
+	log.Debugf("Fetching theme %s", ThemeID)
 	t := &fb.Theme{}
-	if err := n.db.Get("theme-"+n.ThemeID, t, pouchdb.Options{Attachments: true}); err != nil {
+	if err := n.db.Get(ThemeID, t, pouchdb.Options{Attachments: true}); err != nil {
 		fmt.Printf("Error: %s\n", err)
-		return errors.Wrapf(err, "fetchTheme() can't fetch theme-%s", n.ThemeID)
+		return errors.Wrapf(err, "fetchTheme() can't fetch theme-%s", ThemeID)
 	}
 	n.theme = &Theme{t}
 	n.model = &Model{t.Models[n.ModelID]}

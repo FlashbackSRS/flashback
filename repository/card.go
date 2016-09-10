@@ -8,6 +8,8 @@ import (
 	"math/rand"
 	"time"
 
+	"github.com/flimzy/log"
+
 	"golang.org/x/net/html"
 
 	"github.com/flimzy/go-pouchdb"
@@ -37,6 +39,7 @@ func (c *Card) fetchNote() error {
 		// Nothing to do
 		return nil
 	}
+	log.Debugf("Fetching note %s", c.NoteID())
 	db, err := NewDB(c.BundleID())
 	if err != nil {
 		return errors.Wrap(err, "fetchNote() can't connect to bundle DB")
@@ -47,7 +50,7 @@ func (c *Card) fetchNote() error {
 	}
 	c.note = &Note{
 		Note: n,
-		db:   c.db,
+		db:   db,
 	}
 	return nil
 }
