@@ -33,7 +33,7 @@ android: cordova-init cordova-www
 	cordova run android
 
 go-test: npm-install
-	gopherjs test github.com/FlashbackSRS/flashback/util github.com/FlashbackSRS/flashback/repository/test
+	gopherjs test --tags=disableunsafe github.com/FlashbackSRS/flashback/util github.com/FlashbackSRS/flashback/repository/test
 
 test: go-test
 
