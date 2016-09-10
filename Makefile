@@ -33,7 +33,7 @@ android: cordova-init cordova-www
 	cordova run android
 
 go-test: npm-install
-	gopherjs test github.com/FlashbackSRS/flashback/util github.com/FlashbackSRS/flashback/repository/test
+	gopherjs test --tags=disableunsafe github.com/FlashbackSRS/flashback/util github.com/FlashbackSRS/flashback/repository/test
 
 test: go-test
 
@@ -67,7 +67,7 @@ www/js/cardframe.js: webclient/js/cardframe.js
 
 .PHONY: main.js
 main.js:
-	gopherjs build ./webclient/*.go
+	gopherjs build --tags=debug ./webclient/*.go
 # 	uglifyjs main.js -c -m -o $@
 
 css: webclient/vendor/jquery.mobile-1.4.5/jquery.mobile.inline-svg-1.4.5.min.css webclient/vendor/jquery.mobile-1.4.5/images/ajax-loader.gif $(CSS_FILES)

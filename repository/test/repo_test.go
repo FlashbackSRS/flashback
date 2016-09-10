@@ -32,9 +32,9 @@ func DB() *repo.DB {
 }
 
 func TestRepo(t *testing.T) {
-	fbb, err := ioutil.ReadFile("Art.fbb")
+	fbb, err := ioutil.ReadFile(fbbFile)
 	if err != nil {
-		t.Fatalf("Error reading Art.fbb: %s", err)
+		t.Fatalf("Error reading %s: %s", fbbFile, err)
 	}
 
 	pkg := &fb.Package{}

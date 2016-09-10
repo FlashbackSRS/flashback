@@ -3,12 +3,12 @@ package repo
 import (
 	"encoding/base64"
 	"errors"
-	"fmt"
 	"net/url"
 	"reflect"
 	"strings"
 	"time"
 
+	"github.com/flimzy/log"
 	"github.com/pborman/uuid"
 
 	"github.com/flimzy/go-pouchdb"
@@ -18,6 +18,10 @@ import (
 	"github.com/FlashbackSRS/flashback-model"
 	"github.com/FlashbackSRS/flashback/util"
 )
+
+// PouchDBOptions is passed to pouchdb.New(), and exists for the sake of automated
+// tests. It should generally be ignored otherwise.
+var PouchDBOptions pouchdb.Options
 
 var couchHost string
 
@@ -65,7 +69,7 @@ func NewRemoteDB(name string) (*DB, error) {
 }
 
 func newDB(name string) *DB {
-	pdb := pouchdb.New(name)
+	pdb := pouchdb.NewWithOpts(name, PouchDBOptions)
 	return &DB{
 		PouchDB:         pdb,
 		PouchPluginFind: find.New(pdb),
@@ -79,7 +83,7 @@ func NewDB(name string) (*DB, error) {
 	db := newDB(name)
 	parts := strings.SplitN(name, "-", 2)
 	if initFunc, ok := initFuncs[parts[0]]; ok {
-		fmt.Printf("Initializing DB %s\n", name)
+		log.Debug("Initializing DB %s\n", name)
 		return db, initFunc(db)
 	}
 	return db, nil

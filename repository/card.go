@@ -8,6 +8,8 @@ import (
 	"math/rand"
 	"time"
 
+	"github.com/flimzy/log"
+
 	"golang.org/x/net/html"
 
 	"github.com/flimzy/go-pouchdb"
@@ -20,9 +22,8 @@ import (
 // Card provides a convenient interface to fb.Card and dependencies
 type Card struct {
 	*fb.Card
-	theme *Theme
-	model *Model
-	note  *Note
+	db   *DB
+	note *Note
 }
 
 // Note returns the card's associated Note
@@ -33,28 +34,12 @@ func (c *Card) Note() (*Note, error) {
 	return c.note, nil
 }
 
-// Theme returns the card's associated Theme
-func (c *Card) Theme() (*Theme, error) {
-	if err := c.fetchTheme(); err != nil {
-		return nil, errors.Wrap(err, "Error fetching theme for Theme()")
-	}
-	return c.theme, nil
-
-}
-
-// Model returns the card's associated Model
-func (c *Card) Model() (*Model, error) {
-	if err := c.fetchTheme(); err != nil {
-		return nil, errors.Wrap(err, "Error fetching theme for Model()")
-	}
-	return c.model, nil
-}
-
 func (c *Card) fetchNote() error {
 	if c.note != nil {
 		// Nothing to do
 		return nil
 	}
+	log.Debugf("Fetching note %s", c.NoteID())
 	db, err := NewDB(c.BundleID())
 	if err != nil {
 		return errors.Wrap(err, "fetchNote() can't connect to bundle DB")
@@ -63,32 +48,10 @@ func (c *Card) fetchNote() error {
 	if err := db.Get(c.NoteID(), n, pouchdb.Options{Attachments: true}); err != nil {
 		return errors.Wrapf(err, "fetchNote() can't fetch %s", c.NoteID())
 	}
-	c.note = &Note{n}
-	return nil
-}
-
-func (c *Card) fetchTheme() error {
-	if c.theme != nil {
-		// Nothing to do
-		return nil
+	c.note = &Note{
+		Note: n,
+		db:   db,
 	}
-	db, err := NewDB(c.BundleID())
-	if err != nil {
-		return errors.Wrap(err, "fetchTheme() can't connect to bundle DB")
-	}
-	note, err := c.Note()
-	if err != nil {
-		return errors.Wrap(err, "fetchTheme() can't get Note")
-	}
-	t := &fb.Theme{}
-	if err := db.Get(note.ThemeID(), t, pouchdb.Options{Attachments: true}); err != nil {
-		return errors.Wrapf(err, "fetchTheme() can't fetch %s", note.ThemeID())
-	}
-	c.theme = &Theme{t}
-	c.model = &Model{t.Models[c.ModelID()]}
-	c.model.Theme = t
-	fmt.Printf("Fetched this model: %v\n", c.model)
-	fmt.Printf("Fetched this theme: %v\n", c.theme)
 	return nil
 }
 
@@ -120,16 +83,19 @@ func (c *Card) fetchArbitraryCard() error {
 	if err != nil {
 		return err
 	}
-	db, err := u.DB()
-	if err != nil {
-		return err
+	if c.db == nil {
+		db, err := u.DB()
+		if err != nil {
+			return err
+		}
+		c.db = db
 	}
 	doc := make(map[string][]*fb.Card)
 	query := map[string]interface{}{
 		"selector": map[string]string{"type": "card"},
 		"limit":    1,
 	}
-	if err := db.Find(query, &doc); err != nil {
+	if err := c.db.Find(query, &doc); err != nil {
 		return err
 	}
 	if len(doc["docs"]) == 0 {
@@ -151,17 +117,17 @@ type cardContext struct {
 
 // Body returns the card's body and iframe ID
 func (c *Card) Body() (string, string, error) {
-	model, err := c.Model()
+	note, err := c.Note()
+	if err != nil {
+		return "", "", errors.Wrap(err, "Unable to retrieve Note")
+	}
+	model, err := note.Model()
 	if err != nil {
 		return "", "", errors.Wrap(err, "Unable to retrieve Model")
 	}
 	tmpl, err := model.GenerateTemplate()
 	if err != nil {
 		return "", "", errors.Wrap(err, "Error generating template")
-	}
-	note, err := c.Note()
-	if err != nil {
-		return "", "", errors.Wrap(err, "Unable to retrieve Note")
 	}
 	ctx := cardContext{
 		IframeID: RandString(8),

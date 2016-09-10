@@ -6,33 +6,33 @@ import (
 )
 
 var expected = map[string][]byte{
-	"theme-9iShi8BXtZVYnCX1PSOfCV6dhk8": []byte(`{
+	"theme-uQ3TFsQgm9Y29vlgC-lphauhK3M": []byte(`{
 		"_attachments": {
 			"!Basic-24b78.Card 1 answer.html": {
 				"content_type": "text/html",
-				"digest": "md5-YlV7U3+5mn8PgtTlYJtBag==",
-				"length": 39,
+				"digest": "md5-FNeLYevm/jH+BOA9IVnZPQ==",
+				"length": 75,
 				"revpos": 1,
 				"stub": true
 			},
 			"!Basic-24b78.Card 1 question.html": {
 				"content_type": "text/html",
-				"digest": "md5-zewTs33apIsRnUmKVamjTQ==",
-				"length": 9,
+				"digest": "md5-fOa6+X5wsJ+1Vt5Q0v5VxA==",
+				"length": 10,
 				"revpos": 1,
 				"stub": true
 			},
 			"!Basic-24b78.Card 2 answer.html": {
 				"content_type": "text/html",
-				"digest": "md5-0/zfWJKFdloaJlrI3iEtug==",
-				"length": 30,
+				"digest": "md5-6IlntfutXQz3EVecHFYlnw==",
+				"length": 31,
 				"revpos": 1,
 				"stub": true
 			},
 			"!Basic-24b78.Card 2 question.html": {
 				"content_type": "text/html",
-				"digest": "md5-mgRWpLnP9x+DzS/9yN+roQ==",
-				"length": 8,
+				"digest": "md5-E51mS9DsSfBGiL3sXUUUVA==",
+				"length": 9,
 				"revpos": 1,
 				"stub": true
 			},
@@ -51,13 +51,13 @@ var expected = map[string][]byte{
 				"stub": true
 			}
 		},
-		"_id": "theme-9iShi8BXtZVYnCX1PSOfCV6dhk8",
+		"_id": "theme-uQ3TFsQgm9Y29vlgC-lphauhK3M",
 		"_rev": "1-33dac82cfe23d7773ea07c71f21cce38",
 		"created": "2015-09-06T17:04:36.000000823Z",
 		"files": [
 			"$main.css"
 		],
-		"imported": "2016-09-03T19:13:06.33457855+02:00",
+		"imported": "2016-09-06T20:22:40.438227326+02:00",
 		"modelSequence": 1,
 		"models": [
 			{
