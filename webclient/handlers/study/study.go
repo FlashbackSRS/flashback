@@ -3,22 +3,13 @@
 package studyhandler
 
 import (
-	// 	"bytes"
-	// 	"errors"
-	"fmt"
-	// 	"html/template"
+	"encoding/base64"
 	"net/url"
-	// 	"strings"
 
-	// 	"github.com/pborman/uuid"
-
-	// 	"github.com/flimzy/go-pouchdb"
+	"github.com/flimzy/log"
 	"github.com/gopherjs/gopherjs/js"
 	"github.com/gopherjs/jquery"
-	// 	"github.com/gopherjs/jsbuiltin"
-	// 	"golang.org/x/net/html"
 
-	// 	"github.com/FlashbackSRS/flashback/util"
 	"github.com/FlashbackSRS/flashback/repository"
 )
 
@@ -28,38 +19,35 @@ var jQuery = jquery.NewJQuery
 func BeforeTransition(event *jquery.Event, ui *js.Object, p url.Values) bool {
 	u, err := repo.CurrentUser()
 	if err != nil {
-		fmt.Printf("No user logged in: %s\n", err)
+		log.Printf("No user logged in: %s\n", err)
 		return false
 	}
-	fmt.Printf("card = %s\n", p.Get("card"))
+	log.Debugf("card = %s\n", p.Get("card"))
 	go func() {
 		container := jQuery(":mobile-pagecontainer")
 		// Ensure the indexes are created before trying to use them
 		u.DB()
 
-		card, err := repo.GetCard()
+		card, err := repo.GetRandomCard()
 		if err != nil {
-			fmt.Printf("Error fetching card: %+v\n", err)
+			log.Printf("Error fetching card: %+v\n", err)
 			return
 		}
-		fmt.Printf("card = %s\n", card)
+		log.Debugf("card = %s\n", card)
 		body, iframeID, err := card.Body()
 		if err != nil {
-			fmt.Printf("Error parsing body: %+v\n", err)
+			log.Printf("Error parsing body: %+v\n", err)
+			return
 		}
-		fmt.Printf("body = %s\niframe = %s\n", body, iframeID)
-		// 		body, iframeId, err := getCardBodies(card)
-		// 		if err != nil {
-		// 			fmt.Printf("Error reading card: %s\n", err)
-		// 		}
+		log.Debugf("body = %s\niframe = %s\n", body, iframeID)
 
-		// 		iframe := js.Global.Get("document").Call("createElement", "iframe")
-		// 		iframe.Call("setAttribute", "sandbox", "allow-scripts")
-		// 		iframe.Call("setAttribute", "seamless", nil)
-		// 		iframe.Set("id", iframeId)
-		// 		iframe.Set("src", "data:text/html;charset=utf-8,"+jsbuiltin.EncodeURI(body))
+		iframe := js.Global.Get("document").Call("createElement", "iframe")
+		iframe.Call("setAttribute", "sandbox", "allow-scripts")
+		iframe.Call("setAttribute", "seamless", nil)
+		iframe.Set("id", iframeID)
+		iframe.Set("src", "data:text/html;charset=utf-8;base64,"+base64.StdEncoding.EncodeToString([]byte(body)))
 
-		// 		js.Global.Get("document").Call("getElementById", "cardframe").Call("appendChild", iframe)
+		js.Global.Get("document").Call("getElementById", "cardframe").Call("appendChild", iframe)
 
 		jQuery(".show-until-load", container).Hide()
 		jQuery(".hide-until-load", container).Show()

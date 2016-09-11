@@ -8,8 +8,10 @@ import (
 	"sync"
 
 	"github.com/flimzy/go-pouchdb"
+	"github.com/flimzy/log"
 	"github.com/gopherjs/gopherjs/js"
 	"github.com/gopherjs/jsbuiltin"
+	"github.com/pkg/errors"
 
 	"github.com/FlashbackSRS/flashback-model"
 	"github.com/FlashbackSRS/flashback/repository"
@@ -23,17 +25,17 @@ func Init(wg *sync.WaitGroup) {
 			data := e.Get("data").String()
 			var msg Message
 			if err := json.Unmarshal([]byte(data), &msg); err != nil {
-				fmt.Printf("Error decoding message from iframe: %s\n", err)
+				log.Printf("Error decoding message from iframe: %s", err)
 				return
 			}
 			go func() {
 				data, err := fetchFile(&msg)
 				if err != nil {
-					fmt.Printf("Error fetching file: %s\n", err)
+					log.Printf("Error fetching file: %s\n", err)
 					return
 				}
 				if err := sendResponse(&msg, data); err != nil {
-					fmt.Printf("Error sending response to iframe: %s\n", err)
+					log.Printf("Error sending response to iframe: %s\n", err)
 					return
 				}
 			}()
@@ -45,7 +47,7 @@ func fetchFile(req *Message) (*string, error) {
 	for _, id := range []string{req.NoteId, req.ModelId} {
 		file, err := fetchAttachment(id, req.Path)
 		if file != nil || err != nil {
-			return file, err
+			return file, errors.Wrap(err, "Error fetching attachment")
 		}
 	}
 	switch req.Path {
@@ -54,7 +56,7 @@ func fetchFile(req *Message) (*string, error) {
 	case "style.css":
 		return encodeFile("text/css", []byte("/* CSS placeholder */")), nil
 	}
-	return nil, fmt.Errorf("File not found: %s", req.Path)
+	return nil, errors.Errorf("Attachment not found: %s", req.Path)
 }
 
 func sendResponse(req *Message, data *string) error {

@@ -2,16 +2,11 @@ package util
 
 import (
 	"encoding/base64"
-	// 	"errors"
-	// 	"fmt"
 	"net/url"
 	"strings"
 
-	// 	"github.com/flimzy/go-pouchdb"
 	"github.com/gopherjs/gopherjs/js"
 	"github.com/gopherjs/jsbuiltin"
-	// 	"github.com/FlashbackSRS/flashback-model"
-	// 	"github.com/FlashbackSRS/flashback/repository"
 )
 
 // JqmTargetUri determines the target URI based on a jQuery Mobile event 'ui' object
@@ -200,9 +195,13 @@ func ReviewsDb() (*pouchdb.PouchDB, error) {
 	return pouchdb.New(dbName), nil
 }
 */
-var initMap = make(map[string]<-chan struct{})
 
 func BaseURI() string {
+	doc := js.Global.Get("document")
+	if jsbuiltin.TypeOf(doc) == "undefined" {
+		// Likely running from node.js, as during testing
+		return ""
+	}
 	rawUri := js.Global.Get("jQuery").Get("mobile").Get("path").Call("getDocumentBase").String()
 	uri, _ := url.Parse(rawUri)
 	uri.Fragment = ""

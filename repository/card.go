@@ -8,6 +8,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/PuerkitoBio/goquery"
 	"github.com/flimzy/log"
 	"github.com/pkg/errors"
 	"golang.org/x/net/html"
@@ -54,22 +55,25 @@ func (c *Card) fetchNote() error {
 	return nil
 }
 
-/*
-func (c *Card) modelID() (string, int, error) {
-	parts := strings.Split(c.Identity(), ".")
-	if len(parts) != 3 {
-		return "", 0, errors.New("Invalid card ID: " + c.Identity())
-	}
-	modelID, err := strconv.Atoi(parts[2])
+// GetCard fetches the requested card
+func (u *User) GetCard(id string) (*Card, error) {
+	db, err := u.DB()
 	if err != nil {
-		return "", 0, errors.Wrap(err, "Unable to parse ModelID")
+		return nil, errors.Wrap(err, "Unable to connect to User DB")
 	}
-	return "theme-" + parts[1], modelID, nil
-}
-*/
 
-// GetCard isn't currently used (???) FIXME
-func GetCard() (*Card, error) {
+	card := &fb.Card{}
+	if err := db.Get(id, card, pouchdb.Options{}); err != nil {
+		return nil, errors.Wrap(err, "Unable to fetch requested card")
+	}
+	return &Card{
+		Card: card,
+		db:   db,
+	}, nil
+}
+
+// GetRandomCard returns a random card
+func GetRandomCard() (*Card, error) {
 	c := &Card{}
 	if err := c.fetchArbitraryCard(); err != nil {
 		return nil, err
@@ -80,12 +84,12 @@ func GetCard() (*Card, error) {
 func (c *Card) fetchArbitraryCard() error {
 	u, err := CurrentUser()
 	if err != nil {
-		return err
+		return errors.Wrap(err, "No user logged in")
 	}
 	if c.db == nil {
 		db, err := u.DB()
 		if err != nil {
-			return err
+			return errors.Wrap(err, "Error connecting to User DB")
 		}
 		c.db = db
 	}
@@ -250,4 +254,17 @@ func findContainer(n *html.Node, targetID, targetClass string) *html.Node {
 		}
 	}
 	return findContainer(n.NextSibling, targetID, targetClass)
+}
+
+func (c *Card) inlineSrc(n *html.Node) error {
+	doc := goquery.NewDocumentFromNode(n)
+	doc.Find("img").Each(func(i int, s *goquery.Selection) {
+		src, ok := s.Attr("src")
+		if !ok {
+			log.Debug("Found an image with no source!!??")
+			return
+		}
+		log.Debug("Found image with src of '%s'", src)
+	})
+	return nil
 }
