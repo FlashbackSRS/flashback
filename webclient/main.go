@@ -12,7 +12,7 @@ import (
 	"github.com/gopherjs/gopherjs/js"
 	"github.com/gopherjs/jquery"
 
-	"github.com/FlashbackSRS/flashback/fserve"
+	//	"github.com/FlashbackSRS/flashback/fserve"
 	"github.com/FlashbackSRS/flashback/util"
 
 	"github.com/FlashbackSRS/flashback/webclient/handlers/auth"
@@ -37,7 +37,7 @@ func main() {
 
 	initjQuery(&wg)
 	initCordova(&wg)
-	fserve.Init(&wg)
+	//	fserve.Init(&wg)
 
 	// Wait for the above modules to initialize before we initialize jQuery Mobile
 	wg.Wait()

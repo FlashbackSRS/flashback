@@ -2,18 +2,20 @@ package repo
 
 import (
 	"bytes"
+	"encoding/base64"
 	"encoding/hex"
 	"fmt"
 	"html/template"
 	"math/rand"
+	"strconv"
 	"time"
 
+	"github.com/PuerkitoBio/goquery"
 	"github.com/flimzy/log"
-
+	"github.com/pkg/errors"
 	"golang.org/x/net/html"
 
 	"github.com/flimzy/go-pouchdb"
-	"github.com/pkg/errors"
 
 	"github.com/FlashbackSRS/flashback-model"
 	"github.com/FlashbackSRS/flashback/util"
@@ -55,22 +57,25 @@ func (c *Card) fetchNote() error {
 	return nil
 }
 
-/*
-func (c *Card) modelID() (string, int, error) {
-	parts := strings.Split(c.Identity(), ".")
-	if len(parts) != 3 {
-		return "", 0, errors.New("Invalid card ID: " + c.Identity())
-	}
-	modelID, err := strconv.Atoi(parts[2])
+// GetCard fetches the requested card
+func (u *User) GetCard(id string) (*Card, error) {
+	db, err := u.DB()
 	if err != nil {
-		return "", 0, errors.Wrap(err, "Unable to parse ModelID")
+		return nil, errors.Wrap(err, "Unable to connect to User DB")
 	}
-	return "theme-" + parts[1], modelID, nil
-}
-*/
 
-// GetCard isn't currently used (???) FIXME
-func GetCard() (*Card, error) {
+	card := &fb.Card{}
+	if err := db.Get(id, card, pouchdb.Options{}); err != nil {
+		return nil, errors.Wrap(err, "Unable to fetch requested card")
+	}
+	return &Card{
+		Card: card,
+		db:   db,
+	}, nil
+}
+
+// GetRandomCard returns a random card
+func GetRandomCard() (*Card, error) {
 	c := &Card{}
 	if err := c.fetchArbitraryCard(); err != nil {
 		return nil, err
@@ -81,12 +86,12 @@ func GetCard() (*Card, error) {
 func (c *Card) fetchArbitraryCard() error {
 	u, err := CurrentUser()
 	if err != nil {
-		return err
+		return errors.Wrap(err, "No user logged in")
 	}
 	if c.db == nil {
 		db, err := u.DB()
 		if err != nil {
-			return err
+			return errors.Wrap(err, "Error connecting to User DB")
 		}
 		c.db = db
 	}
@@ -161,30 +166,35 @@ func (c *Card) Body() (string, string, error) {
 	if body == nil {
 		return "", "", errors.New("No <body> in the template output")
 	}
-	fmt.Printf("%s\n", htmlDoc)
-	/*
-		container := findContainer(body.FirstChild, c.ModelID(), "question")
-		if container == nil {
-			return "", "", errors.New("No matching div found in template output")
-		}
-		// Delete unused divs
-		for c := body.FirstChild; c != nil; c = body.FirstChild {
-			body.RemoveChild(c)
-		}
-		inner := container.FirstChild
-		inner.Parent = body
-		body.FirstChild = inner
+	log.Debugf("%s", htmlDoc)
 
-		newBody := new(bytes.Buffer)
-		if err := html.Render(newBody, doc); err != nil {
-			return "", "", errors.Wrap(err, "Error rendering new HTML")
-		}
-		nbString := newBody.String()
-		fmt.Printf("original size = %d\n", len(htmlDoc.String()))
-		fmt.Printf("new body size = %d\n", len(nbString))
-		return nbString, ctx.IframeID, nil
-	*/
-	return "", "", nil
+	container := findContainer(body.FirstChild, strconv.Itoa(int(c.TemplateID())), "question")
+	if container == nil {
+		return "", "", errors.Errorf("No div matching '%d' found in template output", c.TemplateID())
+	}
+	log.Debug("Found container: %s", container)
+
+	// Delete unused divs
+	for c := body.FirstChild; c != nil; c = body.FirstChild {
+		body.RemoveChild(c)
+	}
+	inner := container.FirstChild
+	inner.Parent = body
+	body.FirstChild = inner
+
+	if err := c.inlineSrc(body); err != nil {
+		return "", "", errors.Wrap(err, "Error inlining images")
+	}
+
+	newBody := new(bytes.Buffer)
+	if err := html.Render(newBody, doc); err != nil {
+		return "", "", errors.Wrap(err, "Error rendering new HTML")
+	}
+
+	nbString := newBody.String()
+	log.Debugf("original size = %d\n", len(htmlDoc.String()))
+	log.Debugf("new body size = %d\n", len(nbString))
+	return nbString, ctx.IframeID, nil
 }
 
 const letterBytes = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
@@ -250,4 +260,44 @@ func findContainer(n *html.Node, targetID, targetClass string) *html.Node {
 		}
 	}
 	return findContainer(n.NextSibling, targetID, targetClass)
+}
+
+func (c *Card) inlineSrc(n *html.Node) error {
+	doc := goquery.NewDocumentFromNode(n)
+	doc.Find("img").Each(func(i int, s *goquery.Selection) {
+		src, ok := s.Attr("src")
+		if !ok {
+			log.Print("Found an image with no source!!??")
+			return
+		}
+		log.Debugf("Found image with src of '%s'", src)
+		att, err := c.GetAttachment(src)
+		if err != nil {
+			log.Printf("Error inlining file '%s': %s", src, err)
+			return
+		}
+		s.SetAttr("src", fmt.Sprintf("data:%s;base64,%s", att.ContentType, base64.StdEncoding.EncodeToString(att.Content)))
+		// iframe.Set("src", "data:text/html;charset=utf-8;base64,"+base64.StdEncoding.EncodeToString([]byte(body)))
+	})
+	return nil
+}
+
+// GetAttachment fetches an attachment from the note, failling back to the model
+func (c *Card) GetAttachment(filename string) (*Attachment, error) {
+	n, err := c.Note()
+	if err != nil {
+		return nil, errors.Wrap(err, "Error fetching Note for GetAttachment()")
+	}
+	if file, ok := n.Attachments.GetFile(filename); ok {
+		return &Attachment{file}, nil
+	}
+
+	m, err := n.Model()
+	if err != nil {
+		return nil, errors.Wrap(err, "Error fetching Model for GetAttachments()")
+	}
+	if file, ok := m.Files.GetFile(filename); ok {
+		return &Attachment{file}, nil
+	}
+	return nil, errors.Errorf("File '%s' not found", filename)
 }

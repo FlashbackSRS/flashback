@@ -83,7 +83,7 @@ func NewDB(name string) (*DB, error) {
 	db := newDB(name)
 	parts := strings.SplitN(name, "-", 2)
 	if initFunc, ok := initFuncs[parts[0]]; ok {
-		log.Debug("Initializing DB %s\n", name)
+		log.Debugf("Initializing DB %s", name)
 		return db, initFunc(db)
 	}
 	return db, nil

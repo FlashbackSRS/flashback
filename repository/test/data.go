@@ -3,10 +3,24 @@ package test
 import (
 	"encoding/json"
 	"fmt"
+
+	"github.com/pborman/uuid"
+
+	"github.com/FlashbackSRS/flashback-model"
 )
 
+var testUser *fb.User
+
+func init() {
+	u, err := fb.NewUser(uuid.Parse("9d11d024-a100-4045-a5b7-9f1ccf96cc9f"), "mrsmith")
+	if err != nil {
+		panic(fmt.Sprintf("Error creating user: %s\n", err))
+	}
+	testUser = u
+}
+
 var expected = map[string][]byte{
-	"theme-uQ3TFsQgm9Y29vlgC-lphauhK3M": []byte(`{
+	"theme-94hk99pCpQ5DAMGZvpb5_HR5oqs": []byte(`{
 		"_attachments": {
 			"!Basic-24b78.Card 1 answer.html": {
 				"content_type": "text/html",
@@ -45,19 +59,19 @@ var expected = map[string][]byte{
 			},
 			"$template.0.html": {
 				"content_type": "text/html",
-				"digest": "md5-gyH1Ahu+xfkDHf8Y5lydSA==",
-				"length": 348,
+				"digest": "md5-Lngr2Ob58JXykn+NdjCeOA==",
+				"length": 400,
 				"revpos": 1,
 				"stub": true
 			}
 		},
-		"_id": "theme-uQ3TFsQgm9Y29vlgC-lphauhK3M",
+		"_id": "theme-94hk99pCpQ5DAMGZvpb5_HR5oqs",
 		"_rev": "1-33dac82cfe23d7773ea07c71f21cce38",
 		"created": "2015-09-06T17:04:36.000000823Z",
 		"files": [
 			"$main.css"
 		],
-		"imported": "2016-09-06T20:22:40.438227326+02:00",
+		"imported": "2016-09-11T16:48:32.699714842+02:00",
 		"modelSequence": 1,
 		"models": [
 			{

@@ -5,9 +5,9 @@ import (
 	"io/ioutil"
 	"testing"
 
-	. "github.com/FlashbackSRS/flashback-model/test/util"
 	"github.com/flimzy/go-pouchdb"
 	"github.com/flimzy/go-pouchdb/plugins/find"
+	"github.com/flimzy/testify/require"
 	"github.com/gopherjs/gopherjs/js"
 
 	"github.com/FlashbackSRS/flashback-model"
@@ -32,36 +32,23 @@ func DB() *repo.DB {
 }
 
 func TestRepo(t *testing.T) {
+	require := require.New(t)
 	fbb, err := ioutil.ReadFile(fbbFile)
-	if err != nil {
-		t.Fatalf("Error reading %s: %s", fbbFile, err)
-	}
+	require.Nil(err, "Error reading %s: %s", fbbFile, err)
 
 	pkg := &fb.Package{}
 	err = json.Unmarshal(fbb, pkg)
-	if err != nil {
-		t.Fatalf("Error unmarshaling Art.fbb: %s", err)
-	}
+	require.Nil(err, "Error unmarshaling Art.fbb: %s", err)
 
 	db := DB()
 	th := pkg.Themes[0]
 	err = db.Save(th)
-	if err != nil {
-		t.Fatalf("Error saving theme: %s", err)
-	}
+	require.Nil(err, "Error saving theme: %s", err)
 
 	var i interface{}
-	if err := db.Get(th.DocID(), &i, pouchdb.Options{}); err != nil {
-		t.Fatalf("Error re-fetching Theme: %s", err)
-	}
+	err = db.Get(th.DocID(), &i, pouchdb.Options{})
+	require.Nil(err, "Error re-fetching Theme: %s", err)
+
 	e := Expected(th.DocID(), i.(map[string]interface{})["_rev"].(string))
-
-	DeepEqualJSON(t, "Theme", i, e)
-
-	// if !reflect.DeepEqual(th, fth) {
-	// 	fmt.Printf(" th: %+v\n", th)
-	// 	fmt.Printf("fth: %+v\n", fth)
-	// 	t.Fatalf("Retrieved theme does not match")
-	// }
-	// fmt.Printf("fth: %+v\n", fth)
+	require.DeepEqualJSON(e, i, "Theme")
 }

@@ -13,7 +13,7 @@ window.addEventListener('error', function(e) {
             targets: []
         };
         parent.postMessage(JSON.stringify({
-            IframeId: FB.iframeId,
+            IframeID: FB.iframeID,
             Tag: tag,
             CardId: FB.card._id,
             NoteId: FB.note._id,

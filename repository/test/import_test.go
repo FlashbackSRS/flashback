@@ -2,15 +2,14 @@ package test
 
 import (
 	"os"
+	"sync"
 	"testing"
 
 	"github.com/flimzy/testify/require"
 
 	"github.com/flimzy/go-pouchdb"
 	"github.com/gopherjs/gopherjs/js"
-	"github.com/pborman/uuid"
 
-	"github.com/FlashbackSRS/flashback-model"
 	"github.com/FlashbackSRS/flashback/repository"
 )
 
@@ -23,61 +22,66 @@ func init() {
 
 var expectedUserDBIDs = []string{
 	"_design/idx-691fd0e525e654428e875bcb3aacb6ac",
-	"bundle-2trorbeivl7faygmo6hbpx7azgyzu43g",
-	"card-2trorbeivl7faygmo6hbpx7azgyzu43g.AqMTKqXMHUFjJmB8eJW55Uf9Okk.0",
-	"card-2trorbeivl7faygmo6hbpx7azgyzu43g.AqMTKqXMHUFjJmB8eJW55Uf9Okk.1",
-	"card-2trorbeivl7faygmo6hbpx7azgyzu43g.BD97IR9wXQE0ILn_T2wkgOynng8.0",
-	"card-2trorbeivl7faygmo6hbpx7azgyzu43g.BD97IR9wXQE0ILn_T2wkgOynng8.1",
-	"card-2trorbeivl7faygmo6hbpx7azgyzu43g.PSVLhct0aM92bz4wJVDQf1zF7R0.0",
-	"card-2trorbeivl7faygmo6hbpx7azgyzu43g.PSVLhct0aM92bz4wJVDQf1zF7R0.1",
-	"card-2trorbeivl7faygmo6hbpx7azgyzu43g.YqTDhtD-MFNfFXrORP7R-VBF8LQ.0",
-	"card-2trorbeivl7faygmo6hbpx7azgyzu43g.YqTDhtD-MFNfFXrORP7R-VBF8LQ.1",
-	"card-2trorbeivl7faygmo6hbpx7azgyzu43g.d2y5jA1tO727U-6lFh8_Bh7IEjw.0",
-	"card-2trorbeivl7faygmo6hbpx7azgyzu43g.d2y5jA1tO727U-6lFh8_Bh7IEjw.1",
-	"card-2trorbeivl7faygmo6hbpx7azgyzu43g.yTSB3AjHJ4eYIruVlRYl-9Vawrw.0",
-	"card-2trorbeivl7faygmo6hbpx7azgyzu43g.yTSB3AjHJ4eYIruVlRYl-9Vawrw.1",
+	"bundle-iw5x7ie66fsepm67hey2fqjms6fywi6v",
+	"card-iw5x7ie66fsepm67hey2fqjms6fywi6v.4WpHslICjKMtkmw-KKpSJECrnuc.0",
+	"card-iw5x7ie66fsepm67hey2fqjms6fywi6v.4WpHslICjKMtkmw-KKpSJECrnuc.1",
+	"card-iw5x7ie66fsepm67hey2fqjms6fywi6v.Kzup-0SvVwg3DqbkLk7-bqBFBBo.0",
+	"card-iw5x7ie66fsepm67hey2fqjms6fywi6v.Kzup-0SvVwg3DqbkLk7-bqBFBBo.1",
+	"card-iw5x7ie66fsepm67hey2fqjms6fywi6v.O6ZKmF5cdjqlCabeBQScdMpMYas.0",
+	"card-iw5x7ie66fsepm67hey2fqjms6fywi6v.O6ZKmF5cdjqlCabeBQScdMpMYas.1",
+	"card-iw5x7ie66fsepm67hey2fqjms6fywi6v.aGSlwlH5Qqi6wFUSPvohUjYRH5M.0",
+	"card-iw5x7ie66fsepm67hey2fqjms6fywi6v.aGSlwlH5Qqi6wFUSPvohUjYRH5M.1",
+	"card-iw5x7ie66fsepm67hey2fqjms6fywi6v.aXWDFzKQPNJ-oA3vVJF16PvsE5E.0",
+	"card-iw5x7ie66fsepm67hey2fqjms6fywi6v.aXWDFzKQPNJ-oA3vVJF16PvsE5E.1",
+	"card-iw5x7ie66fsepm67hey2fqjms6fywi6v.mrHVpnN28q1ekKVF-qYfwolFNzM.0",
+	"card-iw5x7ie66fsepm67hey2fqjms6fywi6v.mrHVpnN28q1ekKVF-qYfwolFNzM.1",
 }
 
 var expectedBundleDBIDs = []string{
 	"_design/idx-691fd0e525e654428e875bcb3aacb6ac",
-	"bundle-2trorbeivl7faygmo6hbpx7azgyzu43g",
-	"deck--4EyzQLG50dc0JcDKOjV1WS4ulk",
-	"deck-m7om6hW6WIc_m6xrBDUJMiG9X2o",
-	"note-AqMTKqXMHUFjJmB8eJW55Uf9Okk",
-	"note-BD97IR9wXQE0ILn_T2wkgOynng8",
-	"note-PSVLhct0aM92bz4wJVDQf1zF7R0",
-	"note-YqTDhtD-MFNfFXrORP7R-VBF8LQ",
-	"note-d2y5jA1tO727U-6lFh8_Bh7IEjw",
-	"note-yTSB3AjHJ4eYIruVlRYl-9Vawrw",
-	"theme-uQ3TFsQgm9Y29vlgC-lphauhK3M",
+	"bundle-iw5x7ie66fsepm67hey2fqjms6fywi6v",
+	"deck-HXlOHW5PP55PRvZPPZ76YyhOI0w",
+	"deck-y83bDbYxPI0tF7vUsqbvArJR-KY",
+	"note-4WpHslICjKMtkmw-KKpSJECrnuc",
+	"note-Kzup-0SvVwg3DqbkLk7-bqBFBBo",
+	"note-O6ZKmF5cdjqlCabeBQScdMpMYas",
+	"note-aGSlwlH5Qqi6wFUSPvohUjYRH5M",
+	"note-aXWDFzKQPNJ-oA3vVJF16PvsE5E",
+	"note-mrHVpnN28q1ekKVF-qYfwolFNzM",
+	"theme-94hk99pCpQ5DAMGZvpb5_HR5oqs",
+}
+
+var importComplete bool
+var importMu sync.Mutex
+
+func testImport(t *testing.T) {
+	importMu.Lock()
+	if importComplete {
+		return
+	}
+	defer importMu.Unlock()
+	require := require.New(t)
+	fbb, err := os.Open(fbbFile)
+	require.Nil(err, "Error reading %s: %s", fbbFile, err)
+
+	user := &repo.User{testUser}
+	err = repo.Import(user, fbb)
+	require.Nil(err, "Error importing file: %+v", err)
+
+	importComplete = true
 }
 
 func TestImport(t *testing.T) {
 	require := require.New(t)
-	fbb, err := os.Open(fbbFile)
-	if err != nil {
-		t.Fatalf("Error reading %s: %s", fbbFile, err)
-	}
 
-	u, err := fb.NewUser(uuid.Parse("9d11d024-a100-4045-a5b7-9f1ccf96cc9f"), "mrsmith")
-	if err != nil {
-		t.Fatalf("Error creating user: %s\n", err)
-	}
-
-	user := &repo.User{u}
+	user := &repo.User{testUser}
 	udb, err := user.DB()
-	if err != nil {
-		t.Fatalf("Error connecting to User DB: %s", err)
-	}
-
-	if err := repo.Import(user, fbb); err != nil {
-		t.Fatalf("Error importing file: %+v", err)
-	}
+	require.Nil(err, "Error connecting to User DB: %s", err)
 
 	var allUserDocs, allBundleDocs map[string]interface{}
-	if err := udb.AllDocs(&allUserDocs, pouchdb.Options{}); err != nil {
-		t.Fatalf("Error fetching AllDocs(): %s", err)
-	}
+	err = udb.AllDocs(&allUserDocs, pouchdb.Options{})
+	require.Nil(err, "Error fetching AllDocs(): %s", err)
+
 	// Remove the revs, because they're random
 	urows := allUserDocs["rows"].([]interface{})
 	uids := make([]string, len(urows))
@@ -86,7 +90,7 @@ func TestImport(t *testing.T) {
 	}
 	require.DeepEqual(expectedUserDBIDs, uids, "User DB IDs")
 
-	bdb, err := repo.NewDB("bundle-2trorbeivl7faygmo6hbpx7azgyzu43g")
+	bdb, err := repo.NewDB("bundle-iw5x7ie66fsepm67hey2fqjms6fywi6v")
 	require.Nil(err, "Error connecting to Bundle DB: %s", err)
 
 	if err := bdb.AllDocs(&allBundleDocs, pouchdb.Options{}); err != nil {
