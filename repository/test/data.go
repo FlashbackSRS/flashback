@@ -20,33 +20,33 @@ func init() {
 }
 
 var expected = map[string][]byte{
-	"theme-94hk99pCpQ5DAMGZvpb5_HR5oqs": []byte(`{
+	"theme-ELr8cEJJOvJU4lYz-VTXhH8wLTo": []byte(`{
 		"_attachments": {
 			"!Basic-24b78.Card 1 answer.html": {
 				"content_type": "text/html",
-				"digest": "md5-FNeLYevm/jH+BOA9IVnZPQ==",
-				"length": 75,
+				"digest": "md5-WXg9LcujHCIcCVQMVZ0QJg==",
+				"length": 85,
 				"revpos": 1,
 				"stub": true
 			},
 			"!Basic-24b78.Card 1 question.html": {
 				"content_type": "text/html",
-				"digest": "md5-fOa6+X5wsJ+1Vt5Q0v5VxA==",
-				"length": 10,
+				"digest": "md5-kzMtJPyK2E4mIieI4jEzJQ==",
+				"length": 20,
 				"revpos": 1,
 				"stub": true
 			},
 			"!Basic-24b78.Card 2 answer.html": {
 				"content_type": "text/html",
-				"digest": "md5-6IlntfutXQz3EVecHFYlnw==",
-				"length": 31,
+				"digest": "md5-t4DtgpoCeNyU6yT9O7bxWw==",
+				"length": 39,
 				"revpos": 1,
 				"stub": true
 			},
 			"!Basic-24b78.Card 2 question.html": {
 				"content_type": "text/html",
-				"digest": "md5-E51mS9DsSfBGiL3sXUUUVA==",
-				"length": 9,
+				"digest": "md5-/s7RZUPkkLFG6JwFsSWiag==",
+				"length": 19,
 				"revpos": 1,
 				"stub": true
 			},
@@ -65,13 +65,13 @@ var expected = map[string][]byte{
 				"stub": true
 			}
 		},
-		"_id": "theme-94hk99pCpQ5DAMGZvpb5_HR5oqs",
+		"_id": "theme-ELr8cEJJOvJU4lYz-VTXhH8wLTo",
 		"_rev": "1-33dac82cfe23d7773ea07c71f21cce38",
 		"created": "2015-09-06T17:04:36.000000823Z",
 		"files": [
 			"$main.css"
 		],
-		"imported": "2016-09-11T16:48:32.699714842+02:00",
+		"imported": "2016-09-11T21:02:22.191367903+02:00",
 		"modelSequence": 1,
 		"models": [
 			{
@@ -101,7 +101,7 @@ var expected = map[string][]byte{
 				]
 			}
 		],
-		"modified": "2016-08-02T13:15:15Z",
+		"modified": "2016-09-11T19:01:39Z",
 		"name": "Basic-24b78",
 		"type": "theme"
 	}`),

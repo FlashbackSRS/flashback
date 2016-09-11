@@ -20,35 +20,37 @@ func init() {
 	}
 }
 
+var bundleID = "bundle-alnlcvykyjxsjtijzonc3456kd5u4757"
+
 var expectedUserDBIDs = []string{
 	"_design/idx-691fd0e525e654428e875bcb3aacb6ac",
-	"bundle-iw5x7ie66fsepm67hey2fqjms6fywi6v",
-	"card-iw5x7ie66fsepm67hey2fqjms6fywi6v.4WpHslICjKMtkmw-KKpSJECrnuc.0",
-	"card-iw5x7ie66fsepm67hey2fqjms6fywi6v.4WpHslICjKMtkmw-KKpSJECrnuc.1",
-	"card-iw5x7ie66fsepm67hey2fqjms6fywi6v.Kzup-0SvVwg3DqbkLk7-bqBFBBo.0",
-	"card-iw5x7ie66fsepm67hey2fqjms6fywi6v.Kzup-0SvVwg3DqbkLk7-bqBFBBo.1",
-	"card-iw5x7ie66fsepm67hey2fqjms6fywi6v.O6ZKmF5cdjqlCabeBQScdMpMYas.0",
-	"card-iw5x7ie66fsepm67hey2fqjms6fywi6v.O6ZKmF5cdjqlCabeBQScdMpMYas.1",
-	"card-iw5x7ie66fsepm67hey2fqjms6fywi6v.aGSlwlH5Qqi6wFUSPvohUjYRH5M.0",
-	"card-iw5x7ie66fsepm67hey2fqjms6fywi6v.aGSlwlH5Qqi6wFUSPvohUjYRH5M.1",
-	"card-iw5x7ie66fsepm67hey2fqjms6fywi6v.aXWDFzKQPNJ-oA3vVJF16PvsE5E.0",
-	"card-iw5x7ie66fsepm67hey2fqjms6fywi6v.aXWDFzKQPNJ-oA3vVJF16PvsE5E.1",
-	"card-iw5x7ie66fsepm67hey2fqjms6fywi6v.mrHVpnN28q1ekKVF-qYfwolFNzM.0",
-	"card-iw5x7ie66fsepm67hey2fqjms6fywi6v.mrHVpnN28q1ekKVF-qYfwolFNzM.1",
+	bundleID,
+	"card-alnlcvykyjxsjtijzonc3456kd5u4757.ZR4TpeX38xRzRvXprlgJpP4Ribo.0",
+	"card-alnlcvykyjxsjtijzonc3456kd5u4757.ZR4TpeX38xRzRvXprlgJpP4Ribo.1",
+	"card-alnlcvykyjxsjtijzonc3456kd5u4757.efn_5zJV184Q7hZzE8zmlclqllY.0",
+	"card-alnlcvykyjxsjtijzonc3456kd5u4757.efn_5zJV184Q7hZzE8zmlclqllY.1",
+	"card-alnlcvykyjxsjtijzonc3456kd5u4757.l2ZvABKQnCBZbuaYOlSIrZWqRQI.0",
+	"card-alnlcvykyjxsjtijzonc3456kd5u4757.l2ZvABKQnCBZbuaYOlSIrZWqRQI.1",
+	"card-alnlcvykyjxsjtijzonc3456kd5u4757.qT9Gr_a9D_jkaapw1xy7KYfvTOs.0",
+	"card-alnlcvykyjxsjtijzonc3456kd5u4757.qT9Gr_a9D_jkaapw1xy7KYfvTOs.1",
+	"card-alnlcvykyjxsjtijzonc3456kd5u4757.rRm8q5nIKgIMC__jMxYmhXRF_2I.0",
+	"card-alnlcvykyjxsjtijzonc3456kd5u4757.rRm8q5nIKgIMC__jMxYmhXRF_2I.1",
+	"card-alnlcvykyjxsjtijzonc3456kd5u4757.udROb8T8RmRASG5zGHNKnKL25zI.0",
+	"card-alnlcvykyjxsjtijzonc3456kd5u4757.udROb8T8RmRASG5zGHNKnKL25zI.1",
 }
 
 var expectedBundleDBIDs = []string{
 	"_design/idx-691fd0e525e654428e875bcb3aacb6ac",
-	"bundle-iw5x7ie66fsepm67hey2fqjms6fywi6v",
-	"deck-HXlOHW5PP55PRvZPPZ76YyhOI0w",
-	"deck-y83bDbYxPI0tF7vUsqbvArJR-KY",
-	"note-4WpHslICjKMtkmw-KKpSJECrnuc",
-	"note-Kzup-0SvVwg3DqbkLk7-bqBFBBo",
-	"note-O6ZKmF5cdjqlCabeBQScdMpMYas",
-	"note-aGSlwlH5Qqi6wFUSPvohUjYRH5M",
-	"note-aXWDFzKQPNJ-oA3vVJF16PvsE5E",
-	"note-mrHVpnN28q1ekKVF-qYfwolFNzM",
-	"theme-94hk99pCpQ5DAMGZvpb5_HR5oqs",
+	bundleID,
+	"deck-MoAm80CALRtrMk7Y4eOmGtCzzjY",
+	"deck-sXxr9js6DFSFotJ6yuISxOQCuKU",
+	"note-ZR4TpeX38xRzRvXprlgJpP4Ribo",
+	"note-efn_5zJV184Q7hZzE8zmlclqllY",
+	"note-l2ZvABKQnCBZbuaYOlSIrZWqRQI",
+	"note-qT9Gr_a9D_jkaapw1xy7KYfvTOs",
+	"note-rRm8q5nIKgIMC__jMxYmhXRF_2I",
+	"note-udROb8T8RmRASG5zGHNKnKL25zI",
+	"theme-ELr8cEJJOvJU4lYz-VTXhH8wLTo",
 }
 
 var importComplete bool
@@ -90,7 +92,7 @@ func TestImport(t *testing.T) {
 	}
 	require.DeepEqual(expectedUserDBIDs, uids, "User DB IDs")
 
-	bdb, err := repo.NewDB("bundle-iw5x7ie66fsepm67hey2fqjms6fywi6v")
+	bdb, err := repo.NewDB(bundleID)
 	require.Nil(err, "Error connecting to Bundle DB: %s", err)
 
 	if err := bdb.AllDocs(&allBundleDocs, pouchdb.Options{}); err != nil {
