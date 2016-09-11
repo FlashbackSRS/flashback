@@ -40,12 +40,11 @@ func (n *Note) fetchTheme() error {
 		// Nothing to do
 		return nil
 	}
-	ThemeID := "theme-" + n.ThemeID
-	log.Debugf("Fetching theme %s", ThemeID)
+	log.Debugf("Fetching theme %s", n.ThemeID)
 	t := &fb.Theme{}
-	if err := n.db.Get(ThemeID, t, pouchdb.Options{Attachments: true}); err != nil {
+	if err := n.db.Get(n.ThemeID, t, pouchdb.Options{Attachments: true}); err != nil {
 		fmt.Printf("Error: %s\n", err)
-		return errors.Wrapf(err, "fetchTheme() can't fetch theme-%s", ThemeID)
+		return errors.Wrapf(err, "fetchTheme() can't fetch theme-%s", n.ThemeID)
 	}
 	n.theme = &Theme{t}
 	n.model = &Model{t.Models[n.ModelID]}
