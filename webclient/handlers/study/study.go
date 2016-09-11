@@ -226,7 +226,7 @@ var masterTemplate = `
 <script type="text/javascript">
 'use strict';
 var FB = {
-	iframeId: '{{ .IframeId }}',
+	iframeId: '{{ .IframeID }}',
 	card: {{ .Card }},
 	note: {{ .Note }},
 	model: {{ .Model }},

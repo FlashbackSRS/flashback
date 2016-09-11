@@ -93,7 +93,7 @@ var masterTemplate = `
 <script type="text/javascript">
 'use strict';
 var FB = {
-	iframeId: '{{ .IframeId }}',
+	iframeID: '{{ .IframeID }}',
 	card: {{ .Card }},
 	note: {{ .Note }},
 	model: {{ .Model }},
