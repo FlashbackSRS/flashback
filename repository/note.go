@@ -46,10 +46,13 @@ func (n *Note) fetchTheme() error {
 		fmt.Printf("Error: %s\n", err)
 		return errors.Wrapf(err, "fetchTheme() can't fetch theme-%s", n.ThemeID)
 	}
+	m := t.Models[n.ModelID]
 	n.theme = &Theme{t}
-	n.model = &Model{t.Models[n.ModelID]}
+	n.model = &Model{m}
 	n.model.Theme = t
-	fmt.Printf("Fetched this model: %v\n", n.model)
-	fmt.Printf("Fetched this theme: %v\n", n.theme)
+	n.SetModel(m)
+
+	log.Debugf("Fetched this model: %v\n", n.model)
+	log.Debugf("Fetched this theme: %v\n", n.theme)
 	return nil
 }

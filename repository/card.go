@@ -3,17 +3,15 @@ package repo
 import (
 	"bytes"
 	"encoding/hex"
-	"fmt"
 	"html/template"
 	"math/rand"
 	"time"
 
 	"github.com/flimzy/log"
-
+	"github.com/pkg/errors"
 	"golang.org/x/net/html"
 
 	"github.com/flimzy/go-pouchdb"
-	"github.com/pkg/errors"
 
 	"github.com/FlashbackSRS/flashback-model"
 	"github.com/FlashbackSRS/flashback/util"
@@ -161,7 +159,7 @@ func (c *Card) Body() (string, string, error) {
 	if body == nil {
 		return "", "", errors.New("No <body> in the template output")
 	}
-	fmt.Printf("%s\n", htmlDoc)
+	log.Debugf("%s\n", htmlDoc)
 	/*
 		container := findContainer(body.FirstChild, c.ModelID(), "question")
 		if container == nil {
