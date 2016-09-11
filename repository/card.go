@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"html/template"
 	"math/rand"
+	"strconv"
 	"time"
 
 	"github.com/flimzy/log"
@@ -159,30 +160,31 @@ func (c *Card) Body() (string, string, error) {
 	if body == nil {
 		return "", "", errors.New("No <body> in the template output")
 	}
-	log.Debugf("%s\n", htmlDoc)
-	/*
-		container := findContainer(body.FirstChild, c.ModelID(), "question")
-		if container == nil {
-			return "", "", errors.New("No matching div found in template output")
-		}
-		// Delete unused divs
-		for c := body.FirstChild; c != nil; c = body.FirstChild {
-			body.RemoveChild(c)
-		}
-		inner := container.FirstChild
-		inner.Parent = body
-		body.FirstChild = inner
+	log.Debugf("%s", htmlDoc)
 
-		newBody := new(bytes.Buffer)
-		if err := html.Render(newBody, doc); err != nil {
-			return "", "", errors.Wrap(err, "Error rendering new HTML")
-		}
-		nbString := newBody.String()
-		fmt.Printf("original size = %d\n", len(htmlDoc.String()))
-		fmt.Printf("new body size = %d\n", len(nbString))
-		return nbString, ctx.IframeID, nil
-	*/
-	return "", "", nil
+	container := findContainer(body.FirstChild, strconv.Itoa(int(c.TemplateID())), "question")
+	if container == nil {
+		return "", "", errors.Errorf("No div matching '%d' found in template output", c.TemplateID())
+	}
+	log.Debug("Found container: %s", container)
+
+	// Delete unused divs
+	for c := body.FirstChild; c != nil; c = body.FirstChild {
+		body.RemoveChild(c)
+	}
+	inner := container.FirstChild
+	inner.Parent = body
+	body.FirstChild = inner
+
+	newBody := new(bytes.Buffer)
+	if err := html.Render(newBody, doc); err != nil {
+		return "", "", errors.Wrap(err, "Error rendering new HTML")
+	}
+
+	nbString := newBody.String()
+	log.Debugf("original size = %d\n", len(htmlDoc.String()))
+	log.Debugf("new body size = %d\n", len(nbString))
+	return nbString, ctx.IframeID, nil
 }
 
 const letterBytes = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
