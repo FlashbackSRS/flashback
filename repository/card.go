@@ -120,8 +120,17 @@ type cardContext struct {
 	Fields   map[string]template.HTML
 }
 
-// Body returns the card's body and iframe ID
-func (c *Card) Body() (string, string, error) {
+// Question returns the body of the card's Question and iframe ID
+func (c *Card) Question() (string, string, error) {
+	return c.body("question")
+}
+
+// Answer returns the body of the card's Answer and iframe ID
+func (c *Card) Answer() (string, string, error) {
+	return c.body("answer")
+}
+
+func (c *Card) body(templateType string) (string, string, error) {
 	note, err := c.Note()
 	if err != nil {
 		return "", "", errors.Wrap(err, "Unable to retrieve Note")
@@ -168,7 +177,7 @@ func (c *Card) Body() (string, string, error) {
 	}
 	log.Debugf("%s", htmlDoc)
 
-	container := findContainer(body.FirstChild, strconv.Itoa(int(c.TemplateID())), "question")
+	container := findContainer(body.FirstChild, strconv.Itoa(int(c.TemplateID())), templateType)
 	if container == nil {
 		return "", "", errors.Errorf("No div matching '%d' found in template output", c.TemplateID())
 	}
