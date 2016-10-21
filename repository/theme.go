@@ -3,6 +3,7 @@ package repo
 import (
 	"fmt"
 	"html/template"
+	"strings"
 
 	"github.com/flimzy/log"
 	"github.com/pkg/errors"
@@ -50,8 +51,11 @@ func (m *Model) GenerateTemplate() (*template.Template, error) {
 		return nil, errors.Wrap(err, "Error parsing master template")
 	}
 	for filename, t := range templates {
-		log.Debugf("Defining template '%s'", filename)
-		content := fmt.Sprintf("{{define \"%s\"}}%s{{end}}", filename, t)
+		mName := *m.Name
+		log.Debugf("model name = %s\n", mName)
+		tmplName := strings.TrimPrefix(filename, "!"+*m.Name+".")
+		log.Debugf("Defining template '%s'", tmplName)
+		content := fmt.Sprintf("{{define \"%s\"}}%s{{end}}", tmplName, t)
 		if _, err := tmpl.Parse(content); err != nil {
 			return nil, errors.Wrapf(err, "Error parsing template file `%s`", filename)
 		}

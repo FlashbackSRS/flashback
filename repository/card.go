@@ -74,40 +74,28 @@ func (u *User) GetCard(id string) (*Card, error) {
 	}, nil
 }
 
-// GetRandomCard returns a random card
-func GetRandomCard() (*Card, error) {
-	c := &Card{}
-	if err := c.fetchArbitraryCard(); err != nil {
-		return nil, err
-	}
-	return c, nil
-}
-
-func (c *Card) fetchArbitraryCard() error {
-	u, err := CurrentUser()
+// GetNextCard gets the next card to study
+func (u *User) GetNextCard() (*Card, error) {
+	db, err := u.DB()
 	if err != nil {
-		return errors.Wrap(err, "No user logged in")
+		return nil, errors.Wrap(err, "GetNextCard(): Error connecting to User DB")
 	}
-	if c.db == nil {
-		db, err := u.DB()
-		if err != nil {
-			return errors.Wrap(err, "Error connecting to User DB")
-		}
-		c.db = db
-	}
+
 	doc := make(map[string][]*fb.Card)
 	query := map[string]interface{}{
 		"selector": map[string]string{"type": "card"},
 		"limit":    1,
 	}
-	if err := c.db.Find(query, &doc); err != nil {
-		return err
+	if err := db.Find(query, &doc); err != nil {
+		return nil, errors.Wrap(err, "GetNextCard(): Error fetching card")
 	}
 	if len(doc["docs"]) == 0 {
-		return errors.New("No cards available")
+		return nil, errors.New("No cards available")
 	}
-	c.Card = doc["docs"][0]
-	return nil
+	return &Card{
+		Card: doc["docs"][0],
+		db:   db,
+	}, nil
 }
 
 type cardContext struct {
@@ -120,17 +108,24 @@ type cardContext struct {
 	Fields   map[string]template.HTML
 }
 
-// Question returns the body of the card's Question and iframe ID
-func (c *Card) Question() (string, string, error) {
-	return c.body("question")
+const (
+	// Question is a card's first face
+	Question = iota
+	// Answer is a card's second face
+	Answer
+)
+
+var faces = map[int]string{
+	Question: "question",
+	Answer:   "answer",
 }
 
-// Answer returns the body of the card's Answer and iframe ID
-func (c *Card) Answer() (string, string, error) {
-	return c.body("answer")
-}
-
-func (c *Card) body(templateType string) (string, string, error) {
+// Body returns the requested card face
+func (c *Card) Body(face int) (string, string, error) {
+	cardFace, ok := faces[face]
+	if !ok {
+		return "", "", errors.Errorf("Unrecognized card face %d", face)
+	}
 	note, err := c.Note()
 	if err != nil {
 		return "", "", errors.Wrap(err, "Unable to retrieve Note")
@@ -177,7 +172,7 @@ func (c *Card) body(templateType string) (string, string, error) {
 	}
 	log.Debugf("%s", htmlDoc)
 
-	container := findContainer(body.FirstChild, strconv.Itoa(int(c.TemplateID())), templateType)
+	container := findContainer(body.FirstChild, strconv.Itoa(int(c.TemplateID())), cardFace)
 	if container == nil {
 		return "", "", errors.Errorf("No div matching '%d' found in template output", c.TemplateID())
 	}
@@ -309,4 +304,55 @@ func (c *Card) GetAttachment(filename string) (*Attachment, error) {
 		return &Attachment{file}, nil
 	}
 	return nil, errors.Errorf("File '%s' not found", filename)
+}
+
+// Response represents a response button
+type Response struct {
+	Name    string
+	Display string
+	Icon    string
+}
+
+var showAnswer = &Response{
+	Name:    "show_answer_button",
+	Display: "Show Answer",
+	Icon:    "carat-r",
+}
+
+var wrongAnswer = &Response{
+	Name:    "wrong_answer_button",
+	Display: "Again",
+	Icon:    "delete",
+}
+
+var hardAnswer = &Response{
+	Name:    "hard_answer_button",
+	Display: "Hard",
+	Icon:    "clock",
+}
+
+var goodAnswer = &Response{
+	Name:    "good_answer_button",
+	Display: "Good",
+	Icon:    "carat-r",
+}
+
+var easyAnswer = &Response{
+	Name:    "easy_answer_button",
+	Display: "Easy",
+	Icon:    "heart",
+}
+
+// Responses returns the list of available responses for a card's face
+func (c *Card) Responses(face int) ([]*Response, error) {
+	var responses []*Response
+	switch face {
+	case Question:
+		responses = []*Response{showAnswer}
+	case Answer:
+		responses = []*Response{wrongAnswer, hardAnswer, goodAnswer, easyAnswer}
+	default:
+		return nil, errors.Errorf("Unknown card face %d", face)
+	}
+	return responses, nil
 }

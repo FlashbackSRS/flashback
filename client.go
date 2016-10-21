@@ -8,7 +8,7 @@ import (
 
 	"golang.org/x/net/html"
 
-	"github.com/flimzy/flashback/util"
+	"github.com/FlashbackSRS/flashback/util"
 )
 
 type FlashbackClient struct {
