@@ -32,17 +32,14 @@ func (m *Model) GenerateTemplate() (*template.Template, error) {
 	if err != nil {
 		return nil, errors.Wrap(err, "Error with Model attachments")
 	}
-	log.Debugf("templates = %v\n", templates)
 	tmpl2, err := extractTemplateFiles(m.Theme.Files)
 	if err != nil {
 		return nil, errors.Wrap(err, "Error with Theme attachments")
 	}
-	log.Debugf("templates = %v\n", templates)
-	log.Debugf("tmpl2 = %v\n", tmpl2)
 	for k, v := range tmpl2 {
 		templates[k] = v
 	}
-	log.Debugf("templates = %v\n", templates)
+
 	// Rename to match the masterTemplate expectation
 	templates["template.html"] = templates[mainTemplate]
 	delete(templates, mainTemplate)
