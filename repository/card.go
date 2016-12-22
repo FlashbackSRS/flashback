@@ -4,12 +4,13 @@ import (
 	"bytes"
 	"encoding/hex"
 	"encoding/json"
+	"fmt"
 	"html/template"
 	"io"
 	"math/rand"
-	"strconv"
 	"time"
 
+	"github.com/PuerkitoBio/goquery"
 	"github.com/flimzy/go-pouchdb"
 	"github.com/flimzy/log"
 	"github.com/pkg/errors"
@@ -180,38 +181,38 @@ func (c *Card) Body(face int) (body string, iframeID string, err error) {
 	return nbString, ctx.IframeID, nil
 }
 
-func prepareBody(face int, templateID uint32, htmlDoc io.Reader) ([]byte, error) {
+func prepareBody(face int, templateID uint32, r io.Reader) ([]byte, error) {
 	cardFace, ok := faces[face]
 	if !ok {
 		return nil, errors.Errorf("Unrecognized card face %d", face)
 	}
-	doc, err := html.Parse(htmlDoc)
+	doc, err := goquery.NewDocumentFromReader(r)
 	if err != nil {
-		return nil, errors.Wrap(err, "Unable to parse generated HTML")
+		return nil, errors.Wrap(err, "goquery parse")
 	}
-	body := findBody(doc)
+	body := doc.Find("body")
 	if body == nil {
-		return nil, errors.New("No <body> in the template output")
+		return nil, errors.New("no body in template output")
+	}
+	sel := fmt.Sprintf("div.%s[data-id='%d']", cardFace, templateID)
+	container := body.Find(sel)
+	if container.Length() == 0 {
+		return nil, errors.Errorf("No div matching '%s' found in template output", sel)
 	}
 
-	container := findContainer(body.FirstChild, strconv.Itoa(int(templateID)), cardFace)
-	if container == nil {
-		return nil, errors.Errorf("No div matching '%d' found in template output", templateID)
+	containerHTML, err := container.Html()
+	if err != nil {
+		return nil, errors.Wrap(err, "error extracting div html")
 	}
 
-	// Delete unused divs
-	for c := body.FirstChild; c != nil; c = body.FirstChild {
-		body.RemoveChild(c)
-	}
-	inner := container.FirstChild
-	inner.Parent = body
-	body.FirstChild = inner
+	body.Empty()
+	body.AppendHtml(containerHTML)
 
-	newBody := new(bytes.Buffer)
-	if err := html.Render(newBody, doc); err != nil {
-		return nil, errors.Wrap(err, "Error rendering new HTML")
+	newBody, err := goquery.OuterHtml(doc.Selection)
+	if err != nil {
+		return nil, errors.Wrap(err, "outer html failed")
 	}
-	return newBody.Bytes(), nil
+	return []byte(newBody), nil
 }
 
 const letterBytes = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
