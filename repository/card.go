@@ -2,15 +2,12 @@ package repo
 
 import (
 	"bytes"
-	"encoding/base64"
 	"encoding/hex"
-	"fmt"
 	"html/template"
 	"math/rand"
 	"strconv"
 	"time"
 
-	"github.com/PuerkitoBio/goquery"
 	"github.com/flimzy/log"
 	"github.com/pkg/errors"
 	"golang.org/x/net/html"
@@ -186,10 +183,6 @@ func (c *Card) Body(face int) (string, string, error) {
 	inner.Parent = body
 	body.FirstChild = inner
 
-	if err := c.inlineSrc(body); err != nil {
-		return "", "", errors.Wrap(err, "Error inlining images")
-	}
-
 	newBody := new(bytes.Buffer)
 	if err := html.Render(newBody, doc); err != nil {
 		return "", "", errors.Wrap(err, "Error rendering new HTML")
@@ -264,26 +257,6 @@ func findContainer(n *html.Node, targetID, targetClass string) *html.Node {
 		}
 	}
 	return findContainer(n.NextSibling, targetID, targetClass)
-}
-
-func (c *Card) inlineSrc(n *html.Node) error {
-	doc := goquery.NewDocumentFromNode(n)
-	doc.Find("img").Each(func(i int, s *goquery.Selection) {
-		src, ok := s.Attr("src")
-		if !ok {
-			log.Print("Found an image with no source!!??")
-			return
-		}
-		log.Debugf("Found image with src of '%s'", src)
-		att, err := c.GetAttachment(src)
-		if err != nil {
-			log.Printf("Error inlining file '%s': %s", src, err)
-			return
-		}
-		s.SetAttr("src", fmt.Sprintf("data:%s;base64,%s", att.ContentType, base64.StdEncoding.EncodeToString(att.Content)))
-		// iframe.Set("src", "data:text/html;charset=utf-8;base64,"+base64.StdEncoding.EncodeToString([]byte(body)))
-	})
-	return nil
 }
 
 // GetAttachment fetches an attachment from the note, failling back to the model
