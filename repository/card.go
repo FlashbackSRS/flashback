@@ -4,15 +4,15 @@ import (
 	"bytes"
 	"encoding/hex"
 	"html/template"
+	"io"
 	"math/rand"
 	"strconv"
 	"time"
 
+	"github.com/flimzy/go-pouchdb"
 	"github.com/flimzy/log"
 	"github.com/pkg/errors"
 	"golang.org/x/net/html"
-
-	"github.com/flimzy/go-pouchdb"
 
 	"github.com/FlashbackSRS/flashback-model"
 	"github.com/FlashbackSRS/flashback/util"
@@ -119,10 +119,6 @@ var faces = map[int]string{
 
 // Body returns the requested card face
 func (c *Card) Body(face int) (string, string, error) {
-	cardFace, ok := faces[face]
-	if !ok {
-		return "", "", errors.Errorf("Unrecognized card face %d", face)
-	}
 	note, err := c.Note()
 	if err != nil {
 		return "", "", errors.Wrap(err, "Unable to retrieve Note")
@@ -159,19 +155,35 @@ func (c *Card) Body(face int) (string, string, error) {
 	if e := tmpl.Execute(htmlDoc, ctx); e != nil {
 		return "", "", errors.Wrap(e, "Unable to execute template")
 	}
+	newBody, err := c.prepareBody(face, htmlDoc)
+	if err != nil {
+		return "", "", errors.Wrap(err, "prepare body")
+	}
+
+	nbString := string(newBody)
+	log.Debugf("original size = %d\n", len(htmlDoc.String()))
+	log.Debugf("new body size = %d\n", len(nbString))
+	return nbString, ctx.IframeID, nil
+}
+
+func (c *Card) prepareBody(face int, htmlDoc io.Reader) ([]byte, error) {
+	cardFace, ok := faces[face]
+	if !ok {
+		return nil, errors.Errorf("Unrecognized card face %d", face)
+	}
 	doc, err := html.Parse(htmlDoc)
 	if err != nil {
-		return "", "", errors.Wrap(err, "Unable to parse generated HTML")
+		return nil, errors.Wrap(err, "Unable to parse generated HTML")
 	}
 	body := findBody(doc)
 	if body == nil {
-		return "", "", errors.New("No <body> in the template output")
+		return nil, errors.New("No <body> in the template output")
 	}
 	log.Debugf("%s", htmlDoc)
 
 	container := findContainer(body.FirstChild, strconv.Itoa(int(c.TemplateID())), cardFace)
 	if container == nil {
-		return "", "", errors.Errorf("No div matching '%d' found in template output", c.TemplateID())
+		return nil, errors.Errorf("No div matching '%d' found in template output", c.TemplateID())
 	}
 	log.Debug("Found container: %s", container)
 
@@ -185,13 +197,9 @@ func (c *Card) Body(face int) (string, string, error) {
 
 	newBody := new(bytes.Buffer)
 	if err := html.Render(newBody, doc); err != nil {
-		return "", "", errors.Wrap(err, "Error rendering new HTML")
+		return nil, errors.Wrap(err, "Error rendering new HTML")
 	}
-
-	nbString := newBody.String()
-	log.Debugf("original size = %d\n", len(htmlDoc.String()))
-	log.Debugf("new body size = %d\n", len(nbString))
-	return nbString, ctx.IframeID, nil
+	return newBody.Bytes(), nil
 }
 
 const letterBytes = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
