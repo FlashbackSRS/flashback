@@ -1,6 +1,6 @@
 package models
 
-import "errors"
+import "github.com/pkg/errors"
 
 // A ModelHandler handles the logic for a given model
 type ModelHandler interface {
@@ -33,7 +33,7 @@ func HandledTypes() []string {
 func GetHandler(modelType string) (ModelHandler, error) {
 	h, ok := handlers[modelType]
 	if !ok {
-		return nil, errors.New("no such handler registered")
+		return nil, errors.Errorf("no handler for '%s' registered", modelType)
 	}
 	return h, nil
 }
