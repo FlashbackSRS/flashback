@@ -118,7 +118,7 @@ var faces = map[int]string{
 }
 
 // Body returns the requested card face
-func (c *Card) Body(face int) (string, string, error) {
+func (c *Card) Body(face int) (body string, iframeID string, err error) {
 	note, err := c.Note()
 	if err != nil {
 		return "", "", errors.Wrap(err, "Unable to retrieve Note")
@@ -155,18 +155,18 @@ func (c *Card) Body(face int) (string, string, error) {
 	if e := tmpl.Execute(htmlDoc, ctx); e != nil {
 		return "", "", errors.Wrap(e, "Unable to execute template")
 	}
-	newBody, err := c.prepareBody(face, htmlDoc)
+	log.Debugf("original size = %d\n", htmlDoc.Len())
+	newBody, err := prepareBody(face, c.TemplateID(), htmlDoc)
 	if err != nil {
 		return "", "", errors.Wrap(err, "prepare body")
 	}
 
 	nbString := string(newBody)
-	log.Debugf("original size = %d\n", len(htmlDoc.String()))
 	log.Debugf("new body size = %d\n", len(nbString))
 	return nbString, ctx.IframeID, nil
 }
 
-func (c *Card) prepareBody(face int, htmlDoc io.Reader) ([]byte, error) {
+func prepareBody(face int, templateID uint32, htmlDoc io.Reader) ([]byte, error) {
 	cardFace, ok := faces[face]
 	if !ok {
 		return nil, errors.Errorf("Unrecognized card face %d", face)
@@ -179,13 +179,11 @@ func (c *Card) prepareBody(face int, htmlDoc io.Reader) ([]byte, error) {
 	if body == nil {
 		return nil, errors.New("No <body> in the template output")
 	}
-	log.Debugf("%s", htmlDoc)
 
-	container := findContainer(body.FirstChild, strconv.Itoa(int(c.TemplateID())), cardFace)
+	container := findContainer(body.FirstChild, strconv.Itoa(int(templateID)), cardFace)
 	if container == nil {
-		return nil, errors.Errorf("No div matching '%d' found in template output", c.TemplateID())
+		return nil, errors.Errorf("No div matching '%d' found in template output", templateID)
 	}
-	log.Debug("Found container: %s", container)
 
 	// Delete unused divs
 	for c := body.FirstChild; c != nil; c = body.FirstChild {
