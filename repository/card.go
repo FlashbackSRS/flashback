@@ -133,13 +133,35 @@ var faces = map[int]string{
 	Answer:   "answer",
 }
 
+// ModelHandler returns the model handler for this card
+func (c *Card) ModelHandler() (models.ModelHandler, error) {
+	m, err := c.Model()
+	if err != nil {
+		return nil, errors.Wrap(err, "retrieve model")
+	}
+	return models.GetHandler(m.Type)
+}
+
+// Model returns the model for the card
+func (c *Card) Model() (*Model, error) {
+	note, err := c.Note()
+	if err != nil {
+		return nil, errors.Wrap(err, "retrieve Note")
+	}
+	model, err := note.Model()
+	if err != nil {
+		return nil, errors.Wrap(err, "retrieve Model")
+	}
+	return model, nil
+}
+
 // Body returns the requested card face
 func (c *Card) Body(face int) (body string, iframeID string, err error) {
 	note, err := c.Note()
 	if err != nil {
 		return "", "", errors.Wrap(err, "Unable to retrieve Note")
 	}
-	model, err := note.Model()
+	model, err := c.Model()
 	if err != nil {
 		return "", "", errors.Wrap(err, "Unable to retrieve Model")
 	}

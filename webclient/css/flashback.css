@@ -43,3 +43,7 @@ iframe {
 .disabled {
     opacity: 0.5;
 }
+
+#answer-buttons a {
+    height: 1em;
+}

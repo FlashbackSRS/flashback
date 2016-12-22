@@ -5,6 +5,8 @@ package studyhandler
 import (
 	"net/url"
 
+	"honnef.co/go/js/console"
+
 	"github.com/flimzy/log"
 	"github.com/gopherjs/gopherjs/js"
 	"github.com/gopherjs/jquery"
@@ -36,32 +38,64 @@ func BeforeTransition(event *jquery.Event, ui *js.Object, p url.Values) bool {
 	}
 	log.Debugf("card = %s\n", p.Get("card"))
 	go func() {
-		// Ensure the indexes are created before trying to use them
-		u.DB()
-
-		if currentCard != nil {
-			if currentCard.Face++; currentCard.Face > 1 {
-				currentCard = nil
-			}
-		}
-
-		if currentCard == nil {
-			card, err := u.GetNextCard()
-			if err != nil {
-				log.Printf("Error fetching card: %+v\n", err)
-				return
-			}
-			currentCard = &cardState{
-				Card: card,
-				Face: 0,
-			}
-		}
-		if err := DisplayFace(currentCard); err != nil {
-			log.Printf("Erorr displaying card: %+v\n", err)
+		if err := ShowCard(u); err != nil {
+			log.Printf("Error showing card: %+v", err)
 		}
 	}()
 
 	return true
+}
+
+func ShowCard(u *repo.User) error {
+	log.Debug("ShowCard()\n")
+	// Ensure the indexes are created before trying to use them
+	u.DB()
+
+	if currentCard == nil {
+		card, err := u.GetNextCard()
+		if err != nil {
+			return errors.Wrap(err, "fetch card")
+		}
+		currentCard = &cardState{
+			Card: card,
+			Face: 0,
+		}
+	}
+	log.Debugf("Card ID: %s\n", currentCard.Card.DocID())
+
+	mh, err := currentCard.Card.ModelHandler()
+	if err != nil {
+		return err
+	}
+	log.Debug("Got the model handler\n")
+
+	buttons := jQuery(":mobile-pagecontainer").Find("#answer-buttons").Find(`[data-role="button"]`).Underlying()
+	console.Log(buttons)
+	log.Debug("Setting up the buttons\n")
+	for i, b := range mh.Buttons(currentCard.Face) {
+		log.Debugf("Setting button %d to %s\n", i, b.Name)
+		button := jQuery(buttons.Index(i))
+		if b.Name == "" {
+			// Hack to enforce same-height buttons
+			button.SetText(" ")
+			// button.AddClass("ui-btn-icon-notext")
+		} else {
+			button.SetText(b.Name)
+			// button.RemoveClass("ui-btn-icon-notext")
+		}
+		button.Call("button")
+		if b.Enabled {
+			button.Call("button", "enable")
+		} else {
+			button.Call("button", "disable")
+		}
+		//		button.Call("button", "refresh")
+	}
+
+	if err := DisplayFace(currentCard); err != nil {
+		return errors.Wrap(err, "display card")
+	}
+	return nil
 }
 
 func DisplayFace(c *cardState) error {
@@ -69,10 +103,6 @@ func DisplayFace(c *cardState) error {
 	fserve.RegisterIframe(iframeID, c.Card.DocID())
 	if err != nil {
 		return errors.Wrap(err, "Error fetching body")
-	}
-	responses, err := c.Card.Responses(c.Face)
-	if err != nil {
-		return errors.Wrap(err, "Error fetching responses")
 	}
 
 	doc := js.Global.Get("document")
@@ -88,19 +118,6 @@ func DisplayFace(c *cardState) error {
 	container := jQuery(":mobile-pagecontainer")
 
 	jQuery("#cardframe", container).Append(iframe)
-
-	r := jQuery("#responses", container)
-	for _, response := range responses {
-		li := doc.Call("createElement", "li")
-		a := doc.Call("createElement", "a")
-		a.Call("setAttribute", "data-role", "button")
-		a.Call("setAttribute", "data-icon", response.Icon)
-		a.Call("setAttribute", "data-lt", response.Name)
-		a.Set("text", response.Display)
-		li.Call("appendChild", a)
-		r.Append(li)
-	}
-	r.Call("enhanceWithin")
 
 	jQuery(".show-until-load", container).Hide()
 	jQuery(".hide-until-load", container).Show()

@@ -9,6 +9,18 @@ type ModelHandler interface {
 	// IframeScript returns a blob of JavaScript, which is loaded inside the
 	// iframe of each card associated with this model type.
 	IframeScript() []byte
+	// Buttons returns the attributes for the three available answer buttons'
+	// initial state. Index 0 = left button, 1 = center, 2 = right
+	Buttons(face int) AnswerButtonsState
+}
+
+// AnswerButtonsState is the state of the three answer buttons
+type AnswerButtonsState [3]AnswerButton
+
+// AnswerButton is one of the three answer buttons.
+type AnswerButton struct {
+	Name    string
+	Enabled bool
 }
 
 var handlers = map[string]ModelHandler{}
