@@ -1,122 +1,143 @@
 package fserve
 
 import (
-	// 	"bytes"
-	"encoding/base64"
-	"encoding/json"
 	"fmt"
 	"sync"
 
-	"github.com/flimzy/go-pouchdb"
 	"github.com/flimzy/log"
 	"github.com/gopherjs/gopherjs/js"
 	"github.com/gopherjs/jsbuiltin"
 	"github.com/pkg/errors"
 
-	"github.com/FlashbackSRS/flashback-model"
 	"github.com/FlashbackSRS/flashback/repository"
 )
 
+// Request represents an fserve request, sent from a card frame
+type Request struct {
+	IframeID string
+	Tag      string
+	CardID   string
+	Path     string
+}
+
+// ParseRequest converts the raw request payload into a Request struct.
+func ParseRequest(o *js.Object) (*Request, error) {
+	data := o.Get("data")
+	values := make(map[string]string)
+	for _, key := range []string{"IframeID", "Tag", "CardID", "Path"} {
+		val := data.Get(key)
+		if jsbuiltin.TypeOf(o) == "undefined" {
+			return nil, errors.Errorf("request missing key %s", key)
+		}
+		if val.String() == "" {
+			return nil, errors.Errorf("no value for key %s", key)
+		}
+		values[key] = val.String()
+	}
+	return &Request{
+		IframeID: values["IframeID"],
+		Tag:      values["Tag"],
+		CardID:   values["CardID"],
+		Path:     values["Path"],
+	}, nil
+}
+
+// Response represents a file serve response, sent back to the card frame.
+type Response struct {
+	Tag         string
+	Path        string
+	ContentType string
+	Data        *js.Object
+}
+
+// Init installs the fserve as an event listener, listening for messages
 func Init(wg *sync.WaitGroup) {
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
 		js.Global.Call("addEventListener", "message", func(e *js.Object) {
-			data := e.Get("data").String()
-			var msg Message
-			if err := json.Unmarshal([]byte(data), &msg); err != nil {
-				log.Printf("Error decoding message from iframe: %s", err)
-				return
-			}
-			go func() {
-				data, err := fetchFile(&msg)
-				if err != nil {
-					log.Printf("Error fetching file: %s\n", err)
-					return
-				}
-				if err := sendResponse(&msg, data); err != nil {
-					log.Printf("Error sending response to iframe: %s\n", err)
-					return
+			go func() { // So we can block if we want to
+				if err := fserve(e); err != nil {
+					log.Printf("Error serving file: %s", err)
 				}
 			}()
 		})
 	}()
 }
 
-func fetchFile(req *Message) (*string, error) {
-	for _, id := range []string{req.NoteId, req.ModelId} {
-		file, err := fetchAttachment(id, req.Path)
-		if file != nil || err != nil {
-			return file, errors.Wrap(err, "Error fetching attachment")
-		}
-	}
-	switch req.Path {
-	case "script.js":
-		return encodeFile("text/javascript", []byte("console.log('placeholder'); /* JS placeholder */")), nil
-	case "style.css":
-		return encodeFile("text/css", []byte("/* CSS placeholder */")), nil
-	}
-	return nil, errors.Errorf("Attachment not found: %s", req.Path)
-}
+var cardRegistry = map[string]string{}
 
-func sendResponse(req *Message, data *string) error {
-	iframe := js.Global.Get("document").Call("getElementById", req.IframeId)
-	if jsbuiltin.TypeOf(iframe) == "undefined" {
-		return fmt.Errorf("Cannot find requested iframe")
+// RegisterIframe associates an iframe ID with a card ID so that files can
+// be served to it. Without this, any file requests will be refused, as a
+// security precaution.
+func RegisterIframe(iframeID, cardID string) error {
+	if card, ok := cardRegistry[iframeID]; ok {
+		return errors.Errorf("iframe already registered to card %s", card)
 	}
-	iframe.Get("contentWindow").Call("postMessage", Response{
-		Tag:  req.Tag,
-		Path: req.Path,
-		Data: *data,
-	}, "*")
+	cardRegistry[iframeID] = cardID
 	return nil
 }
 
-func encodeFile(contentType string, data []byte) *string {
-	b64data := "data:" + contentType + ";base64," + base64.StdEncoding.EncodeToString(data)
-	return &b64data
+// UnregisterIframe unregisters the iframe. This should be called whenever
+// the iframe is removed from the DOM.
+func UnregisterIframe(iframeID string) error {
+	if _, ok := cardRegistry[iframeID]; !ok {
+		return errors.New("iframe not registered")
+	}
+	delete(cardRegistry, iframeID)
+	return nil
 }
 
-func fetchAttachment(id, filename string) (*string, error) {
+func fserve(e *js.Object) error {
+	req, err := ParseRequest(e)
+	if err != nil {
+		return errors.Wrap(err, "invalid request")
+	}
+	// var req Request
+	// if err := json.Unmarshal([]byte(e.Get("data").String()), &req); err != nil {
+	// 	return errors.Wrap(err, "decode request")
+	// }
+	if permittedCard, ok := cardRegistry[req.IframeID]; ok {
+		if permittedCard != req.CardID {
+			return errors.Errorf("iframe %s not registered for card %s", req.IframeID, req.CardID)
+		}
+	} else {
+		return errors.Errorf("iframe %s not registered", req.IframeID)
+	}
+	log.Debugf("Request from iframe %s for card %s authorized for '%s'", req.IframeID, req.CardID, req.Path)
+	att, err := fetchAttachment(req.CardID, req.Path)
+	if err != nil {
+		return errors.Wrap(err, "fetch file")
+	}
+	return errors.Wrap(sendResponse(req.IframeID, req.Tag, req.Path, att), "send response")
+}
+
+func fetchAttachment(cardID, filename string) (*repo.Attachment, error) {
+	log.Debugf("Attempting to fetch '%s' for %s\n", filename, cardID)
 	u, err := repo.CurrentUser()
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "current user")
 	}
-	db, err := u.DB()
+	card, err := u.GetCard(cardID)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "fetch card")
 	}
-
-	var note fb.Note
-	if err := db.Get(id, &note, pouchdb.Options{}); err != nil {
-		return nil, fmt.Errorf("Error fetching note: %s\n", err)
-	}
-	// 	att, ok := note.Attachments.GetFile(filename)
-	// 	for attName, attInfo := range note.Attachments {
-	// 		if attName == filename {
-	// 			att, err := db.Attachment(note.Id, filename, note.Rev)
-	// 			if err != nil {
-	// 				return nil, fmt.Errorf("Error fetching attachment '%s' from note: %s\n", attName, err)
-	// 			}
-	// 			buf := new(bytes.Buffer)
-	// 			buf.ReadFrom(att.Body)
-	// 			return encodeFile(attInfo.Type, buf.Bytes()), nil
-	// 		}
-	// 	}
-	return nil, nil
+	return card.GetAttachment(filename)
 }
 
-type Message struct {
-	IframeId string
-	Tag      string
-	CardId   string
-	NoteId   string
-	ModelId  string
-	Path     string
-}
-
-type Response struct {
-	Tag  string
-	Path string
-	Data string
+func sendResponse(iframeID, tag, filename string, att *repo.Attachment) error {
+	iframe := js.Global.Get("document").Call("getElementById", iframeID)
+	if jsbuiltin.TypeOf(iframe) == "undefined" {
+		return errors.Errorf("iframe not found in DOM")
+	}
+	ab := js.NewArrayBuffer(att.Content)
+	fmt.Printf("Before send, ab has %d bytes\n", ab.Get("byteLength").Int())
+	iframe.Get("contentWindow").Call("postMessage", Response{
+		Tag:         tag,
+		Path:        filename,
+		ContentType: att.ContentType,
+		Data:        ab,
+	}, "*", []interface{}{ab})
+	fmt.Printf("After send, ab has %d bytes\n", ab.Get("byteLength").Int())
+	return nil
 }

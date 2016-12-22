@@ -10,6 +10,7 @@ import (
 	"github.com/gopherjs/jquery"
 	"github.com/pkg/errors"
 
+	"github.com/FlashbackSRS/flashback/fserve"
 	"github.com/FlashbackSRS/flashback/repository"
 )
 
@@ -65,6 +66,7 @@ func BeforeTransition(event *jquery.Event, ui *js.Object, p url.Values) bool {
 
 func DisplayFace(c *cardState) error {
 	body, iframeID, err := c.Card.Body(c.Face)
+	fserve.RegisterIframe(iframeID, c.Card.DocID())
 	if err != nil {
 		return errors.Wrap(err, "Error fetching body")
 	}

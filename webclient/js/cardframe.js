@@ -4,7 +4,6 @@ window.addEventListener('error', function(e) {
     var t = e.target;
     var tag = t.tagName;
     var path = tag == 'LINK' ? t.getAttribute('href') : t.getAttribute('src');
-//     console.log("not found : " + path);
     if ( typeof requests[tag] === 'undefined' ) {
         requests[tag] = {};
     }
@@ -12,34 +11,36 @@ window.addEventListener('error', function(e) {
         requests[tag][path] = {
             targets: []
         };
-        parent.postMessage(JSON.stringify({
+        parent.postMessage({
             IframeID: FB.iframeID,
             Tag: tag,
-            CardId: FB.card._id,
-            NoteId: FB.note._id,
-            ModelId: FB.model._id,
+            CardID: FB.card._id,
             Path: path,
-        }), '*');
+        }, '*');
     }
-    if ( typeof requests[tag][path].data === 'undefined' ) {
+    if ( typeof requests[tag][path].url === 'undefined' ) {
         // This means we already requested the file, but it hasn't arrived yet
         requests[tag][path].targets.push( t );
         return false;
     }
     // We've already requested the file, and we have it now!
-    t.src = requests[tag][path].data;
+    t.src = requests[tag][path].url;
     return false;
 }, true);
 
 window.addEventListener('message', function(e) {
-//     console.log(e);
-    var data = e.data;
-// console.log("attempting to activate " + data.Tag + " / " + data.Path);
-    var req = requests[ data.Tag ][ data.Path ];
-    req.data = data.Data;
+    var tag = e.data.Tag,
+        path = e.data.Path,
+        type = e.data.ContentType,
+        data = e.data.Data;
+    var b = new Blob([data], {type: type})
+    var url = URL.createObjectURL(b)
+
+    var req = requests[ tag ][ path ];
+    req.url = url
     var attr = data.Tag == 'LINK' ? 'href' : 'src';
     for ( var i = 0; i < req.targets.length; i++ ) {
-        req.targets[i][attr] = data.Data;
+        req.targets[i][attr] = url;
     }
     req.targets = [];
 });
