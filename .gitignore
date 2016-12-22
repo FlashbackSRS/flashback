@@ -63,3 +63,6 @@ bundle.js.map
 main.js
 main.js.map
 .phonegap-facebook-plugin
+
+# go-bindata
+models/ankibasic/data.go
