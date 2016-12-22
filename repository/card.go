@@ -17,6 +17,7 @@ import (
 	"golang.org/x/net/html"
 
 	"github.com/FlashbackSRS/flashback-model"
+	"github.com/FlashbackSRS/flashback/models"
 	"github.com/FlashbackSRS/flashback/util"
 )
 
@@ -171,7 +172,7 @@ func (c *Card) Body(face int) (body string, iframeID string, err error) {
 		return "", "", errors.Wrap(e, "Unable to execute template")
 	}
 	log.Debugf("original size = %d\n", htmlDoc.Len())
-	newBody, err := prepareBody(face, c.TemplateID(), htmlDoc)
+	newBody, err := prepareBody(face, c.TemplateID(), model.Type, htmlDoc)
 	if err != nil {
 		return "", "", errors.Wrap(err, "prepare body")
 	}
@@ -181,10 +182,14 @@ func (c *Card) Body(face int) (body string, iframeID string, err error) {
 	return nbString, ctx.IframeID, nil
 }
 
-func prepareBody(face int, templateID uint32, r io.Reader) ([]byte, error) {
+func prepareBody(face int, templateID uint32, modelType string, r io.Reader) ([]byte, error) {
 	cardFace, ok := faces[face]
 	if !ok {
 		return nil, errors.Errorf("Unrecognized card face %d", face)
+	}
+	handler, err := models.GetHandler(modelType)
+	if err != nil {
+		return nil, errors.Wrap(err, "model handler")
 	}
 	doc, err := goquery.NewDocumentFromReader(r)
 	if err != nil {
@@ -207,6 +212,8 @@ func prepareBody(face int, templateID uint32, r io.Reader) ([]byte, error) {
 
 	body.Empty()
 	body.AppendHtml(containerHTML)
+
+	doc.Find("head").AppendHtml(fmt.Sprintf(`<script type="text/javascript">%s</script>`, string(handler.IframeScript())))
 
 	newBody, err := goquery.OuterHtml(doc.Selection)
 	if err != nil {

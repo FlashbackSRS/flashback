@@ -4,13 +4,16 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/FlashbackSRS/flashback/models"
+	"github.com/FlashbackSRS/flashback/models/mock"
 	"github.com/flimzy/testify/require"
 )
 
 func TestPrepareBody(t *testing.T) {
+	models.RegisterModel(&mock.Model{}) // Register the mock handler
 	require := require.New(t)
 	doc := strings.NewReader(testDoc1)
-	result, err := prepareBody(Question, 0, doc)
+	result, err := prepareBody(Question, 0, "mock-model", doc)
 	if err != nil {
 		t.Errorf("error preparing body: %s", err)
 	}
@@ -73,7 +76,10 @@ iframeID: '445a737462464b4e',
 <script type="text/javascript" src="js/cardframe.js"></script>
 <script type="text/javascript"></script>
 <style></style>
-</head>
+<script type="text/javascript">
+        /* Placeholder JS */
+        console.log("Mock Handler");
+    </script></head>
 <body class="card">
     Question: <img src="paste-13877039333377.jpg"/><br/><div><sub>instrument</sub></div>
 </body></html>`
