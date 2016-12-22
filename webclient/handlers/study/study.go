@@ -3,7 +3,6 @@
 package studyhandler
 
 import (
-	"encoding/base64"
 	"net/url"
 
 	"github.com/flimzy/log"
@@ -80,7 +79,9 @@ func DisplayFace(c *cardState) error {
 	iframe.Call("setAttribute", "sandbox", "allow-scripts")
 	iframe.Call("setAttribute", "seamless", nil)
 	iframe.Set("id", iframeID)
-	iframe.Set("src", "data:text/html;charset=utf-8;base64,"+base64.StdEncoding.EncodeToString([]byte(body)))
+	ab := js.NewArrayBuffer([]byte(body))
+	b := js.Global.Get("Blob").New([]interface{}{ab}, map[string]string{"type": "text/html"})
+	iframe.Set("src", js.Global.Get("URL").Call("createObjectURL", b))
 
 	container := jQuery(":mobile-pagecontainer")
 
