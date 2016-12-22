@@ -1,13 +1,14 @@
 package repo
 
 import (
+	"encoding/json"
 	"fmt"
 
+	pouchdb "github.com/flimzy/go-pouchdb"
 	"github.com/flimzy/log"
+	"github.com/pkg/errors"
 
 	"github.com/FlashbackSRS/flashback-model"
-	pouchdb "github.com/flimzy/go-pouchdb"
-	"github.com/pkg/errors"
 )
 
 // Note is a wrapper around a fb.Note object
@@ -16,6 +17,19 @@ type Note struct {
 	db    *DB
 	theme *Theme
 	model *Model
+}
+
+type jsNote struct {
+	ID string `json:"id"`
+}
+
+// MarshalJSON marshals a Note for the benefit of javascript context in HTML
+// templates.
+func (n *Note) MarshalJSON() ([]byte, error) {
+	note := &jsNote{
+		ID: n.DocID(),
+	}
+	return json.Marshal(note)
 }
 
 // Theme returns the card's associated Theme

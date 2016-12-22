@@ -3,6 +3,7 @@ package repo
 import (
 	"bytes"
 	"encoding/hex"
+	"encoding/json"
 	"html/template"
 	"io"
 	"math/rand"
@@ -23,6 +24,19 @@ type Card struct {
 	*fb.Card
 	db   *DB
 	note *Note
+}
+
+type jsCard struct {
+	ID string `json:"id"`
+}
+
+// MarshalJSON marshals a Card for the benefit of javascript context in HTML
+// templates.
+func (c *Card) MarshalJSON() ([]byte, error) {
+	card := &jsCard{
+		ID: c.DocID(),
+	}
+	return json.Marshal(card)
 }
 
 // Note returns the card's associated Note
@@ -99,10 +113,10 @@ type cardContext struct {
 	IframeID string
 	Card     *Card
 	Note     *Note
-	Model    *Model
-	Deck     *Deck
-	BaseURI  string
-	Fields   map[string]template.HTML
+	// Model    *Model
+	// Deck     *Deck
+	BaseURI string
+	Fields  map[string]template.HTML
 }
 
 const (
@@ -135,9 +149,9 @@ func (c *Card) Body(face int) (body string, iframeID string, err error) {
 		IframeID: RandString(8),
 		Card:     c,
 		Note:     note,
-		Model:    model,
-		BaseURI:  util.BaseURI(),
-		Fields:   make(map[string]template.HTML),
+		// Model:    model,
+		BaseURI: util.BaseURI(),
+		Fields:  make(map[string]template.HTML),
 	}
 
 	for i, f := range model.Fields {

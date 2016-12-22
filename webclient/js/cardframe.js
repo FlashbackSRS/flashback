@@ -14,7 +14,7 @@ window.addEventListener('error', function(e) {
         parent.postMessage({
             IframeID: FB.iframeID,
             Tag: tag,
-            CardID: FB.card._id,
+            CardID: FB.card.id,
             Path: path,
         }, '*');
     }

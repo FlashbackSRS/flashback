@@ -96,8 +96,7 @@ var masterTemplate = `
 var FB = {
 	iframeID: '{{ .IframeID }}',
 	card: {{ .Card }},
-	note: {{ .Note }},
-	model: {{ .Model }},
+	note: {{ .Note }}
 };
 </script>
 <script type="text/javascript" src="js/cardframe.js"></script>
