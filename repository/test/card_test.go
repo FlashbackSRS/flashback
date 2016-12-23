@@ -34,7 +34,6 @@ func TestCard1(t *testing.T) {
 	answer = revRE.ReplaceAllString(answer, `"_rev":"X-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"`)
 	answer = iframeRE.ReplaceAllString(answer, `iframeID: 'xxxxxxxxxxxxxxxx'`)
 	require.LinesEqual(expectedAnswer0, answer, "Card 0 answer")
-
 }
 
 func TestCard2(t *testing.T) {

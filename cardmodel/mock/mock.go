@@ -1,22 +1,34 @@
 // Package mock is the model handler for testing purposes
 package mock
 
-import "github.com/FlashbackSRS/flashback/cardmodel"
+import (
+	"fmt"
+
+	"github.com/FlashbackSRS/flashback/cardmodel"
+)
 
 // Model is an Anki Basic model
-type Model struct{}
+type Model struct {
+	t string
+}
+
+// RegisterMock registers the mock Model as the requested type, for tests.
+func RegisterMock(t string) {
+	m := &Model{t: t}
+	cardmodel.RegisterModel(m)
+}
 
 // Type returns the string "anki-basic", to identify this model handler's type.
 func (m *Model) Type() string {
-	return "mock-model"
+	return m.t
 }
 
 // IframeScript returns JavaScript to run inside the iframe.
 func (m *Model) IframeScript() []byte {
-	return []byte(`
-        /* Placeholder JS */
-        console.log("Mock Handler");
-    `)
+	return []byte(fmt.Sprintf(`
+		/* Mock Model */
+		console.log("Mock Model '%s'");
+`, m.t))
 }
 
 // Buttons returns the initial buttons state

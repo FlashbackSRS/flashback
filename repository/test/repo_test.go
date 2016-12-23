@@ -38,7 +38,7 @@ func TestRepo(t *testing.T) {
 
 	pkg := &fb.Package{}
 	err = json.Unmarshal(fbb, pkg)
-	require.Nil(err, "Error unmarshaling Art.fbb: %s", err)
+	require.Nil(err, "Error unmarshaling Art.fbb: %s (Did you forget to ungzip it?)", err)
 
 	db := DB()
 	th := pkg.Themes[0]

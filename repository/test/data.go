@@ -93,7 +93,7 @@ var expected = map[string][]byte{
 					"$template.0.html"
 				],
 				"id": 0,
-				"modelType": 0,
+				"modelType": "anki-basic",
 				"name": "Basic-24b78",
 				"templates": [
 					"Card 1",
