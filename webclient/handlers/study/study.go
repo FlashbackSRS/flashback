@@ -3,6 +3,7 @@
 package studyhandler
 
 import (
+	"fmt"
 	"net/url"
 
 	"honnef.co/go/js/console"
@@ -69,19 +70,17 @@ func ShowCard(u *repo.User) error {
 	}
 	log.Debug("Got the model handler\n")
 
-	buttons := jQuery(":mobile-pagecontainer").Find("#answer-buttons").Find(`[data-role="button"]`).Underlying()
+	buttons := jQuery(":mobile-pagecontainer").Find("#answer-buttons").Find(`[data-role="button"]`)
 	console.Log(buttons)
 	log.Debug("Setting up the buttons\n")
 	for i, b := range mh.Buttons(currentCard.Face) {
 		log.Debugf("Setting button %d to %s\n", i, b.Name)
-		button := jQuery(buttons.Index(i))
+		button := jQuery(buttons.Underlying().Index(i))
 		if b.Name == "" {
 			// Hack to enforce same-height buttons
 			button.SetText(" ")
-			// button.AddClass("ui-btn-icon-notext")
 		} else {
 			button.SetText(b.Name)
-			// button.RemoveClass("ui-btn-icon-notext")
 		}
 		button.Call("button")
 		if b.Enabled {
@@ -89,13 +88,17 @@ func ShowCard(u *repo.User) error {
 		} else {
 			button.Call("button", "disable")
 		}
-		//		button.Call("button", "refresh")
 	}
+	buttons.On("click", ButtonPressed)
 
 	if err := DisplayFace(currentCard); err != nil {
 		return errors.Wrap(err, "display card")
 	}
 	return nil
+}
+
+func ButtonPressed(e *js.Object) {
+	fmt.Printf("Button %s was pressed!\n", e.Get("currentTarget").Call("getAttribute", "data-id").String())
 }
 
 func DisplayFace(c *cardState) error {
