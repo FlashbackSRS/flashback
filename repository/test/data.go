@@ -24,8 +24,8 @@ var expected = map[string][]byte{
 		"_attachments": {
 			"!Basic-24b78.Card 1 answer.html": {
 				"content_type": "text/html",
-				"digest": "md5-WXg9LcujHCIcCVQMVZ0QJg==",
-				"length": 85,
+				"digest": "md5-ACvi0DsrBFAgRdOV9DdRmg==",
+				"length": 72,
 				"revpos": 1,
 				"stub": true
 			},
@@ -59,8 +59,8 @@ var expected = map[string][]byte{
 			},
 			"$template.0.html": {
 				"content_type": "text/html",
-				"digest": "md5-Lngr2Ob58JXykn+NdjCeOA==",
-				"length": 400,
+				"digest": "md5-gyH1Ahu+xfkDHf8Y5lydSA==",
+				"length": 348,
 				"revpos": 1,
 				"stub": true
 			}
@@ -71,7 +71,7 @@ var expected = map[string][]byte{
 		"files": [
 			"$main.css"
 		],
-		"imported": "2016-09-11T21:02:22.191367903+02:00",
+		"imported": "2016-12-23T12:27:52.005927845+01:00",
 		"modelSequence": 1,
 		"models": [
 			{
