@@ -17,7 +17,7 @@ import (
 	"golang.org/x/net/html"
 
 	"github.com/FlashbackSRS/flashback-model"
-	"github.com/FlashbackSRS/flashback/models"
+	"github.com/FlashbackSRS/flashback/cardmodel"
 	"github.com/FlashbackSRS/flashback/util"
 )
 
@@ -134,12 +134,12 @@ var faces = map[int]string{
 }
 
 // ModelHandler returns the model handler for this card
-func (c *Card) ModelHandler() (models.ModelHandler, error) {
+func (c *Card) ModelHandler() (cardmodel.ModelHandler, error) {
 	m, err := c.Model()
 	if err != nil {
 		return nil, errors.Wrap(err, "retrieve model")
 	}
-	return models.GetHandler(m.Type)
+	return cardmodel.GetHandler(m.Type)
 }
 
 // Model returns the model for the card
@@ -209,7 +209,7 @@ func prepareBody(face int, templateID uint32, modelType string, r io.Reader) ([]
 	if !ok {
 		return nil, errors.Errorf("Unrecognized card face %d", face)
 	}
-	handler, err := models.GetHandler(modelType)
+	handler, err := cardmodel.GetHandler(modelType)
 	if err != nil {
 		return nil, errors.Wrap(err, "model handler")
 	}

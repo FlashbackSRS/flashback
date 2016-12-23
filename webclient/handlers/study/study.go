@@ -6,8 +6,6 @@ import (
 	"fmt"
 	"net/url"
 
-	"honnef.co/go/js/console"
-
 	"github.com/flimzy/log"
 	"github.com/gopherjs/gopherjs/js"
 	"github.com/gopherjs/jquery"
@@ -71,7 +69,6 @@ func ShowCard(u *repo.User) error {
 	log.Debug("Got the model handler\n")
 
 	buttons := jQuery(":mobile-pagecontainer").Find("#answer-buttons").Find(`[data-role="button"]`)
-	console.Log(buttons)
 	log.Debug("Setting up the buttons\n")
 	for i, b := range mh.Buttons(currentCard.Face) {
 		log.Debugf("Setting button %d to %s\n", i, b.Name)

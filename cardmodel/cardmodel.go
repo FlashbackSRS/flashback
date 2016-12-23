@@ -1,4 +1,4 @@
-package models
+package cardmodel
 
 import "github.com/pkg/errors"
 

@@ -4,13 +4,13 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/FlashbackSRS/flashback/models"
-	"github.com/FlashbackSRS/flashback/models/mock"
+	"github.com/FlashbackSRS/flashback/cardmodel"
+	"github.com/FlashbackSRS/flashback/cardmodel/mock"
 	"github.com/flimzy/testify/require"
 )
 
 func TestPrepareBody(t *testing.T) {
-	models.RegisterModel(&mock.Model{}) // Register the mock handler
+	cardmodel.RegisterModel(&mock.Model{}) // Register the mock handler
 	require := require.New(t)
 	doc := strings.NewReader(testDoc1)
 	result, err := prepareBody(Question, 0, "mock-model", doc)

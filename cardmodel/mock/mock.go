@@ -1,7 +1,7 @@
 // Package mock is the model handler for testing purposes
 package mock
 
-import "github.com/FlashbackSRS/flashback/models"
+import "github.com/FlashbackSRS/flashback/cardmodel"
 
 // Model is an Anki Basic model
 type Model struct{}
@@ -20,17 +20,17 @@ func (m *Model) IframeScript() []byte {
 }
 
 // Buttons returns the initial buttons state
-func (m *Model) Buttons(_ int) models.AnswerButtonsState {
-	return AnswerButtonsState{
-		models.AnswerButton{
+func (m *Model) Buttons(_ int) cardmodel.AnswerButtonsState {
+	return cardmodel.AnswerButtonsState{
+		cardmodel.AnswerButton{
 			Name:    "Wrong Answer",
 			Enabled: true,
 		},
-		models.AnswerButton{
+		cardmodel.AnswerButton{
 			Name:    "Correct Answer",
 			Enabled: true,
 		},
-		models.AnswerButton{
+		cardmodel.AnswerButton{
 			Name:    "Easy Answer",
 			Enabled: true,
 		},

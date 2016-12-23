@@ -65,4 +65,4 @@ main.js.map
 .phonegap-facebook-plugin
 
 # go-bindata
-models/ankibasic/data.go
+cardmodel/ankibasic/data.go

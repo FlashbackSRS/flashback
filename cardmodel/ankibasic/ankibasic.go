@@ -1,7 +1,7 @@
 // Package ankibasic is the model handler for the Basic Anki model type.
 package ankibasic
 
-import "github.com/FlashbackSRS/flashback/models"
+import "github.com/FlashbackSRS/flashback/cardmodel"
 
 const (
 	// FaceQuestion is the question face of a card
@@ -14,7 +14,7 @@ const (
 type Model struct{}
 
 func init() {
-	models.RegisterModel(&Model{})
+	cardmodel.RegisterModel(&Model{})
 }
 
 // Type returns the string "anki-basic", to identify this model handler's type.
@@ -32,34 +32,34 @@ func (m *Model) IframeScript() []byte {
 }
 
 // Buttons returns the initial button state
-func (m *Model) Buttons(face int) models.AnswerButtonsState {
+func (m *Model) Buttons(face int) cardmodel.AnswerButtonsState {
 	switch face {
 	case FaceQuestion:
-		return models.AnswerButtonsState{
-			models.AnswerButton{
+		return cardmodel.AnswerButtonsState{
+			cardmodel.AnswerButton{
 				Name:    "",
 				Enabled: false,
 			},
-			models.AnswerButton{
+			cardmodel.AnswerButton{
 				Name:    "",
 				Enabled: false,
 			},
-			models.AnswerButton{
+			cardmodel.AnswerButton{
 				Name:    "Show Answer",
 				Enabled: true,
 			},
 		}
 	case FaceAnswer:
-		return models.AnswerButtonsState{
-			models.AnswerButton{
+		return cardmodel.AnswerButtonsState{
+			cardmodel.AnswerButton{
 				Name:    "Wrong Answer",
 				Enabled: false,
 			},
-			models.AnswerButton{
+			cardmodel.AnswerButton{
 				Name:    "Mostly Correct",
 				Enabled: false,
 			},
-			models.AnswerButton{
+			cardmodel.AnswerButton{
 				Name:    "Correct Answer",
 				Enabled: true,
 			},

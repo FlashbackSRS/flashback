@@ -15,7 +15,7 @@ import (
 	"github.com/FlashbackSRS/flashback/fserve"
 	"github.com/FlashbackSRS/flashback/util"
 
-	_ "github.com/FlashbackSRS/flashback/models/ankibasic"
+	_ "github.com/FlashbackSRS/flashback/cardmodel/ankibasic"
 	"github.com/FlashbackSRS/flashback/webclient/handlers/auth"
 	"github.com/FlashbackSRS/flashback/webclient/handlers/general"
 	"github.com/FlashbackSRS/flashback/webclient/handlers/import"
