@@ -3,15 +3,15 @@
 package synchandler
 
 import (
-	"errors"
-	"fmt"
 	"net/url"
 	"sync/atomic"
 
 	"github.com/flimzy/go-pouchdb"
 	"github.com/flimzy/jqeventrouter"
+	"github.com/flimzy/log"
 	"github.com/gopherjs/gopherjs/js"
 	"github.com/gopherjs/jquery"
+	"github.com/pkg/errors"
 
 	"github.com/FlashbackSRS/flashback/repository"
 )
@@ -21,7 +21,7 @@ var syncInProgress = false
 
 func SetupSyncButton(h jqeventrouter.Handler) jqeventrouter.Handler {
 	return jqeventrouter.HandlerFunc(func(event *jquery.Event, ui *js.Object, p url.Values) bool {
-		fmt.Printf("Setting up the button\n")
+		log.Debugf("Setting up the button\n")
 		btn := jQuery("[data-id='syncbutton']")
 		btn.Off("click")
 		btn.On("click", SyncButton)
@@ -43,10 +43,10 @@ func enableButton() {
 }
 
 func SyncButton() {
-	fmt.Printf("the button was pressed\n")
+	log.Debugf("the button was pressed\n")
 	go func() {
 		if jQuery("[data-id='syncbutton']").HasClass("disabled") {
-			fmt.Printf("button is disabled\n")
+			log.Debugf("button is disabled\n")
 			// Sync already in progress
 			return
 		}
@@ -54,7 +54,7 @@ func SyncButton() {
 		err := DoSync()
 		enableButton()
 		if err != nil {
-			fmt.Printf("Error syncing: %s\n", err)
+			log.Debugf("Error syncing: %s\n", err)
 		}
 	}()
 }
@@ -74,51 +74,51 @@ func DoSync() error {
 	}
 
 	var docsWritten, docsRead, reviewsWritten int32
-	fmt.Printf("Syncing down...\n")
+	log.Debugf("Syncing down...\n")
 	if r, err := Sync(rdb, ldb); err != nil {
-		return fmt.Errorf("Error syncing to server: %s\n", err)
+		return errors.Errorf("Error syncing to server: %s\n", err)
 	} else {
 		atomic.AddInt32(&docsRead, r)
 	}
-	fmt.Printf("Down sync complete\n")
+	log.Debugf("Down sync complete\n")
 	if w, r, err := BundleSync(ldb); err != nil {
-		return fmt.Errorf("Error syncing bundles: %s\n", err)
+		return errors.Errorf("Error syncing bundles: %s\n", err)
 	} else {
-		fmt.Printf("Bundle sync did %d reads, %d writes\n", r, w)
+		log.Debugf("Bundle sync did %d reads, %d writes\n", r, w)
 		atomic.AddInt32(&docsRead, r)
 		atomic.AddInt32(&docsWritten, w)
 	}
 	if w, r, err := AuxSync(ldb, rdb); err != nil {
-		return fmt.Errorf("Error doing aux sync: %s\n", err)
+		return errors.Errorf("Error doing aux sync: %s\n", err)
 	} else {
-		fmt.Printf("aux did %d reads, %d writes\n", r, w)
+		log.Debugf("aux did %d reads, %d writes\n", r, w)
 		atomic.AddInt32(&docsRead, r)
 		atomic.AddInt32(&docsWritten, w)
 	}
 
-	fmt.Printf("Syncing up...\n")
+	log.Debugf("Syncing up...\n")
 	if w, err := Sync(ldb, rdb); err != nil {
-		fmt.Printf("Error syncing from serveR: %s\n", err)
+		log.Debugf("Error syncing from serveR: %s\n", err)
 	} else {
-		fmt.Printf("up %d docs written\n", w)
+		log.Debugf("up %d docs written\n", w)
 		atomic.AddInt32(&docsWritten, w)
 	}
-	fmt.Printf("Up sync complete\n")
+	log.Debugf("Up sync complete\n")
 
-	// 	fmt.Printf("Syncing reviews...\n")
+	// 	log.Debugf("Syncing reviews...\n")
 	// 	if rw, err := SyncReviews(ldb, rdb); err != nil {
-	// 		fmt.Printf("Error syncing reviews: %s\n", err)
+	// 		log.Debugf("Error syncing reviews: %s\n", err)
 	// 	} else {
 	// 		atomic.AddInt32(&reviewsWritten, rw)
 	// 	}
-	// 	fmt.Printf("Review sync complete\n")
+	// 	log.Debugf("Review sync complete\n")
 
-	fmt.Printf("Synced %d docs from server, %d to server, and %d review logs\n", docsRead, docsWritten, reviewsWritten)
-	fmt.Printf("Compacting...\n")
+	log.Debugf("Synced %d docs from server, %d to server, and %d review logs\n", docsRead, docsWritten, reviewsWritten)
+	log.Debugf("Compacting...\n")
 	if err := ldb.Compact(); err != nil {
-		return fmt.Errorf("Error compacting database: %s\n", err)
+		return errors.Errorf("Error compacting database: %s\n", err)
 	}
-	fmt.Printf("Compacting complete\n")
+	log.Debugf("Compacting complete\n")
 	return nil
 }
 
@@ -133,7 +133,7 @@ func Sync(source, target *repo.DB) (int32, error) {
 
 // BundleSync syncs auxilary bundles to the remote server.
 func BundleSync(udb *repo.DB) (int32, int32, error) {
-	fmt.Printf("Reading bundles from user database...\n")
+	log.Debugf("Reading bundles from user database...\n")
 	doc := make(map[string][]map[string]string)
 	err := udb.Find(map[string]interface{}{
 		"selector": map[string]string{"type": "bundle"},
@@ -146,10 +146,10 @@ func BundleSync(udb *repo.DB) (int32, int32, error) {
 	for i, bundle := range doc["docs"] {
 		bundles[i] = bundle["_id"]
 	}
-	fmt.Printf("bundles = %v\n", bundles)
+	log.Debugf("bundles = %v\n", bundles)
 	var written, read int32
 	for _, bundle := range bundles {
-		fmt.Printf("Bundle %s", bundle)
+		log.Debugf("Bundle %s", bundle)
 		local, err := repo.NewDB(bundle)
 		if err != nil {
 			return written, read, err
@@ -170,13 +170,13 @@ func BundleSync(udb *repo.DB) (int32, int32, error) {
 			atomic.AddInt32(&read, r)
 		}
 	}
-	fmt.Printf("Bundles sycned\n")
+	log.Debugf("Bundles sycned\n")
 	return written, read, nil
 }
 
 func AuxSync(local, remote *repo.DB) (int32, int32, error) {
 	/*
-		fmt.Printf("Reading auxilary tables to sync...\n")
+		log.Debugf("Reading auxilary tables to sync...\n")
 		doc := make(map[string][]model.Stub)
 		err := local.Find(map[string]interface{}{
 			"selector": map[string]string{"type": "stub"},
@@ -190,23 +190,23 @@ func AuxSync(local, remote *repo.DB) (int32, int32, error) {
 		var written, read int32
 		host := util.CouchHost()
 		for _, stub := range doc["docs"] {
-			fmt.Printf("stub = %v\n", stub)
+			log.Debugf("stub = %v\n", stub)
 			local := model.NewDB(stub.ID)
 			remote := model.NewDB(host + "/" + stub.ID)
 			if w, err := Sync(local, remote); err != nil {
-				fmt.Printf("Error syncing '%s' up: %s\n", stub.ID, err)
+				log.Debugf("Error syncing '%s' up: %s\n", stub.ID, err)
 				return written, read, err
 			} else {
 				atomic.AddInt32(&written, w)
 			}
 
 			if r, err := Sync(remote, local); err != nil {
-				fmt.Printf("Error syncing '%s' down: %s\n", stub.ID, err)
+				log.Debugf("Error syncing '%s' down: %s\n", stub.ID, err)
 			} else {
 				atomic.AddInt32(&read, r)
 			}
 		}
-		fmt.Printf("Auxilary sync complete\n")
+		log.Debugf("Auxilary sync complete\n")
 		return written, read, nil
 	*/
 	return 0, 0, nil
@@ -247,10 +247,10 @@ func SyncReviews(local, remote *repo.DB) (int32, error) {
 		return revsSynced, err
 	}
 	if before.DocCount != after.DocCount || before.UpdateSeq != after.UpdateSeq {
-		fmt.Printf("ReviewsDb content changed during sync. Refusing to delete.\n")
+		log.Debugf("ReviewsDb content changed during sync. Refusing to delete.\n")
 		return revsSynced, nil
 	}
-	fmt.Printf("Ready to zap %s\n", after.DBName)
+	log.Debugf("Ready to zap %s\n", after.DBName)
 	err = util.ZapReviewsDb(ldb)
 	return revsSynced, err
 }

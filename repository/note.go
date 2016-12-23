@@ -2,7 +2,6 @@ package repo
 
 import (
 	"encoding/json"
-	"fmt"
 
 	pouchdb "github.com/flimzy/go-pouchdb"
 	"github.com/flimzy/log"
@@ -57,7 +56,6 @@ func (n *Note) fetchTheme() error {
 	log.Debugf("Fetching theme %s", n.ThemeID)
 	t := &fb.Theme{}
 	if err := n.db.Get(n.ThemeID, t, pouchdb.Options{Attachments: true}); err != nil {
-		fmt.Printf("Error: %s\n", err)
 		return errors.Wrapf(err, "fetchTheme() can't fetch %s", n.ThemeID)
 	}
 	m := t.Models[n.ModelID]

@@ -1,7 +1,6 @@
 package fserve
 
 import (
-	"fmt"
 	"sync"
 
 	"github.com/flimzy/log"
@@ -131,13 +130,13 @@ func sendResponse(iframeID, tag, filename string, att *repo.Attachment) error {
 		return errors.Errorf("iframe not found in DOM")
 	}
 	ab := js.NewArrayBuffer(att.Content)
-	fmt.Printf("Before send, ab has %d bytes\n", ab.Get("byteLength").Int())
+	log.Debugf("Before send, ab has %d bytes\n", ab.Get("byteLength").Int())
 	iframe.Get("contentWindow").Call("postMessage", Response{
 		Tag:         tag,
 		Path:        filename,
 		ContentType: att.ContentType,
 		Data:        ab,
 	}, "*", []interface{}{ab})
-	fmt.Printf("After send, ab has %d bytes\n", ab.Get("byteLength").Int())
+	log.Debugf("After send, ab has %d bytes\n", ab.Get("byteLength").Int())
 	return nil
 }

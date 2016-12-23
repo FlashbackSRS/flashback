@@ -1,7 +1,11 @@
 // Package ankibasic is the model handler for the Basic Anki model type.
 package ankibasic
 
-import "github.com/FlashbackSRS/flashback/cardmodel"
+import (
+	"github.com/flimzy/log"
+
+	"github.com/FlashbackSRS/flashback/cardmodel"
+)
 
 const (
 	// FaceQuestion is the question face of a card
@@ -14,6 +18,7 @@ const (
 type Model struct{}
 
 func init() {
+	log.Debug("Registering anki-basic model\n")
 	cardmodel.RegisterModel(&Model{})
 }
 

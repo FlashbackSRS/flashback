@@ -3,7 +3,6 @@
 package studyhandler
 
 import (
-	"fmt"
 	"net/url"
 
 	"github.com/flimzy/log"
@@ -95,7 +94,7 @@ func ShowCard(u *repo.User) error {
 }
 
 func ButtonPressed(e *js.Object) {
-	fmt.Printf("Button %s was pressed!\n", e.Get("currentTarget").Call("getAttribute", "data-id").String())
+	log.Debugf("Button %s was pressed!\n", e.Get("currentTarget").Call("getAttribute", "data-id").String())
 }
 
 func DisplayFace(c *cardState) error {

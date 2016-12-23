@@ -119,9 +119,9 @@ func getReviewsDbList() (DbList, error) {
 
 func setReviewsDbList(list DbList) error {
 	if list.Id != "_local/ReviewsDbs" {
-		return fmt.Errorf("Invalid id '%s' for ReviewsDbs", list.Id)
+		return errors.Errorf("Invalid id '%s' for ReviewsDbs", list.Id)
 	}
-	fmt.Printf("Setting list to: %v\n", list.Dbs)
+	log.Debugf("Setting list to: %v\n", list.Dbs)
 	db, err := UserDb()
 	if err != nil {
 		return err
@@ -146,7 +146,7 @@ func ReviewsSyncDbs() (*repo.DB, error) {
 	dbName := list.Dbs[0]
 	db := repo.NewDB(dbName)
 	if len(list.Dbs) > 1 {
-		fmt.Printf("WARNING: More than one active reviews database!\n")
+		log.Debugf("WARNING: More than one active reviews database!\n")
 		return db, nil
 	}
 	var newDbPrefix string = "reviews-1-"
@@ -170,7 +170,7 @@ func ZapReviewsDb(db *repo.DB) error {
 		return err
 	}
 	if list.Dbs[0] != info.DBName {
-		return fmt.Errorf("Attempt to remove ReviewsDb '%s' not at head of list", info.DBName)
+		return errors.Errorf("Attempt to remove ReviewsDb '%s' not at head of list", info.DBName)
 	}
 	list.Dbs = list.Dbs[1:]
 	if err := setReviewsDbList(list); err != nil {

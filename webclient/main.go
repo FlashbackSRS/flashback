@@ -3,12 +3,12 @@
 package main
 
 import (
-	"fmt"
 	"strconv"
 	"sync"
 
 	"github.com/flimzy/go-cordova"
 	"github.com/flimzy/jqeventrouter"
+	"github.com/flimzy/log"
 	"github.com/gopherjs/gopherjs/js"
 	"github.com/gopherjs/jquery"
 
@@ -137,11 +137,11 @@ func ConsoleEvent(name string, event *jquery.Event, data *js.Object) {
 	if page == "[object Object]" {
 		page = data.Get("toPage").Call("jqmData", "url").String()
 	}
-	fmt.Printf("Event: %s, Current page: %s", name, page)
+	log.Debugf("Event: %s, Current page: %s", name, page)
 }
 
 func ConsolePageEvent(name string, event *jquery.Event) {
-	fmt.Printf("Event: %s", name)
+	log.Debugf("Event: %s", name)
 }
 
 func DebugEvents() {

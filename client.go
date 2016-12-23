@@ -1,7 +1,6 @@
 package flashback
 
 import (
-	"fmt"
 	"io"
 	"regexp"
 	"strings"
@@ -9,6 +8,7 @@ import (
 	"golang.org/x/net/html"
 
 	"github.com/FlashbackSRS/flashback/util"
+	"github.com/flimzy/log"
 )
 
 type FlashbackClient struct {
@@ -62,7 +62,7 @@ func (c *FlashbackClient) GetURI(rel string) string {
 	}
 	err := c.ReadRels("index")
 	if err != nil {
-		fmt.Printf("Error reading index: %s", err)
+		log.Debugf("Error reading index: %s", err)
 	}
 	return c.URIs[rel]
 }
