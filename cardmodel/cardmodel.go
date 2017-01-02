@@ -2,8 +2,8 @@ package cardmodel
 
 import "github.com/pkg/errors"
 
-// A ModelHandler handles the logic for a given model
-type ModelHandler interface {
+// A Model handles the logic for a given model
+type Model interface {
 	// Type returns the Model Type identifier string.
 	Type() string
 	// IframeScript returns a blob of JavaScript, which is loaded inside the
@@ -23,11 +23,11 @@ type AnswerButton struct {
 	Enabled bool
 }
 
-var handlers = map[string]ModelHandler{}
+var handlers = map[string]Model{}
 var handledTypes = []string{}
 
 // RegisterModel registers a model handler
-func RegisterModel(h ModelHandler) {
+func RegisterModel(h Model) {
 	name := h.Type()
 	if _, ok := handlers[name]; ok {
 		panic("A handler for '" + name + "' is already registered'")
@@ -42,7 +42,7 @@ func HandledTypes() []string {
 }
 
 // GetHandler gets the handler for the specified model type
-func GetHandler(modelType string) (ModelHandler, error) {
+func GetHandler(modelType string) (Model, error) {
 	h, ok := handlers[modelType]
 	if !ok {
 		return nil, errors.Errorf("no handler for '%s' registered", modelType)

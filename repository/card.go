@@ -133,8 +133,9 @@ var faces = map[int]string{
 	Answer:   "answer",
 }
 
-// ModelHandler returns the model handler for this card
-func (c *Card) ModelHandler() (cardmodel.ModelHandler, error) {
+// ModelHandler returns the cardmodel.Model for this card
+// FIXME: Rename this method to just Model() (??)
+func (c *Card) ModelHandler() (cardmodel.Model, error) {
 	m, err := c.Model()
 	if err != nil {
 		return nil, errors.Wrap(err, "retrieve model")
