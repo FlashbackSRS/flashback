@@ -71,7 +71,7 @@ var expected = map[string][]byte{
 		"files": [
 			"$main.css"
 		],
-		"imported": "2016-12-23T12:27:52.005927845+01:00",
+		"imported": "2017-01-02T17:16:56.764985035+01:00",
 		"modelSequence": 1,
 		"models": [
 			{
