@@ -7,10 +7,13 @@ import (
 	"fmt"
 	"html/template"
 	"io"
+	"math"
 	"math/rand"
+	"sort"
 	"time"
 
 	"github.com/PuerkitoBio/goquery"
+	"github.com/davecgh/go-spew/spew"
 	"github.com/flimzy/go-pouchdb"
 	"github.com/flimzy/log"
 	"github.com/pkg/errors"
@@ -87,21 +90,87 @@ func (u *User) GetCard(id string) (*Card, error) {
 	}, nil
 }
 
+type cardPriority struct {
+	Card     *fb.Card
+	Priority float32
+}
+
+type prioritizedCards []cardPriority
+
+func (p prioritizedCards) Len() int { return len(p) }
+func (p prioritizedCards) Less(i, j int) bool {
+	return p[i].Priority > p[j].Priority || p[i].Card.Created.Before(p[j].Card.Created)
+}
+func (p prioritizedCards) Swap(i, j int) { p[i], p[j] = p[j], p[i] }
+
+// CardPrio returns a number 0 or greater, as a priority to be used in
+// determining card study order.
+func CardPrio(due time.Time, interval time.Duration, now time.Time) float32 {
+	return float32(math.Pow(1+float64(now.Sub(due))/float64(interval), 3))
+}
+
+// GetCards fetches up to max cards from the db, in priority order.
+func GetCards(db *DB, now time.Time, max int) ([]*fb.Card, error) {
+	doc := make(map[string][]*fb.Card)
+	query := map[string]interface{}{
+		"selector": map[string]interface{}{
+			"type":    "card",
+			"due":     map[string]interface{}{"$gte": nil},
+			"created": map[string]interface{}{"$gte": nil},
+		},
+		//		"fields": []string{"_id", "due", "interval", "model", "created"},
+		"sort":  []string{"due", "created"},
+		"limit": 100,
+	}
+	// spew.Dump(query)
+	if err := db.Find(query, &doc); err != nil {
+		return nil, errors.Wrap(err, "card list")
+	}
+	// spew.Dump(doc)
+	fmt.Printf("10\n")
+	pri := make([]cardPriority, len(doc["docs"]))
+	fmt.Printf("20\n")
+	for i, card := range doc["docs"] {
+		fmt.Printf("30: %d\n", i)
+		pri[i].Card = card
+		if card.Due != nil {
+			pri[i].Priority = CardPrio(*card.Due, *card.Interval, now)
+		}
+		spew.Dump(pri[i])
+	}
+	fmt.Printf("40\n")
+	sort.Sort(prioritizedCards(pri))
+	docs := make([]*fb.Card, len(pri))
+	for i, card := range pri {
+		docs[i] = card.Card
+	}
+	return docs, nil
+}
+
 // GetNextCard gets the next card to study
 func (u *User) GetNextCard() (*Card, error) {
 	db, err := u.DB()
 	if err != nil {
 		return nil, errors.Wrap(err, "GetNextCard(): Error connecting to User DB")
 	}
+	cl, err := GetCards(db, time.Now(), 10)
+	if err != nil {
+		return nil, err
+	}
+	spew.Dump(cl)
 
 	doc := make(map[string][]*fb.Card)
 	query := map[string]interface{}{
 		"selector": map[string]string{"type": "card"},
-		"limit":    1,
+		"fields":   []string{"_id", "due", "interval", "model"},
+		"sort":     "due",
+		"limit":    100,
 	}
 	if err := db.Find(query, &doc); err != nil {
 		return nil, errors.Wrap(err, "GetNextCard(): Error fetching card")
 	}
+	spew.Dump(doc)
+	return nil, nil
 	if len(doc["docs"]) == 0 {
 		return nil, errors.New("No cards available")
 	}

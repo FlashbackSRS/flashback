@@ -1,8 +1,10 @@
 package repo
 
 import (
+	"math"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/FlashbackSRS/flashback/cardmodel/mock"
 	"github.com/flimzy/testify/require"
@@ -82,3 +84,57 @@ iframeID: '445a737462464b4e',
 <body class="card">
     Question: <img src="paste-13877039333377.jpg"/><br/><div><sub>instrument</sub></div>
 </body></html>`
+
+type PrioTest struct {
+	Due      time.Time
+	Interval time.Duration
+	Expected float64
+}
+
+var PrioTests = []PrioTest{
+	PrioTest{
+		Due:      parseTime("2017-01-01 00:00:00"),
+		Interval: 24 * time.Hour,
+		Expected: 1,
+	},
+	PrioTest{
+		Due:      parseTime("2017-01-01 12:00:00"),
+		Interval: 24 * time.Hour,
+		Expected: 0.125,
+	},
+	PrioTest{
+		Due:      parseTime("2016-12-31 12:00:00"),
+		Interval: 24 * time.Hour,
+		Expected: 3.375,
+	},
+	PrioTest{
+		Due:      parseTime("2017-02-01 00:00:00"),
+		Interval: 60 * 24 * time.Hour,
+		Expected: 0.112912,
+	},
+	PrioTest{
+		Due:      parseTime("2017-01-02 00:00:00"),
+		Interval: 24 * time.Hour,
+		Expected: 0,
+	},
+	PrioTest{
+		Due:      parseTime("2016-01-02 00:00:00"),
+		Interval: 7 * 24 * time.Hour,
+		Expected: 150084.109375,
+	},
+}
+
+func TestPrio(t *testing.T) {
+	now := parseTime("2017-01-01 00:00:00")
+	for _, test := range PrioTests {
+		prio := CardPrio(test.Due, test.Interval, now)
+		if math.Abs(float64(prio)-test.Expected) > 0.000001 {
+			t.Errorf("%s / %s: Expected priority %f, got %f\n", test.Due, test.Interval, test.Expected, prio)
+		}
+	}
+}
+
+func parseTime(ts string) time.Time {
+	t, _ := time.Parse("2006-01-02 15:04:05", ts)
+	return t
+}

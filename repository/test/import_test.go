@@ -58,10 +58,10 @@ var importMu sync.Mutex
 
 func testImport(t *testing.T) {
 	importMu.Lock()
+	defer importMu.Unlock()
 	if importComplete {
 		return
 	}
-	defer importMu.Unlock()
 	require := require.New(t)
 	fbb, err := os.Open(fbbFile)
 	require.Nil(err, "Error reading %s: %s", fbbFile, err)

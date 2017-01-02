@@ -50,7 +50,7 @@ var initFuncs = map[string]dbInitFunc{
 
 func commonDBInit(db *DB) error {
 	err := db.CreateIndex(find.Index{
-		Fields: []string{"type"},
+		Fields: []string{"due", "created", "type"},
 	})
 	if err != nil && !find.IsIndexExists(err) {
 		return err
