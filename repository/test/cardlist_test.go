@@ -7,7 +7,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/davecgh/go-spew/spew"
 	"github.com/pborman/uuid"
 
 	"github.com/FlashbackSRS/flashback-model"
@@ -20,7 +19,7 @@ var listImportMu sync.Mutex
 
 func init() {
 	// pouchdb.Debug("pouchdb:find")
-	u, err := fb.NewUser(uuid.Parse("9d11d024-a100-4045-a5b7-9f1ccf96cc9f"), "mr_jones")
+	u, err := fb.NewUser(uuid.Parse("9d11d024-a100-4045-a5b7-9f1ccf96cc9e"), "mr_jones")
 	if err != nil {
 		panic(fmt.Sprintf("Error creating user: %s\n", err))
 	}
@@ -106,7 +105,6 @@ func TestCardList(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GetCards() failed: %s", err)
 	}
-	spew.Dump(cl)
 
 	expectedCount := 15
 	if len(cl) != expectedCount {

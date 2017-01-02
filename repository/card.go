@@ -13,7 +13,6 @@ import (
 	"time"
 
 	"github.com/PuerkitoBio/goquery"
-	"github.com/davecgh/go-spew/spew"
 	"github.com/flimzy/go-pouchdb"
 	"github.com/flimzy/log"
 	"github.com/pkg/errors"
@@ -58,7 +57,7 @@ func (c *Card) fetchNote() error {
 		return nil
 	}
 	log.Debugf("Fetching note %s", c.NoteID())
-	db, err := NewDB(c.BundleID())
+	db, err := c.db.User.NewDB(c.BundleID())
 	if err != nil {
 		return errors.Wrap(err, "fetchNote() can't connect to bundle DB")
 	}
@@ -122,23 +121,16 @@ func GetCards(db *DB, now time.Time, max int) ([]*fb.Card, error) {
 		"sort":  []string{"due", "created"},
 		"limit": 100,
 	}
-	// spew.Dump(query)
 	if err := db.Find(query, &doc); err != nil {
 		return nil, errors.Wrap(err, "card list")
 	}
-	// spew.Dump(doc)
-	fmt.Printf("10\n")
 	pri := make([]cardPriority, len(doc["docs"]))
-	fmt.Printf("20\n")
 	for i, card := range doc["docs"] {
-		fmt.Printf("30: %d\n", i)
 		pri[i].Card = card
 		if card.Due != nil {
 			pri[i].Priority = CardPrio(*card.Due, *card.Interval, now)
 		}
-		spew.Dump(pri[i])
 	}
-	fmt.Printf("40\n")
 	sort.Sort(prioritizedCards(pri))
 	docs := make([]*fb.Card, len(pri))
 	for i, card := range pri {
@@ -153,11 +145,6 @@ func (u *User) GetNextCard() (*Card, error) {
 	if err != nil {
 		return nil, errors.Wrap(err, "GetNextCard(): Error connecting to User DB")
 	}
-	cl, err := GetCards(db, time.Now(), 10)
-	if err != nil {
-		return nil, err
-	}
-	spew.Dump(cl)
 
 	doc := make(map[string][]*fb.Card)
 	query := map[string]interface{}{
@@ -169,7 +156,6 @@ func (u *User) GetNextCard() (*Card, error) {
 	if err := db.Find(query, &doc); err != nil {
 		return nil, errors.Wrap(err, "GetNextCard(): Error fetching card")
 	}
-	spew.Dump(doc)
 	return nil, nil
 	if len(doc["docs"]) == 0 {
 		return nil, errors.New("No cards available")

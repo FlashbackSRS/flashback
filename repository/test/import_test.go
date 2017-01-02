@@ -23,7 +23,7 @@ func init() {
 var bundleID = "bundle-alnlcvykyjxsjtijzonc3456kd5u4757"
 
 var expectedUserDBIDs = []string{
-	"_design/idx-691fd0e525e654428e875bcb3aacb6ac",
+	"_design/idx-740f58f89a91c3283d5ef9b896e9ac9f",
 	bundleID,
 	"card-alnlcvykyjxsjtijzonc3456kd5u4757.ZR4TpeX38xRzRvXprlgJpP4Ribo.0",
 	"card-alnlcvykyjxsjtijzonc3456kd5u4757.ZR4TpeX38xRzRvXprlgJpP4Ribo.1",
@@ -40,7 +40,7 @@ var expectedUserDBIDs = []string{
 }
 
 var expectedBundleDBIDs = []string{
-	"_design/idx-691fd0e525e654428e875bcb3aacb6ac",
+	"_design/idx-740f58f89a91c3283d5ef9b896e9ac9f",
 	bundleID,
 	"deck-MoAm80CALRtrMk7Y4eOmGtCzzjY",
 	"deck-sXxr9js6DFSFotJ6yuISxOQCuKU",
@@ -92,7 +92,7 @@ func TestImport(t *testing.T) {
 	}
 	require.DeepEqual(expectedUserDBIDs, uids, "User DB IDs")
 
-	bdb, err := repo.NewDB(bundleID)
+	bdb, err := user.NewDB(bundleID)
 	require.Nil(err, "Error connecting to Bundle DB: %s", err)
 
 	if err := bdb.AllDocs(&allBundleDocs, pouchdb.Options{}); err != nil {

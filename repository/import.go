@@ -23,7 +23,7 @@ func Import(user *User, r io.Reader) error {
 		return errors.Wrap(err, "Unable to connect to User DB")
 	}
 	bundle := pkg.Bundle
-	bdb, err := BundleDB(bundle)
+	bdb, err := user.BundleDB(bundle)
 	if err != nil {
 		return errors.Wrap(err, "Unable to connect to Bundle DB")
 	}

@@ -68,7 +68,7 @@ func DoSync() error {
 	if err != nil {
 		return err
 	}
-	rdb, err := repo.NewRemoteDB(ldb.DBName)
+	rdb, err := u.NewRemoteDB(ldb.DBName)
 	if err != nil {
 		return err
 	}
@@ -150,11 +150,11 @@ func BundleSync(udb *repo.DB) (int32, int32, error) {
 	var written, read int32
 	for _, bundle := range bundles {
 		log.Debugf("Bundle %s", bundle)
-		local, err := repo.NewDB(bundle)
+		local, err := udb.User.NewDB(bundle)
 		if err != nil {
 			return written, read, err
 		}
-		remote, err := repo.NewRemoteDB(bundle)
+		remote, err := udb.User.NewRemoteDB(bundle)
 		if err != nil {
 			return written, read, err
 		}
