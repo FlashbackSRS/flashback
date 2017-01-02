@@ -5,6 +5,7 @@ package importhandler
 import (
 	"bytes"
 	"compress/gzip"
+	"fmt"
 	"net/url"
 
 	"github.com/flimzy/goweb/file"
@@ -22,12 +23,13 @@ func BeforeTransition(event *jquery.Event, ui *js.Object, p url.Values) bool {
 	go func() {
 		container := jQuery(":mobile-pagecontainer")
 		jQuery("#importnow", container).On("click", func() {
+			fmt.Printf("Foo\n")
 			log.Debug("Attempting to import something...\n")
 			go func() {
 				if err := DoImport(); err != nil {
-					log.Debugf("Error importing: %s\n", err)
+					log.Printf("Error importing: %s\n", err)
 				}
-				log.Debugf("DoImport() returned\n")
+				log.Printf("DoImport() complete\n")
 			}()
 		})
 		jQuery(".show-until-load", container).Hide()
