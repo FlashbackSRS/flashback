@@ -12,6 +12,8 @@ type Model struct {
 	t string
 }
 
+var _ cardmodel.Model = &Model{}
+
 // RegisterMock registers the mock Model as the requested type, for tests.
 func RegisterMock(t string) {
 	m := &Model{t: t}

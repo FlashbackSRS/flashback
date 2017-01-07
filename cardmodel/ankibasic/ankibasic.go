@@ -18,6 +18,8 @@ const (
 // Model is an Anki Basic model
 type Model struct{}
 
+var _ cardmodel.Model = &Model{}
+
 func init() {
 	log.Debug("Registering anki-basic model\n")
 	cardmodel.RegisterModel(&Model{})
