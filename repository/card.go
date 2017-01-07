@@ -23,12 +23,27 @@ import (
 	"github.com/FlashbackSRS/flashback/util"
 )
 
+const newPriority = 0.5
+
+func init() {
+	rand.Seed(int64(time.Now().UnixNano()))
+}
+
 // Card provides a convenient interface to fb.Card and dependencies
 type Card struct {
 	*fb.Card
-	db   *DB
-	note *Note
+	db       *DB
+	note     *Note
+	priority float32
 }
+
+type cardList []*Card
+
+func (c cardList) Len() int { return len(c) }
+func (c cardList) Less(i, j int) bool {
+	return c[i].priority > c[j].priority || c[i].Created.Before(c[j].Created)
+}
+func (c cardList) Swap(i, j int) { c[i], c[j] = c[j], c[i] }
 
 type jsCard struct {
 	ID string `json:"id"`
@@ -76,9 +91,13 @@ func (c *Card) fetchNote() error {
 func (u *User) GetCard(id string) (*Card, error) {
 	db, err := u.DB()
 	if err != nil {
-		return nil, errors.Wrap(err, "Unable to connect to User DB")
+		return nil, errors.Wrap(err, "GetNextCard(): Error connecting to User DB")
 	}
+	return db.GetCard(id)
+}
 
+// GetCard fetches the requested card
+func (db *DB) GetCard(id string) (*Card, error) {
 	card := &fb.Card{}
 	if err := db.Get(id, card, pouchdb.Options{}); err != nil {
 		return nil, errors.Wrap(err, "Unable to fetch requested card")
@@ -104,12 +123,15 @@ func (p prioritizedCards) Swap(i, j int) { p[i], p[j] = p[j], p[i] }
 
 // CardPrio returns a number 0 or greater, as a priority to be used in
 // determining card study order.
-func CardPrio(due time.Time, interval time.Duration, now time.Time) float32 {
-	return float32(math.Pow(1+float64(now.Sub(due))/float64(interval), 3))
+func CardPrio(due *time.Time, interval *time.Duration, now time.Time) float32 {
+	if due == nil || interval == nil {
+		return newPriority
+	}
+	return float32(math.Pow(1+float64(now.Sub(*due))/float64(*interval), 3))
 }
 
-// GetCards fetches up to max cards from the db, in priority order.
-func GetCards(db *DB, now time.Time, max int) ([]*fb.Card, error) {
+// GetCards fetches up to limit cards from the db, in priority order.
+func GetCards(db *DB, now time.Time, limit int) ([]*Card, error) {
 	doc := make(map[string][]*fb.Card)
 	query := map[string]interface{}{
 		"selector": map[string]interface{}{
@@ -119,24 +141,21 @@ func GetCards(db *DB, now time.Time, max int) ([]*fb.Card, error) {
 		},
 		//		"fields": []string{"_id", "due", "interval", "model", "created"},
 		"sort":  []string{"due", "created"},
-		"limit": 100,
+		"limit": limit,
 	}
 	if err := db.Find(query, &doc); err != nil {
 		return nil, errors.Wrap(err, "card list")
 	}
-	pri := make([]cardPriority, len(doc["docs"]))
+	cards := make([]*Card, len(doc["docs"]))
 	for i, card := range doc["docs"] {
-		pri[i].Card = card
-		if card.Due != nil {
-			pri[i].Priority = CardPrio(*card.Due, *card.Interval, now)
+		cards[i] = &Card{
+			Card:     card,
+			db:       db,
+			priority: CardPrio(card.Due, card.Interval, now),
 		}
 	}
-	sort.Sort(prioritizedCards(pri))
-	docs := make([]*fb.Card, len(pri))
-	for i, card := range pri {
-		docs[i] = card.Card
-	}
-	return docs, nil
+	sort.Sort(cardList(cards))
+	return cards, nil
 }
 
 // GetNextCard gets the next card to study
@@ -146,24 +165,24 @@ func (u *User) GetNextCard() (*Card, error) {
 		return nil, errors.Wrap(err, "GetNextCard(): Error connecting to User DB")
 	}
 
-	doc := make(map[string][]*fb.Card)
-	query := map[string]interface{}{
-		"selector": map[string]string{"type": "card"},
-		"fields":   []string{"_id", "due", "interval", "model"},
-		"sort":     "due",
-		"limit":    100,
+	cards, err := GetCards(db, time.Now(), 20)
+	if err != nil {
+		return nil, errors.Wrap(err, "get card list")
 	}
-	if err := db.Find(query, &doc); err != nil {
-		return nil, errors.Wrap(err, "GetNextCard(): Error fetching card")
+	var weights float32
+	for _, c := range cards {
+		weights += c.priority
 	}
-	return nil, nil
-	if len(doc["docs"]) == 0 {
-		return nil, errors.New("No cards available")
+	r := rand.Float32() * weights
+	log.Debugf("Random key / total: %f / %f (%d)\n", r, weights, len(cards))
+	for i, c := range cards {
+		r -= c.priority
+		if r < 0 {
+			log.Debugf("Selected card %d: %s\n", i, c.Identity())
+			return db.GetCard(c.DocID())
+		}
 	}
-	return &Card{
-		Card: doc["docs"][0],
-		db:   db,
-	}, nil
+	return nil, errors.New("failed to fetch card")
 }
 
 type cardContext struct {
