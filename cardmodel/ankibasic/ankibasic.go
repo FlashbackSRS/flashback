@@ -3,6 +3,7 @@ package ankibasic
 
 import (
 	"github.com/flimzy/log"
+	"github.com/pkg/errors"
 
 	"github.com/FlashbackSRS/flashback/cardmodel"
 )
@@ -37,7 +38,7 @@ func (m *Model) IframeScript() []byte {
 }
 
 // Buttons returns the initial button state
-func (m *Model) Buttons(face int) cardmodel.AnswerButtonsState {
+func (m *Model) Buttons(face uint8) (cardmodel.AnswerButtonsState, error) {
 	switch face {
 	case FaceQuestion:
 		return cardmodel.AnswerButtonsState{
@@ -53,22 +54,23 @@ func (m *Model) Buttons(face int) cardmodel.AnswerButtonsState {
 				Name:    "Show Answer",
 				Enabled: true,
 			},
-		}
+		}, nil
 	case FaceAnswer:
 		return cardmodel.AnswerButtonsState{
 			cardmodel.AnswerButton{
 				Name:    "Wrong Answer",
-				Enabled: false,
+				Enabled: true,
 			},
 			cardmodel.AnswerButton{
 				Name:    "Mostly Correct",
-				Enabled: false,
+				Enabled: true,
 			},
 			cardmodel.AnswerButton{
 				Name:    "Correct Answer",
 				Enabled: true,
 			},
-		}
+		}, nil
+	default:
+		return cardmodel.AnswerButtonsState{}, errors.Errorf("Invalid face %d", face)
 	}
-	panic("unknown face")
 }

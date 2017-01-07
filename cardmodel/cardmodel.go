@@ -11,7 +11,7 @@ type Model interface {
 	IframeScript() []byte
 	// Buttons returns the attributes for the three available answer buttons'
 	// initial state. Index 0 = left button, 1 = center, 2 = right
-	Buttons(face int) AnswerButtonsState
+	Buttons(face uint8) (AnswerButtonsState, error)
 }
 
 // AnswerButtonsState is the state of the three answer buttons

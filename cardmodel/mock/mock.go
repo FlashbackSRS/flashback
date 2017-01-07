@@ -32,7 +32,7 @@ func (m *Model) IframeScript() []byte {
 }
 
 // Buttons returns the initial buttons state
-func (m *Model) Buttons(_ int) cardmodel.AnswerButtonsState {
+func (m *Model) Buttons(_ uint8) (cardmodel.AnswerButtonsState, error) {
 	return cardmodel.AnswerButtonsState{
 		cardmodel.AnswerButton{
 			Name:    "Wrong Answer",
@@ -46,5 +46,5 @@ func (m *Model) Buttons(_ int) cardmodel.AnswerButtonsState {
 			Name:    "Easy Answer",
 			Enabled: true,
 		},
-	}
+	}, nil
 }
