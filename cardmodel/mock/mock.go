@@ -4,7 +4,9 @@ package mock
 import (
 	"fmt"
 
+	"github.com/FlashbackSRS/flashback-model"
 	"github.com/FlashbackSRS/flashback/cardmodel"
+	"github.com/flimzy/log"
 )
 
 // Model is an Anki Basic model
@@ -34,7 +36,7 @@ func (m *Model) IframeScript() []byte {
 }
 
 // Buttons returns the initial buttons state
-func (m *Model) Buttons(_ uint8) (cardmodel.AnswerButtonsState, error) {
+func (m *Model) Buttons(_ int) (cardmodel.AnswerButtonsState, error) {
 	return cardmodel.AnswerButtonsState{
 		cardmodel.AnswerButton{
 			Name:    "Wrong Answer",
@@ -49,4 +51,10 @@ func (m *Model) Buttons(_ uint8) (cardmodel.AnswerButtonsState, error) {
 			Enabled: true,
 		},
 	}, nil
+}
+
+// Action responds to a card action, such as a button press
+func (m *Model) Action(card *fb.Card, face *int, action cardmodel.Action) (bool, error) {
+	log.Debugf("face: %d, action: %+v\n", face, action)
+	return true, nil
 }

@@ -5,6 +5,7 @@ import (
 	"github.com/flimzy/log"
 	"github.com/pkg/errors"
 
+	"github.com/FlashbackSRS/flashback-model"
 	"github.com/FlashbackSRS/flashback/cardmodel"
 )
 
@@ -40,7 +41,7 @@ func (m *Model) IframeScript() []byte {
 }
 
 // Buttons returns the initial button state
-func (m *Model) Buttons(face uint8) (cardmodel.AnswerButtonsState, error) {
+func (m *Model) Buttons(face int) (cardmodel.AnswerButtonsState, error) {
 	switch face {
 	case FaceQuestion:
 		return cardmodel.AnswerButtonsState{
@@ -75,4 +76,23 @@ func (m *Model) Buttons(face uint8) (cardmodel.AnswerButtonsState, error) {
 	default:
 		return cardmodel.AnswerButtonsState{}, errors.Errorf("Invalid face %d", face)
 	}
+}
+
+// Action responds to a card action, such as a button press
+func (m *Model) Action(card *fb.Card, face *int, action cardmodel.Action) (bool, error) {
+	if action.Button == nil {
+		return false, errors.New("Invalid response; no button press")
+	}
+	button := *action.Button
+	log.Debugf("%s button pressed for face %d\n", button, face)
+	switch *face {
+	case 0:
+		if button != cardmodel.ButtonRight {
+			return false, errors.Errorf("Unexpected button press %s", button)
+		}
+		*face++
+		return false, nil
+	}
+	log.Printf("Unexpected face/action combo: %d / %+v\n", *face, action)
+	return false, nil
 }

@@ -1,6 +1,10 @@
 package cardmodel
 
-import "github.com/pkg/errors"
+import (
+	"github.com/pkg/errors"
+
+	"github.com/FlashbackSRS/flashback-model"
+)
 
 // A Model handles the logic for a given model
 type Model interface {
@@ -11,7 +15,39 @@ type Model interface {
 	IframeScript() []byte
 	// Buttons returns the attributes for the three available answer buttons'
 	// initial state. Index 0 = left button, 1 = center, 2 = right
-	Buttons(face uint8) (AnswerButtonsState, error)
+	Buttons(face int) (AnswerButtonsState, error)
+	// ButtonPress is called when the user presses a button. If done is returned
+	// as true, the next card is selected. If done is false, the same card will
+	// be displayed, with the current value of face (possibly changed by the
+	// function)
+	Action(card *fb.Card, face *int, action Action) (done bool, err error)
+}
+
+// An Action describes something that can happen after a button press
+type Action struct {
+	Button *Button
+}
+
+// Button represents a button displayed on each card face
+type Button int
+
+// The buttons displayed on each card
+const (
+	ButtonLeft Button = iota
+	ButtonCenter
+	ButtonRight
+)
+
+func (b Button) String() string {
+	switch b {
+	case ButtonLeft:
+		return "Left"
+	case ButtonCenter:
+		return "Center"
+	case ButtonRight:
+		return "Right"
+	}
+	return "Unknown"
 }
 
 // AnswerButtonsState is the state of the three answer buttons

@@ -10,6 +10,7 @@ import (
 	"github.com/gopherjs/jquery"
 	"github.com/pkg/errors"
 
+	"github.com/FlashbackSRS/flashback/cardmodel"
 	"github.com/FlashbackSRS/flashback/fserve"
 	"github.com/FlashbackSRS/flashback/repository"
 )
@@ -24,13 +25,12 @@ type cardState struct {
 var currentCard *cardState
 
 // BeforeTransition prepares the page to study
-func BeforeTransition(event *jquery.Event, ui *js.Object, p url.Values) bool {
+func BeforeTransition(event *jquery.Event, ui *js.Object, _ url.Values) bool {
 	u, err := repo.CurrentUser()
 	if err != nil {
 		log.Printf("No user logged in: %s\n", err)
 		return false
 	}
-	log.Debugf("card = %s\n", p.Get("card"))
 	go func() {
 		if err := ShowCard(u); err != nil {
 			log.Printf("Error showing card: %+v", err)
@@ -41,7 +41,6 @@ func BeforeTransition(event *jquery.Event, ui *js.Object, p url.Values) bool {
 }
 
 func ShowCard(u *repo.User) error {
-	log.Debug("ShowCard()\n")
 	// Ensure the indexes are created before trying to use them
 	u.DB()
 
@@ -50,22 +49,43 @@ func ShowCard(u *repo.User) error {
 		if err != nil {
 			return errors.Wrap(err, "fetch card")
 		}
+		if card == nil {
+			return errors.New("got a nil card")
+		}
 		currentCard = &cardState{
 			Card: card,
-			Face: 0,
 		}
 	}
 	log.Debugf("Card ID: %s\n", currentCard.Card.DocID())
 
 	mh, err := currentCard.Card.ModelHandler()
 	if err != nil {
-		return err
+		return errors.Wrap(err, "failed to get card's model handler")
 	}
-	log.Debug("Got the model handler\n")
 
-	buttons := jQuery(":mobile-pagecontainer").Find("#answer-buttons").Find(`[data-role="button"]`)
 	log.Debug("Setting up the buttons\n")
-	for i, b := range mh.Buttons(currentCard.Face) {
+	buttons := jQuery(":mobile-pagecontainer").Find("#answer-buttons").Find(`[data-role="button"]`)
+	buttons.On("click", func(e *js.Object) {
+		buttons.Off() // Make sure we don't accept other press events
+		id := e.Get("currentTarget").Call("getAttribute", "data-id").String()
+		log.Debugf("Button %s was pressed!\n", id)
+
+		var btn cardmodel.Button
+		switch id {
+		case "button-l":
+			btn = cardmodel.ButtonLeft
+		case "button-c":
+			btn = cardmodel.ButtonCenter
+		case "button-r":
+			btn = cardmodel.ButtonRight
+		}
+		HandleCardAction(btn)
+	})
+	buttonAttrs, err := mh.Buttons(currentCard.Face)
+	if err != nil {
+		return errors.Wrap(err, "failed to get buttons list")
+	}
+	for i, b := range buttonAttrs {
 		log.Debugf("Setting button %d to %s\n", i, b.Name)
 		button := jQuery(buttons.Underlying().Index(i))
 		if b.Name == "" {
@@ -81,21 +101,9 @@ func ShowCard(u *repo.User) error {
 			button.Call("button", "disable")
 		}
 	}
-	buttons.On("click", ButtonPressed)
 
-	if err := DisplayFace(currentCard); err != nil {
-		return errors.Wrap(err, "display card")
-	}
-	return nil
-}
-
-func ButtonPressed(e *js.Object) {
-	log.Debugf("Button %s was pressed!\n", e.Get("currentTarget").Call("getAttribute", "data-id").String())
-}
-
-func DisplayFace(c *cardState) error {
-	body, iframeID, err := c.Card.Body(c.Face)
-	fserve.RegisterIframe(iframeID, c.Card.DocID())
+	body, iframeID, err := currentCard.Card.Body(currentCard.Face)
+	fserve.RegisterIframe(iframeID, currentCard.Card.DocID())
 	if err != nil {
 		return errors.Wrap(err, "Error fetching body")
 	}
@@ -112,9 +120,32 @@ func DisplayFace(c *cardState) error {
 
 	container := jQuery(":mobile-pagecontainer")
 
-	jQuery("#cardframe", container).Append(iframe)
+	jQuery("#cardframe", container).Empty().Append(iframe)
 
 	jQuery(".show-until-load", container).Hide()
 	jQuery(".hide-until-load", container).Show()
 	return nil
+}
+
+func HandleCardAction(button cardmodel.Button) {
+	card := currentCard.Card
+	mh, err := card.ModelHandler()
+	if err != nil {
+		log.Printf("failed to get card's model handler: %s\n", err)
+	}
+	face := currentCard.Face
+	done, err := mh.Action(card.Card, &currentCard.Face, cardmodel.Action{
+		Button: &button,
+	})
+	if err != nil {
+		log.Printf("Error executing card action for face %d / %+v: %s", face, card, err)
+	}
+	if done {
+		currentCard = nil
+	} else {
+		if face == currentCard.Face {
+			log.Printf("face wasn't incremented!\n")
+		}
+	}
+	jQuery(":mobile-pagecontainer").Call("pagecontainer", "change", "/study.html")
 }
