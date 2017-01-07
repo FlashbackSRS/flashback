@@ -33,6 +33,7 @@ android: cordova-init cordova-www
 	cordova run android
 
 go-test: npm-install
+	rm -rf $GOPATH/pkg/*_js
 	gopherjs test --tags=debug,safe github.com/FlashbackSRS/flashback/util github.com/FlashbackSRS/flashback/repository/test github.com/FlashbackSRS/flashback/repository
 
 test: go-test
