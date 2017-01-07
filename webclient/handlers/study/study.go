@@ -14,10 +14,6 @@ import (
 	"github.com/FlashbackSRS/flashback/repository"
 )
 
-type stackTracer interface {
-	StackTrace() errors.StackTrace
-}
-
 var jQuery = jquery.NewJQuery
 
 type cardState struct {
