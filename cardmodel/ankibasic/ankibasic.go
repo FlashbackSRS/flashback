@@ -9,11 +9,10 @@ import (
 	"github.com/FlashbackSRS/flashback/cardmodel"
 )
 
+// The possible faces of an Anki card
 const (
-	// FaceQuestion is the question face of a card
-	FaceQuestion = iota
-	// FaceAnswer is the answer face of a card
-	FaceAnswer
+	QuestionFace = iota
+	AnswerFace
 )
 
 // Model is an Anki Basic model
@@ -43,7 +42,7 @@ func (m *Model) IframeScript() []byte {
 // Buttons returns the initial button state
 func (m *Model) Buttons(face int) (cardmodel.AnswerButtonsState, error) {
 	switch face {
-	case FaceQuestion:
+	case QuestionFace:
 		return cardmodel.AnswerButtonsState{
 			cardmodel.AnswerButton{
 				Name:    "",
@@ -58,7 +57,7 @@ func (m *Model) Buttons(face int) (cardmodel.AnswerButtonsState, error) {
 				Enabled: true,
 			},
 		}, nil
-	case FaceAnswer:
+	case AnswerFace:
 		return cardmodel.AnswerButtonsState{
 			cardmodel.AnswerButton{
 				Name:    "Wrong Answer",
@@ -86,12 +85,17 @@ func (m *Model) Action(card *fb.Card, face *int, action cardmodel.Action) (bool,
 	button := *action.Button
 	log.Debugf("%s button pressed for face %d\n", button, face)
 	switch *face {
-	case 0:
+	case QuestionFace:
 		if button != cardmodel.ButtonRight {
 			return false, errors.Errorf("Unexpected button press %s", button)
 		}
 		*face++
 		return false, nil
+	case AnswerFace:
+		if button < cardmodel.ButtonLeft || button > cardmodel.ButtonRight {
+			return false, errors.Errorf("Unexpected button press %s", button)
+		}
+		return true, nil
 	}
 	log.Printf("Unexpected face/action combo: %d / %+v\n", *face, action)
 	return false, nil
