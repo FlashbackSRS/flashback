@@ -127,7 +127,7 @@ var PrioTests = []PrioTest{
 func TestPrio(t *testing.T) {
 	now := parseTime("2017-01-01 00:00:00")
 	for _, test := range PrioTests {
-		prio := CardPrio(test.Due, test.Interval, now)
+		prio := CardPrio(&test.Due, &test.Interval, now)
 		if math.Abs(float64(prio)-test.Expected) > 0.000001 {
 			t.Errorf("%s / %s: Expected priority %f, got %f\n", test.Due, test.Interval, test.Expected, prio)
 		}
