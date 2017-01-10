@@ -1,13 +1,13 @@
 package repo
 
 import (
-	"fmt"
+	"encoding/json"
 
+	pouchdb "github.com/flimzy/go-pouchdb"
 	"github.com/flimzy/log"
+	"github.com/pkg/errors"
 
 	"github.com/FlashbackSRS/flashback-model"
-	pouchdb "github.com/flimzy/go-pouchdb"
-	"github.com/pkg/errors"
 )
 
 // Note is a wrapper around a fb.Note object
@@ -16,6 +16,19 @@ type Note struct {
 	db    *DB
 	theme *Theme
 	model *Model
+}
+
+type jsNote struct {
+	ID string `json:"id"`
+}
+
+// MarshalJSON marshals a Note for the benefit of javascript context in HTML
+// templates.
+func (n *Note) MarshalJSON() ([]byte, error) {
+	note := &jsNote{
+		ID: n.DocID(),
+	}
+	return json.Marshal(note)
 }
 
 // Theme returns the card's associated Theme
@@ -43,7 +56,6 @@ func (n *Note) fetchTheme() error {
 	log.Debugf("Fetching theme %s", n.ThemeID)
 	t := &fb.Theme{}
 	if err := n.db.Get(n.ThemeID, t, pouchdb.Options{Attachments: true}); err != nil {
-		fmt.Printf("Error: %s\n", err)
 		return errors.Wrapf(err, "fetchTheme() can't fetch %s", n.ThemeID)
 	}
 	m := t.Models[n.ModelID]

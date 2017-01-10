@@ -23,7 +23,7 @@ func Import(user *User, r io.Reader) error {
 		return errors.Wrap(err, "Unable to connect to User DB")
 	}
 	bundle := pkg.Bundle
-	bdb, err := BundleDB(bundle)
+	bdb, err := user.BundleDB(bundle)
 	if err != nil {
 		return errors.Wrap(err, "Unable to connect to Bundle DB")
 	}
@@ -36,13 +36,18 @@ func Import(user *User, r io.Reader) error {
 		return errors.Wrap(e, "Unable to save Bundle to Bundle DB")
 	}
 
-	cards := make([]*fb.Card, 0, 100)
+	cardMap := map[string]*fb.Card{}
+	for _, c := range pkg.Cards {
+		cardMap[c.Identity()] = c
+	}
+
+	cards := make([]*fb.Card, 0, len(cardMap))
 
 	for _, d := range pkg.Decks {
 		for _, id := range d.Cards.All() {
-			c, err := fb.NewCard(id)
-			if err != nil {
-				return errors.Wrapf(err, "Unable to create card %s", id)
+			c, ok := cardMap[id]
+			if !ok {
+				return errors.Errorf("Card '%s' listed in deck, but not found in package", id)
 			}
 			cards = append(cards, c)
 		}

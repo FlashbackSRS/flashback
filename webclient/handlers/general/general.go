@@ -1,18 +1,18 @@
 package general
 
 import (
-	"fmt"
 	"net/url"
 	"strings"
 
 	"github.com/FlashbackSRS/flashback/util"
 	"github.com/flimzy/jqeventrouter"
+	"github.com/flimzy/log"
 	"github.com/gopherjs/gopherjs/js"
 	"github.com/gopherjs/jquery"
 )
 
+// CleanFacebookURI cleans up the URL aftr a redirect from a Facebook login
 func CleanFacebookURI(h jqeventrouter.Handler) jqeventrouter.Handler {
-	// This handler cleans up the URL after a redirect from a Facebook login
 	return jqeventrouter.HandlerFunc(func(event *jquery.Event, ui *js.Object, p url.Values) bool {
 		uri := util.JqmTargetUri(ui)
 		// Having '#_=_' in the URL can mess up our routing
@@ -35,7 +35,7 @@ func CleanFacebookURI(h jqeventrouter.Handler) jqeventrouter.Handler {
 func JQMRouteOnce(h jqeventrouter.Handler) jqeventrouter.Handler {
 	return jqeventrouter.HandlerFunc(func(event *jquery.Event, ui *js.Object, p url.Values) bool {
 		if ui.Get("_jqmrouteonce").Bool() {
-			fmt.Printf("pagecontainerbeforechange already ran. Skipping.\n")
+			log.Debug("pagecontainerbeforechange already ran. Skipping.\n")
 			return true
 		}
 		ui.Set("_jqmrouteonce", true)

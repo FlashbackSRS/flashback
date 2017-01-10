@@ -2,18 +2,17 @@ package repo
 
 import (
 	"encoding/base64"
-	"errors"
+	"fmt"
 	"net/url"
 	"reflect"
 	"strings"
 	"time"
 
-	"github.com/flimzy/log"
-	"github.com/pborman/uuid"
-
 	"github.com/flimzy/go-pouchdb"
 	"github.com/flimzy/go-pouchdb/plugins/find"
 	"github.com/gopherjs/gopherjs/js"
+	"github.com/pborman/uuid"
+	"github.com/pkg/errors"
 
 	"github.com/FlashbackSRS/flashback-model"
 	"github.com/FlashbackSRS/flashback/util"
@@ -34,6 +33,7 @@ func init() {
 type DB struct {
 	*pouchdb.PouchDB
 	*find.PouchPluginFind
+	User   *User
 	DBName string
 }
 
@@ -50,7 +50,7 @@ var initFuncs = map[string]dbInitFunc{
 
 func commonDBInit(db *DB) error {
 	err := db.CreateIndex(find.Index{
-		Fields: []string{"type"},
+		Fields: []string{"due", "created", "type"},
 	})
 	if err != nil && !find.IsIndexExists(err) {
 		return err
@@ -59,34 +59,41 @@ func commonDBInit(db *DB) error {
 }
 
 // BundleDB returns a DB handle for the Bundle
-func BundleDB(b *fb.Bundle) (*DB, error) {
-	return NewDB(b.ID.String())
+func (u *User) BundleDB(b *fb.Bundle) (*DB, error) {
+	return u.NewDB(b.ID.String())
 }
 
 // NewRemoteDB returns a DB handle to a remote (CouchDB) instance
-func NewRemoteDB(name string) (*DB, error) {
-	return newDB(couchHost + "/" + name), nil
+func (u *User) NewRemoteDB(name string) (*DB, error) {
+	return u.newDB(couchHost + "/" + name), nil
 }
 
-func newDB(name string) *DB {
+func (u *User) newDB(name string) *DB {
 	pdb := pouchdb.NewWithOpts(name, PouchDBOptions)
 	return &DB{
 		PouchDB:         pdb,
 		PouchPluginFind: find.New(pdb),
 		DBName:          name,
+		User:            u,
 	}
 }
 
 // NewDB returns a DB handle, complete with binding to the Find plugin, to the
 // requested DB
-func NewDB(name string) (*DB, error) {
-	db := newDB(name)
+func (u *User) NewDB(name string) (*DB, error) {
 	parts := strings.SplitN(name, "-", 2)
-	if initFunc, ok := initFuncs[parts[0]]; ok {
-		log.Debugf("Initializing DB %s", name)
-		return db, initFunc(db)
+	if parts[0] != "user" {
+		name = fmt.Sprintf("%s-%s-%s", parts[0], u.ID, parts[1])
 	}
-	return db, nil
+	db := u.newDB(name)
+	return db, initDB(parts[0], db)
+}
+
+func initDB(name string, db *DB) error {
+	if initFunc, ok := initFuncs[name]; ok {
+		return initFunc(db)
+	}
+	return nil
 }
 
 // User provides a wrapper around fb.User
@@ -96,7 +103,7 @@ type User struct {
 
 // DB returns a DB handle to a User's DB
 func (u *User) DB() (*DB, error) {
-	return NewDB(u.ID.String())
+	return u.NewDB(u.ID.String())
 }
 
 // func (u *User) MasterReviewsDBName() string {

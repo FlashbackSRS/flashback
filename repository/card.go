@@ -2,30 +2,60 @@ package repo
 
 import (
 	"bytes"
-	"encoding/base64"
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"html/template"
+	"io"
+	"math"
 	"math/rand"
-	"strconv"
+	"sort"
 	"time"
 
 	"github.com/PuerkitoBio/goquery"
+	"github.com/flimzy/go-pouchdb"
 	"github.com/flimzy/log"
 	"github.com/pkg/errors"
 	"golang.org/x/net/html"
 
-	"github.com/flimzy/go-pouchdb"
-
 	"github.com/FlashbackSRS/flashback-model"
+	"github.com/FlashbackSRS/flashback/cardmodel"
 	"github.com/FlashbackSRS/flashback/util"
 )
+
+const newPriority = 0.5
+
+func init() {
+	rand.Seed(int64(time.Now().UnixNano()))
+}
 
 // Card provides a convenient interface to fb.Card and dependencies
 type Card struct {
 	*fb.Card
-	db   *DB
-	note *Note
+	db       *DB
+	note     *Note
+	priority float32
+}
+
+type cardList []*Card
+
+func (c cardList) Len() int { return len(c) }
+func (c cardList) Less(i, j int) bool {
+	return c[i].priority > c[j].priority || c[i].Created.Before(c[j].Created)
+}
+func (c cardList) Swap(i, j int) { c[i], c[j] = c[j], c[i] }
+
+type jsCard struct {
+	ID string `json:"id"`
+}
+
+// MarshalJSON marshals a Card for the benefit of javascript context in HTML
+// templates.
+func (c *Card) MarshalJSON() ([]byte, error) {
+	card := &jsCard{
+		ID: c.DocID(),
+	}
+	return json.Marshal(card)
 }
 
 // Note returns the card's associated Note
@@ -42,7 +72,7 @@ func (c *Card) fetchNote() error {
 		return nil
 	}
 	log.Debugf("Fetching note %s", c.NoteID())
-	db, err := NewDB(c.BundleID())
+	db, err := c.db.User.NewDB(c.BundleID())
 	if err != nil {
 		return errors.Wrap(err, "fetchNote() can't connect to bundle DB")
 	}
@@ -61,9 +91,13 @@ func (c *Card) fetchNote() error {
 func (u *User) GetCard(id string) (*Card, error) {
 	db, err := u.DB()
 	if err != nil {
-		return nil, errors.Wrap(err, "Unable to connect to User DB")
+		return nil, errors.Wrap(err, "GetNextCard(): Error connecting to User DB")
 	}
+	return db.GetCard(id)
+}
 
+// GetCard fetches the requested card
+func (db *DB) GetCard(id string) (*Card, error) {
 	card := &fb.Card{}
 	if err := db.Get(id, card, pouchdb.Options{}); err != nil {
 		return nil, errors.Wrap(err, "Unable to fetch requested card")
@@ -74,59 +108,135 @@ func (u *User) GetCard(id string) (*Card, error) {
 	}, nil
 }
 
-// GetRandomCard returns a random card
-func GetRandomCard() (*Card, error) {
-	c := &Card{}
-	if err := c.fetchArbitraryCard(); err != nil {
-		return nil, err
-	}
-	return c, nil
+type cardPriority struct {
+	Card     *fb.Card
+	Priority float32
 }
 
-func (c *Card) fetchArbitraryCard() error {
-	u, err := CurrentUser()
-	if err != nil {
-		return errors.Wrap(err, "No user logged in")
+type prioritizedCards []cardPriority
+
+func (p prioritizedCards) Len() int { return len(p) }
+func (p prioritizedCards) Less(i, j int) bool {
+	return p[i].Priority > p[j].Priority || p[i].Card.Created.Before(p[j].Card.Created)
+}
+func (p prioritizedCards) Swap(i, j int) { p[i], p[j] = p[j], p[i] }
+
+// CardPrio returns a number 0 or greater, as a priority to be used in
+// determining card study order.
+func CardPrio(due *time.Time, interval *time.Duration, now time.Time) float32 {
+	if due == nil || interval == nil {
+		return newPriority
 	}
-	if c.db == nil {
-		db, err := u.DB()
-		if err != nil {
-			return errors.Wrap(err, "Error connecting to User DB")
-		}
-		c.db = db
-	}
+	return float32(math.Pow(1+float64(now.Sub(*due))/float64(*interval), 3))
+}
+
+// GetCards fetches up to limit cards from the db, in priority order.
+func GetCards(db *DB, now time.Time, limit int) ([]*Card, error) {
 	doc := make(map[string][]*fb.Card)
 	query := map[string]interface{}{
-		"selector": map[string]string{"type": "card"},
-		"limit":    1,
+		"selector": map[string]interface{}{
+			"type":    "card",
+			"due":     map[string]interface{}{"$gte": nil},
+			"created": map[string]interface{}{"$gte": nil},
+		},
+		//		"fields": []string{"_id", "due", "interval", "model", "created"},
+		"sort":  []string{"due", "created"},
+		"limit": limit,
 	}
-	if err := c.db.Find(query, &doc); err != nil {
-		return err
+	if err := db.Find(query, &doc); err != nil {
+		return nil, errors.Wrap(err, "card list")
 	}
-	if len(doc["docs"]) == 0 {
-		return errors.New("No cards available")
+	cards := make([]*Card, len(doc["docs"]))
+	for i, card := range doc["docs"] {
+		cards[i] = &Card{
+			Card:     card,
+			db:       db,
+			priority: CardPrio(card.Due, card.Interval, now),
+		}
 	}
-	c.Card = doc["docs"][0]
-	return nil
+	sort.Sort(cardList(cards))
+	return cards, nil
+}
+
+// GetNextCard gets the next card to study
+func (u *User) GetNextCard() (*Card, error) {
+	db, err := u.DB()
+	if err != nil {
+		return nil, errors.Wrap(err, "GetNextCard(): Error connecting to User DB")
+	}
+
+	cards, err := GetCards(db, time.Now(), 20)
+	if err != nil {
+		return nil, errors.Wrap(err, "get card list")
+	}
+	var weights float32
+	for _, c := range cards {
+		weights += c.priority
+	}
+	r := rand.Float32() * weights
+	log.Debugf("Random key / total: %f / %f (%d)\n", r, weights, len(cards))
+	for i, c := range cards {
+		r -= c.priority
+		if r < 0 {
+			log.Debugf("Selected card %d: %s\n", i, c.Identity())
+			return db.GetCard(c.DocID())
+		}
+	}
+	return nil, errors.New("failed to fetch card")
 }
 
 type cardContext struct {
 	IframeID string
 	Card     *Card
 	Note     *Note
-	Model    *Model
-	Deck     *Deck
-	BaseURI  string
-	Fields   map[string]template.HTML
+	// Model    *Model
+	// Deck     *Deck
+	BaseURI string
+	Fields  map[string]template.HTML
 }
 
-// Body returns the card's body and iframe ID
-func (c *Card) Body() (string, string, error) {
+const (
+	// Question is a card's first face
+	Question = iota
+	// Answer is a card's second face
+	Answer
+)
+
+var faces = map[int]string{
+	Question: "question",
+	Answer:   "answer",
+}
+
+// ModelHandler returns the cardmodel.Model for this card
+// FIXME: Rename this method to just Model() (??)
+func (c *Card) ModelHandler() (cardmodel.Model, error) {
+	m, err := c.Model()
+	if err != nil {
+		return nil, errors.Wrap(err, "retrieve model")
+	}
+	return cardmodel.GetHandler(m.Type)
+}
+
+// Model returns the model for the card
+func (c *Card) Model() (*Model, error) {
+	note, err := c.Note()
+	if err != nil {
+		return nil, errors.Wrap(err, "retrieve Note")
+	}
+	model, err := note.Model()
+	if err != nil {
+		return nil, errors.Wrap(err, "retrieve Model")
+	}
+	return model, nil
+}
+
+// Body returns the requested card face
+func (c *Card) Body(face int) (body string, iframeID string, err error) {
 	note, err := c.Note()
 	if err != nil {
 		return "", "", errors.Wrap(err, "Unable to retrieve Note")
 	}
-	model, err := note.Model()
+	model, err := c.Model()
 	if err != nil {
 		return "", "", errors.Wrap(err, "Unable to retrieve Model")
 	}
@@ -138,9 +248,9 @@ func (c *Card) Body() (string, string, error) {
 		IframeID: RandString(8),
 		Card:     c,
 		Note:     note,
-		Model:    model,
-		BaseURI:  util.BaseURI(),
-		Fields:   make(map[string]template.HTML),
+		// Model:    model,
+		BaseURI: util.BaseURI(),
+		Fields:  make(map[string]template.HTML),
 	}
 
 	for i, f := range model.Fields {
@@ -158,43 +268,55 @@ func (c *Card) Body() (string, string, error) {
 	if e := tmpl.Execute(htmlDoc, ctx); e != nil {
 		return "", "", errors.Wrap(e, "Unable to execute template")
 	}
-	doc, err := html.Parse(htmlDoc)
+	log.Debugf("original size = %d\n", htmlDoc.Len())
+	newBody, err := prepareBody(face, c.TemplateID(), model.Type, htmlDoc)
 	if err != nil {
-		return "", "", errors.Wrap(err, "Unable to parse generated HTML")
-	}
-	body := findBody(doc)
-	if body == nil {
-		return "", "", errors.New("No <body> in the template output")
-	}
-	log.Debugf("%s", htmlDoc)
-
-	container := findContainer(body.FirstChild, strconv.Itoa(int(c.TemplateID())), "question")
-	if container == nil {
-		return "", "", errors.Errorf("No div matching '%d' found in template output", c.TemplateID())
-	}
-	log.Debug("Found container: %s", container)
-
-	// Delete unused divs
-	for c := body.FirstChild; c != nil; c = body.FirstChild {
-		body.RemoveChild(c)
-	}
-	inner := container.FirstChild
-	inner.Parent = body
-	body.FirstChild = inner
-
-	if err := c.inlineSrc(body); err != nil {
-		return "", "", errors.Wrap(err, "Error inlining images")
+		return "", "", errors.Wrap(err, "prepare body")
 	}
 
-	newBody := new(bytes.Buffer)
-	if err := html.Render(newBody, doc); err != nil {
-		return "", "", errors.Wrap(err, "Error rendering new HTML")
-	}
-
-	nbString := newBody.String()
-	log.Debugf("original size = %d\n", len(htmlDoc.String()))
+	nbString := string(newBody)
 	log.Debugf("new body size = %d\n", len(nbString))
 	return nbString, ctx.IframeID, nil
+}
+
+func prepareBody(face int, templateID uint32, modelType string, r io.Reader) ([]byte, error) {
+	cardFace, ok := faces[face]
+	if !ok {
+		return nil, errors.Errorf("Unrecognized card face %d", face)
+	}
+	handler, err := cardmodel.GetHandler(modelType)
+	if err != nil {
+		return nil, errors.Wrap(err, "model handler")
+	}
+	doc, err := goquery.NewDocumentFromReader(r)
+	if err != nil {
+		return nil, errors.Wrap(err, "goquery parse")
+	}
+	body := doc.Find("body")
+	if body == nil {
+		return nil, errors.New("no body in template output")
+	}
+	sel := fmt.Sprintf("div.%s[data-id='%d']", cardFace, templateID)
+	container := body.Find(sel)
+	if container.Length() == 0 {
+		return nil, errors.Errorf("No div matching '%s' found in template output", sel)
+	}
+
+	containerHTML, err := container.Html()
+	if err != nil {
+		return nil, errors.Wrap(err, "error extracting div html")
+	}
+
+	body.Empty()
+	body.AppendHtml(containerHTML)
+
+	doc.Find("head").AppendHtml(fmt.Sprintf(`<script type="text/javascript">%s</script>`, string(handler.IframeScript())))
+
+	newBody, err := goquery.OuterHtml(doc.Selection)
+	if err != nil {
+		return nil, errors.Wrap(err, "outer html failed")
+	}
+	return []byte(newBody), nil
 }
 
 const letterBytes = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
@@ -262,26 +384,6 @@ func findContainer(n *html.Node, targetID, targetClass string) *html.Node {
 	return findContainer(n.NextSibling, targetID, targetClass)
 }
 
-func (c *Card) inlineSrc(n *html.Node) error {
-	doc := goquery.NewDocumentFromNode(n)
-	doc.Find("img").Each(func(i int, s *goquery.Selection) {
-		src, ok := s.Attr("src")
-		if !ok {
-			log.Print("Found an image with no source!!??")
-			return
-		}
-		log.Debugf("Found image with src of '%s'", src)
-		att, err := c.GetAttachment(src)
-		if err != nil {
-			log.Printf("Error inlining file '%s': %s", src, err)
-			return
-		}
-		s.SetAttr("src", fmt.Sprintf("data:%s;base64,%s", att.ContentType, base64.StdEncoding.EncodeToString(att.Content)))
-		// iframe.Set("src", "data:text/html;charset=utf-8;base64,"+base64.StdEncoding.EncodeToString([]byte(body)))
-	})
-	return nil
-}
-
 // GetAttachment fetches an attachment from the note, failling back to the model
 func (c *Card) GetAttachment(filename string) (*Attachment, error) {
 	n, err := c.Note()
@@ -300,4 +402,55 @@ func (c *Card) GetAttachment(filename string) (*Attachment, error) {
 		return &Attachment{file}, nil
 	}
 	return nil, errors.Errorf("File '%s' not found", filename)
+}
+
+// Response represents a response button
+type Response struct {
+	Name    string
+	Display string
+	Icon    string
+}
+
+var showAnswer = &Response{
+	Name:    "show_answer_button",
+	Display: "Show Answer",
+	Icon:    "carat-r",
+}
+
+var wrongAnswer = &Response{
+	Name:    "wrong_answer_button",
+	Display: "Again",
+	Icon:    "delete",
+}
+
+var hardAnswer = &Response{
+	Name:    "hard_answer_button",
+	Display: "Hard",
+	Icon:    "clock",
+}
+
+var goodAnswer = &Response{
+	Name:    "good_answer_button",
+	Display: "Good",
+	Icon:    "carat-r",
+}
+
+var easyAnswer = &Response{
+	Name:    "easy_answer_button",
+	Display: "Easy",
+	Icon:    "heart",
+}
+
+// Responses returns the list of available responses for a card's face
+func (c *Card) Responses(face int) ([]*Response, error) {
+	var responses []*Response
+	switch face {
+	case Question:
+		responses = []*Response{showAnswer}
+	case Answer:
+		responses = []*Response{wrongAnswer, hardAnswer, goodAnswer, easyAnswer}
+	default:
+		return nil, errors.Errorf("Unknown card face %d", face)
+	}
+	return responses, nil
 }

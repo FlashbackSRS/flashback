@@ -13,6 +13,7 @@ import (
 
 	"github.com/flimzy/go-cordova"
 	"github.com/flimzy/jqeventrouter"
+	"github.com/flimzy/log"
 	"github.com/gopherjs/gopherjs/js"
 	"github.com/gopherjs/jquery"
 
@@ -35,13 +36,13 @@ func MobileInit() {
 	go func() {
 		defer close(initChan)
 		langs := preferredLanguages()
-		fmt.Printf("PREFERRED LANGUAGES: %v\n", langs)
+		log.Debugf("PREFERRED LANGUAGES: %v\n", langs)
 		matcher := language.NewMatcher([]language.Tag{
 			language.MustParse("en_US"),
 			language.MustParse("es_MX"),
 		})
 		tag, idx, conf := matcher.Match(langs...)
-		fmt.Printf("I think we'll go with %s (%d th place choice with %s confidence)\n", tag, idx, conf)
+		log.Debugf("I think we'll go with %s (%d th place choice with %s confidence)\n", tag, idx, conf)
 		if locale := tag.String(); locale != "en-us" {
 			t, err := loadDictionary(locale)
 			if err != nil {
@@ -81,14 +82,14 @@ func T(id string, args ...interface{}) string {
 		if result := t(id, args...); result != id {
 			return result
 		}
-		fmt.Printf("No result looking up tag '%s'\n", id)
+		log.Debugf("No result looking up tag '%s'\n", id)
 		// TODO: Log the missing translation
 	}
 	t := *translateFallback
 	if result := t(id, args...); result != id {
 		return result
 	}
-	fmt.Printf("No result looking up fallback tag '%s'\n", id)
+	log.Debugf("No result looking up fallback tag '%s'\n", id)
 	// TODO: *really* log the missing translation!
 	return id
 }
@@ -148,17 +149,17 @@ func localize() {
 	<-initDone // Make sure the dictionary is ready before we try translating
 	elements := jQuery("[" + langTagAttr + "]").Not("[" + localeAttr + "='" + localeName + "']")
 	if elements.Length == 0 {
-		fmt.Printf("Nothing to localize, early exiting\n")
+		log.Debugf("Nothing to localize, early exiting\n")
 		return
 	}
-	fmt.Printf("I think I have %d items to localize\n", elements.Length)
+	log.Debugf("I think I have %d items to localize\n", elements.Length)
 	for i := 0; i < elements.Length; i++ {
 		elem := elements.Get(i)
 		text := elem.Call("getAttribute", langTagAttr).String()
 		if translated := T(text); translated != text {
 			elem.Set("innerHTML", translated)
 		} else {
-			fmt.Printf("%d. %s = %s\n", i, text, translated)
+			log.Debugf("%d. %s = %s\n", i, text, translated)
 		}
 	}
 }

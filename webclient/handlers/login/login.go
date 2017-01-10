@@ -3,10 +3,10 @@
 package loginhandler
 
 import (
-	"fmt"
 	"net/url"
 
 	"github.com/flimzy/go-cordova"
+	"github.com/flimzy/log"
 	"github.com/gopherjs/gopherjs/js"
 	"github.com/gopherjs/jquery"
 	"github.com/gopherjs/jsbuiltin"
@@ -49,7 +49,7 @@ func CordovaLogin() bool {
 		console.Log("Success logging in")
 		u, err := repo.CurrentUser()
 		if err != nil {
-			fmt.Printf("No user logged in?? %s\n", err)
+			log.Debugf("No user logged in?? %s\n", err)
 		} else {
 			// To make sure the DB is initialized as soon as possible
 			u.DB()

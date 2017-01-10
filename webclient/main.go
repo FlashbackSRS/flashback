@@ -3,18 +3,19 @@
 package main
 
 import (
-	"fmt"
 	"strconv"
 	"sync"
 
 	"github.com/flimzy/go-cordova"
 	"github.com/flimzy/jqeventrouter"
+	"github.com/flimzy/log"
 	"github.com/gopherjs/gopherjs/js"
 	"github.com/gopherjs/jquery"
 
-	//	"github.com/FlashbackSRS/flashback/fserve"
+	"github.com/FlashbackSRS/flashback/fserve"
 	"github.com/FlashbackSRS/flashback/util"
 
+	_ "github.com/FlashbackSRS/flashback/cardmodel/ankibasic"
 	"github.com/FlashbackSRS/flashback/webclient/handlers/auth"
 	"github.com/FlashbackSRS/flashback/webclient/handlers/general"
 	"github.com/FlashbackSRS/flashback/webclient/handlers/import"
@@ -37,7 +38,7 @@ func main() {
 
 	initjQuery(&wg)
 	initCordova(&wg)
-	//	fserve.Init(&wg)
+	fserve.Init(&wg)
 
 	// Wait for the above modules to initialize before we initialize jQuery Mobile
 	wg.Wait()
@@ -136,11 +137,11 @@ func ConsoleEvent(name string, event *jquery.Event, data *js.Object) {
 	if page == "[object Object]" {
 		page = data.Get("toPage").Call("jqmData", "url").String()
 	}
-	fmt.Printf("Event: %s, Current page: %s", name, page)
+	log.Debugf("Event: %s, Current page: %s", name, page)
 }
 
 func ConsolePageEvent(name string, event *jquery.Event) {
-	fmt.Printf("Event: %s", name)
+	log.Debugf("Event: %s", name)
 }
 
 func DebugEvents() {

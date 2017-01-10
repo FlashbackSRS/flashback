@@ -3,6 +3,7 @@ package repo
 import (
 	"fmt"
 	"html/template"
+	"strings"
 
 	"github.com/flimzy/log"
 	"github.com/pkg/errors"
@@ -31,17 +32,14 @@ func (m *Model) GenerateTemplate() (*template.Template, error) {
 	if err != nil {
 		return nil, errors.Wrap(err, "Error with Model attachments")
 	}
-	log.Debugf("templates = %v\n", templates)
 	tmpl2, err := extractTemplateFiles(m.Theme.Files)
 	if err != nil {
 		return nil, errors.Wrap(err, "Error with Theme attachments")
 	}
-	log.Debugf("templates = %v\n", templates)
-	log.Debugf("tmpl2 = %v\n", tmpl2)
 	for k, v := range tmpl2 {
 		templates[k] = v
 	}
-	log.Debugf("templates = %v\n", templates)
+
 	// Rename to match the masterTemplate expectation
 	templates["template.html"] = templates[mainTemplate]
 	delete(templates, mainTemplate)
@@ -50,8 +48,11 @@ func (m *Model) GenerateTemplate() (*template.Template, error) {
 		return nil, errors.Wrap(err, "Error parsing master template")
 	}
 	for filename, t := range templates {
-		log.Debugf("Defining template '%s'", filename)
-		content := fmt.Sprintf("{{define \"%s\"}}%s{{end}}", filename, t)
+		mName := *m.Name
+		log.Debugf("model name = %s\n", mName)
+		tmplName := strings.TrimPrefix(filename, "!"+*m.Name+".")
+		log.Debugf("Defining template '%s'", tmplName)
+		content := fmt.Sprintf("{{define \"%s\"}}%s{{end}}", tmplName, t)
 		if _, err := tmpl.Parse(content); err != nil {
 			return nil, errors.Wrapf(err, "Error parsing template file `%s`", filename)
 		}
@@ -95,8 +96,7 @@ var masterTemplate = `
 var FB = {
 	iframeID: '{{ .IframeID }}',
 	card: {{ .Card }},
-	note: {{ .Note }},
-	model: {{ .Model }},
+	note: {{ .Note }}
 };
 </script>
 <script type="text/javascript" src="js/cardframe.js"></script>
