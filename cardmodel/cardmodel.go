@@ -15,7 +15,7 @@ type Model interface {
 	IframeScript() []byte
 	// Buttons returns the attributes for the three available answer buttons'
 	// initial state. Index 0 = left button, 1 = center, 2 = right
-	Buttons(face int) (AnswerButtonsState, error)
+	Buttons(face int) (*ButtonMap, error)
 	// ButtonPress is called when the user presses a button. If done is returned
 	// as true, the next card is selected. If done is false, the same card will
 	// be displayed, with the current value of face (possibly changed by the
@@ -25,33 +25,44 @@ type Model interface {
 
 // An Action describes something that can happen after a button press
 type Action struct {
-	Button *Button
+	Button Button
 }
 
 // Button represents a button displayed on each card face
-type Button int
+type Button string
 
 // The buttons displayed on each card
 const (
-	ButtonLeft Button = iota
-	ButtonCenter
-	ButtonRight
+	ButtonLeft        Button = "button-l"
+	ButtonCenterLeft  Button = "button-cl"
+	ButtonCenterRight Button = "button-cr"
+	ButtonRight       Button = "button-r"
 )
 
 func (b Button) String() string {
 	switch b {
 	case ButtonLeft:
 		return "Left"
-	case ButtonCenter:
-		return "Center"
+	case ButtonCenterLeft:
+		return "Center Left"
+	case ButtonCenterRight:
+		return "Center Right"
 	case ButtonRight:
 		return "Right"
 	}
 	return "Unknown"
 }
 
-// AnswerButtonsState is the state of the three answer buttons
-type AnswerButtonsState [3]AnswerButton
+// ButtonMap is the state of the three answer buttons
+type ButtonMap map[Button]AnswerButton
+
+// Button returns the button definition associated with the requested id, if
+// any, and a bool indicating success.
+func (bm *ButtonMap) Button(id Button) (*AnswerButton, bool) {
+	m := map[Button]AnswerButton(*bm)
+	btn, ok := m[id]
+	return &btn, ok
+}
 
 // AnswerButton is one of the three answer buttons.
 type AnswerButton struct {

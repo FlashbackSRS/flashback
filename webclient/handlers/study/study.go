@@ -4,6 +4,7 @@ package studyhandler
 
 import (
 	"net/url"
+	"time"
 
 	"github.com/flimzy/log"
 	"github.com/gopherjs/gopherjs/js"
@@ -18,8 +19,9 @@ import (
 var jQuery = jquery.NewJQuery
 
 type cardState struct {
-	Card *repo.Card
-	Face int
+	Card      *repo.Card
+	StartTime time.Time
+	Face      int
 }
 
 var currentCard *cardState
@@ -69,36 +71,26 @@ func ShowCard(u *repo.User) error {
 		buttons.Off() // Make sure we don't accept other press events
 		id := e.Get("currentTarget").Call("getAttribute", "data-id").String()
 		log.Debugf("Button %s was pressed!\n", id)
-
-		var btn cardmodel.Button
-		switch id {
-		case "button-l":
-			btn = cardmodel.ButtonLeft
-		case "button-c":
-			btn = cardmodel.ButtonCenter
-		case "button-r":
-			btn = cardmodel.ButtonRight
-		}
-		HandleCardAction(btn)
+		HandleCardAction(cardmodel.Button(id))
 	})
 	buttonAttrs, err := mh.Buttons(currentCard.Face)
 	if err != nil {
 		return errors.Wrap(err, "failed to get buttons list")
 	}
-	for i, b := range buttonAttrs {
-		log.Debugf("Setting button %d to %s\n", i, b.Name)
+	for i := 0; i < buttons.Length; i++ {
 		button := jQuery(buttons.Underlying().Index(i))
-		if b.Name == "" {
-			// Hack to enforce same-height buttons
+		id := button.Attr("data-id")
+		attr, ok := buttonAttrs.Button(cardmodel.Button(id))
+		button.Call("button")
+		if !ok {
 			button.SetText(" ")
 		} else {
-			button.SetText(b.Name)
-		}
-		button.Call("button")
-		if b.Enabled {
-			button.Call("button", "enable")
-		} else {
-			button.Call("button", "disable")
+			button.SetText(attr.Name)
+			if attr.Enabled {
+				button.Call("button", "enable")
+			} else {
+				button.Call("button", "disable")
+			}
 		}
 	}
 
@@ -124,6 +116,7 @@ func ShowCard(u *repo.User) error {
 
 	jQuery(".show-until-load", container).Hide()
 	jQuery(".hide-until-load", container).Show()
+	currentCard.StartTime = time.Now()
 	return nil
 }
 
@@ -135,7 +128,7 @@ func HandleCardAction(button cardmodel.Button) {
 	}
 	face := currentCard.Face
 	done, err := mh.Action(card.Card, &currentCard.Face, cardmodel.Action{
-		Button: &button,
+		Button: button,
 	})
 	if err != nil {
 		log.Printf("Error executing card action for face %d / %+v: %s", face, card, err)

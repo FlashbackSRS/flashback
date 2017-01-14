@@ -40,49 +40,45 @@ func (m *Model) IframeScript() []byte {
 }
 
 // Buttons returns the initial button state
-func (m *Model) Buttons(face int) (cardmodel.AnswerButtonsState, error) {
+func (m *Model) Buttons(face int) (*cardmodel.ButtonMap, error) {
 	switch face {
 	case QuestionFace:
-		return cardmodel.AnswerButtonsState{
-			cardmodel.AnswerButton{
-				Name:    "",
-				Enabled: false,
-			},
-			cardmodel.AnswerButton{
-				Name:    "",
-				Enabled: false,
-			},
-			cardmodel.AnswerButton{
+		return &cardmodel.ButtonMap{
+			cardmodel.ButtonRight: cardmodel.AnswerButton{
 				Name:    "Show Answer",
 				Enabled: true,
 			},
 		}, nil
 	case AnswerFace:
-		return cardmodel.AnswerButtonsState{
-			cardmodel.AnswerButton{
-				Name:    "Wrong Answer",
+		return &cardmodel.ButtonMap{
+			cardmodel.ButtonLeft: cardmodel.AnswerButton{
+				Name:    "Incorrect",
 				Enabled: true,
 			},
-			cardmodel.AnswerButton{
-				Name:    "Mostly Correct",
+			cardmodel.ButtonCenterLeft: cardmodel.AnswerButton{
+				Name:    "Difficult",
 				Enabled: true,
 			},
-			cardmodel.AnswerButton{
-				Name:    "Correct Answer",
+			cardmodel.ButtonCenterRight: cardmodel.AnswerButton{
+				Name:    "Correct",
+				Enabled: true,
+			},
+			cardmodel.ButtonRight: cardmodel.AnswerButton{
+				Name:    "Easy",
 				Enabled: true,
 			},
 		}, nil
 	default:
-		return cardmodel.AnswerButtonsState{}, errors.Errorf("Invalid face %d", face)
+		return nil, errors.Errorf("Invalid face %d", face)
 	}
 }
 
 // Action responds to a card action, such as a button press
 func (m *Model) Action(card *fb.Card, face *int, action cardmodel.Action) (bool, error) {
-	if action.Button == nil {
+	if action.Button == "" {
 		return false, errors.New("Invalid response; no button press")
 	}
-	button := *action.Button
+	button := action.Button
 	log.Debugf("%s button pressed for face %d\n", button, face)
 	switch *face {
 	case QuestionFace:
