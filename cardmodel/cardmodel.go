@@ -1,6 +1,8 @@
 package cardmodel
 
 import (
+	"time"
+
 	"github.com/pkg/errors"
 
 	"github.com/FlashbackSRS/flashback-model"
@@ -15,12 +17,12 @@ type Model interface {
 	IframeScript() []byte
 	// Buttons returns the attributes for the three available answer buttons'
 	// initial state. Index 0 = left button, 1 = center, 2 = right
-	Buttons(face int) (*ButtonMap, error)
-	// ButtonPress is called when the user presses a button. If done is returned
+	Buttons(face int) (ButtonMap, error)
+	// Action is called when the user presses a button. If done is returned
 	// as true, the next card is selected. If done is false, the same card will
 	// be displayed, with the current value of face (possibly changed by the
 	// function)
-	Action(card *fb.Card, face *int, action Action) (done bool, err error)
+	Action(card *fb.Card, face *int, startTime time.Time, action Action) (done bool, err error)
 }
 
 // An Action describes something that can happen after a button press
@@ -56,15 +58,7 @@ func (b Button) String() string {
 // ButtonMap is the state of the three answer buttons
 type ButtonMap map[Button]AnswerButton
 
-// Button returns the button definition associated with the requested id, if
-// any, and a bool indicating success.
-func (bm *ButtonMap) Button(id Button) (*AnswerButton, bool) {
-	m := map[Button]AnswerButton(*bm)
-	btn, ok := m[id]
-	return &btn, ok
-}
-
-// AnswerButton is one of the three answer buttons.
+// AnswerButton is one of the four answer buttons.
 type AnswerButton struct {
 	Name    string
 	Enabled bool

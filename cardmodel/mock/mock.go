@@ -3,6 +3,7 @@ package mock
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/FlashbackSRS/flashback-model"
 	"github.com/FlashbackSRS/flashback/cardmodel"
@@ -36,8 +37,8 @@ func (m *Model) IframeScript() []byte {
 }
 
 // Buttons returns the initial buttons state
-func (m *Model) Buttons(_ int) (*cardmodel.ButtonMap, error) {
-	return &cardmodel.ButtonMap{
+func (m *Model) Buttons(_ int) (cardmodel.ButtonMap, error) {
+	return cardmodel.ButtonMap{
 		cardmodel.ButtonLeft: cardmodel.AnswerButton{
 			Name:    "Incorrect",
 			Enabled: true,
@@ -58,7 +59,7 @@ func (m *Model) Buttons(_ int) (*cardmodel.ButtonMap, error) {
 }
 
 // Action responds to a card action, such as a button press
-func (m *Model) Action(card *fb.Card, face *int, action cardmodel.Action) (bool, error) {
+func (m *Model) Action(card *fb.Card, face *int, _ time.Time, action cardmodel.Action) (bool, error) {
 	log.Debugf("face: %d, action: %+v\n", face, action)
 	return true, nil
 }
