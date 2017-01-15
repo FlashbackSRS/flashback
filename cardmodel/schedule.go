@@ -1,10 +1,14 @@
 package cardmodel
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/FlashbackSRS/flashback-model"
 )
+
+// Now is an alias for time.Now
+var Now = time.Now
 
 // AnswerQuality represents the SM-2 quality of the answer. See here:
 // https://www.supermemo.com/english/ol/sm2.htm
@@ -26,18 +30,23 @@ const (
 	AnswerPerfect
 )
 
+// Ease factor options
 const (
 	InitialEase float32 = 2.5
 	MaxEase     float32 = 2.5
 	MinEase     float32 = 1.3
 )
 
+// Interval options
 const (
 	InitialInterval = 24 * time.Hour
 	SecondInterval  = 6 * 24 * time.Hour
 )
 
-const LapseInterval = 10 * time.Minute
+// Lapse options
+const (
+	LapseInterval = 10 * time.Minute
+)
 
 // Schedule is called by the model when the question is answered.
 func Schedule(card *fb.Card, q AnswerQuality) {
@@ -69,20 +78,26 @@ func schedule(card *fb.Card, quality AnswerQuality) (due time.Time, interval tim
 	}
 
 	if quality <= AnswerIncorrectEasy {
-		return time.Now().Add(LapseInterval), LapseInterval, adjustEase(ease, quality)
+		quality = 0
+		return Now().Add(LapseInterval), LapseInterval, adjustEase(ease, quality)
 	}
 
 	if card.ReviewCount == 0 {
-		return time.Now().Add(InitialInterval), InitialInterval, adjustEase(ease, quality)
+		return Now().Add(InitialInterval), InitialInterval, adjustEase(ease, quality)
 	}
 
-	// if card.ReviewCount == 1 {
-	// 	ivl := card.Due.Sub(*card.Interval)
-	// 	if ivl.After(time.Now()) {
-	//
-	// 	}
-	// 	due := time.Now().Add(SecondInterval)
-	//
-	// }
-	return
+	ease = adjustEase(ease, quality)
+	interval = *card.Interval
+	lastReviewed := card.Due.Add(-interval)
+	observedInterval := time.Duration(float32(Now().Sub(lastReviewed)) * ease)
+	if card.ReviewCount == 1 && observedInterval < SecondInterval {
+		return Now().Add(SecondInterval), SecondInterval, ease
+	}
+	fmt.Printf("Last reviewed on %s\n", lastReviewed)
+	fmt.Printf("interval = %s, observed = %s, second = %s\n", interval, observedInterval, SecondInterval)
+	if observedInterval > interval {
+		interval = observedInterval
+	}
+
+	return Now().Add(interval), interval, ease
 }
