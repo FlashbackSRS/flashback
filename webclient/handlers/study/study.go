@@ -67,6 +67,7 @@ func ShowCard(u *repo.User) error {
 
 	log.Debug("Setting up the buttons\n")
 	buttons := jQuery(":mobile-pagecontainer").Find("#answer-buttons").Find(`[data-role="button"]`)
+	buttons.RemoveClass("ui-btn-active")
 	buttons.On("click", func(e *js.Object) {
 		buttons.Off() // Make sure we don't accept other press events
 		id := e.Get("currentTarget").Call("getAttribute", "data-id").String()
@@ -80,7 +81,7 @@ func ShowCard(u *repo.User) error {
 	for i := 0; i < buttons.Length; i++ {
 		button := jQuery(buttons.Underlying().Index(i))
 		id := button.Attr("data-id")
-		attr, ok := buttonAttrs.Button(cardmodel.Button(id))
+		attr, ok := buttonAttrs[(cardmodel.Button(id))]
 		button.Call("button")
 		if !ok {
 			button.SetText(" ")
@@ -127,7 +128,7 @@ func HandleCardAction(button cardmodel.Button) {
 		log.Printf("failed to get card's model handler: %s\n", err)
 	}
 	face := currentCard.Face
-	done, err := mh.Action(card.Card, &currentCard.Face, cardmodel.Action{
+	done, err := mh.Action(card.Card, &currentCard.Face, currentCard.StartTime, cardmodel.Action{
 		Button: button,
 	})
 	if err != nil {

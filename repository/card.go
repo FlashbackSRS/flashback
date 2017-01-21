@@ -123,11 +123,11 @@ func (p prioritizedCards) Swap(i, j int) { p[i], p[j] = p[j], p[i] }
 
 // CardPrio returns a number 0 or greater, as a priority to be used in
 // determining card study order.
-func CardPrio(due *time.Time, interval *time.Duration, now time.Time) float32 {
+func CardPrio(due *fb.Due, interval *fb.Interval, now time.Time) float32 {
 	if due == nil || interval == nil {
 		return newPriority
 	}
-	return float32(math.Pow(1+float64(now.Sub(*due))/float64(*interval), 3))
+	return float32(math.Pow(1+float64(now.Sub(time.Time(*due)))/float64(time.Duration(*interval)), 3))
 }
 
 // GetCards fetches up to limit cards from the db, in priority order.

@@ -33,7 +33,7 @@ android: cordova-init cordova-www
 	cordova run android
 
 go-test: npm-install
-	rm -rf $GOPATH/pkg/*_js
+	rm -rf ${GOPATH}/pkg/*_js
 	gopherjs test --tags=debug,safe github.com/FlashbackSRS/flashback/util github.com/FlashbackSRS/flashback/repository/test github.com/FlashbackSRS/flashback/repository
 
 test: go-test
@@ -68,6 +68,7 @@ www/js/cardframe.js: webclient/js/cardframe.js
 
 .PHONY: main.js
 main.js: cardmodel/ankibasic/data.go
+	rm -rf ${GOPATH}/pkg/*_js
 	gopherjs build --tags=debug ./webclient/*.go
 # 	uglifyjs main.js -c -m -o $@
 

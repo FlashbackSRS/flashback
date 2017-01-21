@@ -5,7 +5,6 @@ import (
 	"html/template"
 	"strings"
 
-	"github.com/flimzy/log"
 	"github.com/pkg/errors"
 
 	"github.com/FlashbackSRS/flashback-model"
@@ -23,7 +22,6 @@ type Model struct {
 
 // GenerateTemplate returns a string representing the Model's rendered template.
 func (m *Model) GenerateTemplate() (*template.Template, error) {
-	log.Debugf("model: %v", m)
 	mainTemplate := fmt.Sprintf("$template.%d.html", m.ID)
 	if _, ok := m.Files.GetFile(mainTemplate); !ok {
 		return nil, errors.New("Main template not found in model")
@@ -48,10 +46,7 @@ func (m *Model) GenerateTemplate() (*template.Template, error) {
 		return nil, errors.Wrap(err, "Error parsing master template")
 	}
 	for filename, t := range templates {
-		mName := *m.Name
-		log.Debugf("model name = %s\n", mName)
 		tmplName := strings.TrimPrefix(filename, "!"+*m.Name+".")
-		log.Debugf("Defining template '%s'", tmplName)
 		content := fmt.Sprintf("{{define \"%s\"}}%s{{end}}", tmplName, t)
 		if _, err := tmpl.Parse(content); err != nil {
 			return nil, errors.Wrapf(err, "Error parsing template file `%s`", filename)
@@ -69,12 +64,10 @@ var templateTypes = map[string]struct{}{
 func extractTemplateFiles(v *fb.FileCollectionView) (map[string]string, error) {
 	templates := make(map[string]string)
 	for _, filename := range v.FileList() {
-		log.Debugf("Filename: %s\n", filename)
 		att, ok := v.GetFile(filename)
 		if !ok {
 			return nil, errors.Errorf("Error fetching expected file '%s' from Model", filename)
 		}
-		log.Debugf("ContentType: %s\n", att.ContentType)
 		if _, ok := templateTypes[att.ContentType]; ok {
 			templates[filename] = string(att.Content)
 		}
