@@ -67,6 +67,7 @@ func ShowCard(u *repo.User) error {
 
 	log.Debug("Setting up the buttons\n")
 	buttons := jQuery(":mobile-pagecontainer").Find("#answer-buttons").Find(`[data-role="button"]`)
+	buttons.RemoveClass("ui-btn-active")
 	buttons.On("click", func(e *js.Object) {
 		buttons.Off() // Make sure we don't accept other press events
 		id := e.Get("currentTarget").Call("getAttribute", "data-id").String()
