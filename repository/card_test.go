@@ -6,8 +6,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/FlashbackSRS/flashback/cardmodel/mock"
 	"github.com/flimzy/testify/require"
+
+	"github.com/FlashbackSRS/flashback-model"
+	"github.com/FlashbackSRS/flashback/cardmodel/mock"
 )
 
 func TestPrepareBody(t *testing.T) {
@@ -86,40 +88,40 @@ iframeID: '445a737462464b4e',
 </body></html>`
 
 type PrioTest struct {
-	Due      time.Time
-	Interval time.Duration
+	Due      fb.Due
+	Interval fb.Interval
 	Expected float64
 }
 
 var PrioTests = []PrioTest{
 	PrioTest{
-		Due:      parseTime("2017-01-01 00:00:00"),
-		Interval: 24 * time.Hour,
+		Due:      parseDue("2017-01-01 00:00:00"),
+		Interval: fb.Day,
 		Expected: 1,
 	},
 	PrioTest{
-		Due:      parseTime("2017-01-01 12:00:00"),
-		Interval: 24 * time.Hour,
+		Due:      parseDue("2017-01-01 12:00:00"),
+		Interval: fb.Day,
 		Expected: 0.125,
 	},
 	PrioTest{
-		Due:      parseTime("2016-12-31 12:00:00"),
-		Interval: 24 * time.Hour,
+		Due:      parseDue("2016-12-31 12:00:00"),
+		Interval: fb.Day,
 		Expected: 3.375,
 	},
 	PrioTest{
-		Due:      parseTime("2017-02-01 00:00:00"),
-		Interval: 60 * 24 * time.Hour,
+		Due:      parseDue("2017-02-01 00:00:00"),
+		Interval: 60 * fb.Day,
 		Expected: 0.112912,
 	},
 	PrioTest{
-		Due:      parseTime("2017-01-02 00:00:00"),
-		Interval: 24 * time.Hour,
+		Due:      parseDue("2017-01-02 00:00:00"),
+		Interval: fb.Day,
 		Expected: 0,
 	},
 	PrioTest{
-		Due:      parseTime("2016-01-02 00:00:00"),
-		Interval: 7 * 24 * time.Hour,
+		Due:      parseDue("2016-01-02 00:00:00"),
+		Interval: 7 * fb.Day,
 		Expected: 150084.109375,
 	},
 }
@@ -135,6 +137,17 @@ func TestPrio(t *testing.T) {
 }
 
 func parseTime(ts string) time.Time {
-	t, _ := time.Parse("2006-01-02 15:04:05", ts)
+	t, err := time.Parse("2006-01-02 15:04:05", ts)
+	if err != nil {
+		panic(err)
+	}
 	return t
+}
+
+func parseDue(ds string) fb.Due {
+	d, err := fb.ParseDue(ds)
+	if err != nil {
+		panic(err)
+	}
+	return d
 }

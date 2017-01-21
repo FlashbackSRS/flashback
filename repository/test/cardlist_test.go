@@ -54,9 +54,9 @@ func listImport(t *testing.T) {
 		if err != nil {
 			t.Errorf("error creating card %s: %s\n", card.ID, err)
 		}
-		due := parseTime(card.Due)
+		due, _ := fb.ParseDue(card.Due)
 		c.Due = &due
-		ivl, err := time.ParseDuration(card.Interval)
+		ivl, err := fb.ParseInterval(card.Interval)
 		if err != nil {
 			t.Errorf("Invalid interval '%s': %s\n", card.Interval, err)
 		}
