@@ -10,6 +10,10 @@ import (
 // Now is an alias for time.Now
 var Now = time.Now
 
+func now() fb.Due {
+	return fb.Due(Now())
+}
+
 // AnswerQuality represents the SM-2 quality of the answer. See here:
 // https://www.supermemo.com/english/ol/sm2.htm
 type AnswerQuality int
@@ -39,18 +43,19 @@ const (
 
 // Interval options
 const (
-	InitialInterval = 24 * time.Hour
-	SecondInterval  = 6 * 24 * time.Hour
+	InitialInterval = fb.Interval(24 * fb.Hour)
+	SecondInterval  = fb.Interval(6 * fb.Day)
 )
 
 // Lapse options
 const (
-	LapseInterval = 10 * time.Minute
+	LapseInterval = fb.Interval(10 * fb.Minute)
 )
 
 // Schedule is called by the model when the question is answered.
-func Schedule(card *fb.Card, q AnswerQuality) {
-	due, ivl, ease := schedule(card, q)
+func Schedule(card *fb.Card, answerTime time.Duration, q AnswerQuality) {
+	ivl, ease := schedule(card, q)
+	due := now().Add(ivl)
 	card.Due = &due
 	card.Interval = &ivl
 	card.EaseFactor = ease
@@ -71,7 +76,7 @@ func adjustEase(ease float32, q AnswerQuality) float32 {
 	return newEase
 }
 
-func schedule(card *fb.Card, quality AnswerQuality) (due time.Time, interval time.Duration, easeFactor float32) {
+func schedule(card *fb.Card, quality AnswerQuality) (interval fb.Interval, easeFactor float32) {
 	ease := card.EaseFactor
 	if ease == 0.0 {
 		ease = InitialEase
@@ -79,19 +84,19 @@ func schedule(card *fb.Card, quality AnswerQuality) (due time.Time, interval tim
 
 	if quality <= AnswerIncorrectEasy {
 		quality = 0
-		return Now().Add(LapseInterval), LapseInterval, adjustEase(ease, quality)
+		return LapseInterval, adjustEase(ease, quality)
 	}
 
 	if card.ReviewCount == 0 {
-		return Now().Add(InitialInterval), InitialInterval, adjustEase(ease, quality)
+		return InitialInterval, adjustEase(ease, quality)
 	}
 
 	ease = adjustEase(ease, quality)
 	interval = *card.Interval
 	lastReviewed := card.Due.Add(-interval)
-	observedInterval := time.Duration(float32(Now().Sub(lastReviewed)) * ease)
+	observedInterval := fb.Interval(float32(now().Sub(lastReviewed)) * ease)
 	if card.ReviewCount == 1 && observedInterval < SecondInterval {
-		return Now().Add(SecondInterval), SecondInterval, ease
+		return SecondInterval, ease
 	}
 	fmt.Printf("Last reviewed on %s\n", lastReviewed)
 	fmt.Printf("interval = %s, observed = %s, second = %s\n", interval, observedInterval, SecondInterval)
@@ -99,5 +104,5 @@ func schedule(card *fb.Card, quality AnswerQuality) (due time.Time, interval tim
 		interval = observedInterval
 	}
 
-	return Now().Add(interval), interval, ease
+	return interval, ease
 }
