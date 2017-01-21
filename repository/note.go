@@ -64,7 +64,5 @@ func (n *Note) fetchTheme() error {
 	n.model.Theme = t
 	n.SetModel(m)
 
-	log.Debugf("Fetched this model: %v\n", n.model)
-	log.Debugf("Fetched this theme: %v\n", n.theme)
 	return nil
 }
