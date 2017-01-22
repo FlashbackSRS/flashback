@@ -1,0 +1,50 @@
+Within the card:
+
+Question:
+Exposed: card, fact(s), note, model
+Methods: answer(x)
+
+Review:
+Exposed: card, fact(s), note, model, answer (exact copy of what was passed to answer() on Question)
+Methods: result(x)
+
+Answer:
+Exposed: card, fact(s), note, model, answer (exact copy of what was passed to answer() on Question), review result
+Methods:
+done()
+
+
+
+Answer format:
+{
+    "review": "xxx",
+    "data": {}
+}
+
+Valid Review types:
+none (lesson card)
+immediate_self_review   -- Normal Anki
+standard                -- May allow for delayed self-review (i.e. Anki typed answers) or delayed peer review depending on settings.
+self                    -- Specifically requests self review, even if peer review is available
+auto                    -- Auto review (i.e. Anki typed answers),
+
+Result types:
+
+
+Possible answers:
+none (self-reviewed)
+Voice recording
+Drawing/hand writing
+multiple-choice/Button press
+typed answer
+
+Possible reviews:
+Wrong
+Correct
+
+
+Review processes:
+Immediate self-review (standard anki)
+Auto-review (typed anki)
+Delayed peer/self review
+No review (lesson)

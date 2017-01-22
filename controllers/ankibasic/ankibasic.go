@@ -7,8 +7,8 @@ import (
 	"github.com/flimzy/log"
 	"github.com/pkg/errors"
 
-	"github.com/FlashbackSRS/flashback-model"
-	"github.com/FlashbackSRS/flashback/cardmodel"
+	repo "github.com/FlashbackSRS/flashback/repository"
+	"github.com/FlashbackSRS/flashback/webclient/views/studyview"
 )
 
 // The possible faces of an Anki card
@@ -17,23 +17,23 @@ const (
 	AnswerFace
 )
 
-// Model is an Anki Basic model
-type Model struct{}
+// AnkiBasic is the controller for the Anki Basic model
+type AnkiBasic struct{}
 
-var _ cardmodel.Model = &Model{}
+var _ repo.ModelController = &AnkiBasic{}
 
 func init() {
 	log.Debug("Registering anki-basic model\n")
-	cardmodel.RegisterModel(&Model{})
+	repo.RegisterModelController(&AnkiBasic{})
 }
 
 // Type returns the string "anki-basic", to identify this model handler's type.
-func (m *Model) Type() string {
+func (m *AnkiBasic) Type() string {
 	return "anki-basic"
 }
 
 // IframeScript returns JavaScript to run inside the iframe.
-func (m *Model) IframeScript() []byte {
+func (m *AnkiBasic) IframeScript() []byte {
 	data, err := Asset("script.js")
 	if err != nil {
 		panic(err)
@@ -41,27 +41,27 @@ func (m *Model) IframeScript() []byte {
 	return data
 }
 
-var buttonMaps = map[int]cardmodel.ButtonMap{
-	QuestionFace: cardmodel.ButtonMap{
-		cardmodel.ButtonRight: cardmodel.AnswerButton{
+var buttonMaps = map[int]studyview.ButtonMap{
+	QuestionFace: studyview.ButtonMap{
+		studyview.ButtonRight: studyview.ButtonState{
 			Name:    "Show Answer",
 			Enabled: true,
 		},
 	},
-	AnswerFace: cardmodel.ButtonMap{
-		cardmodel.ButtonLeft: cardmodel.AnswerButton{
+	AnswerFace: studyview.ButtonMap{
+		studyview.ButtonLeft: studyview.ButtonState{
 			Name:    "Incorrect",
 			Enabled: true,
 		},
-		cardmodel.ButtonCenterLeft: cardmodel.AnswerButton{
+		studyview.ButtonCenterLeft: studyview.ButtonState{
 			Name:    "Difficult",
 			Enabled: true,
 		},
-		cardmodel.ButtonCenterRight: cardmodel.AnswerButton{
+		studyview.ButtonCenterRight: studyview.ButtonState{
 			Name:    "Correct",
 			Enabled: true,
 		},
-		cardmodel.ButtonRight: cardmodel.AnswerButton{
+		studyview.ButtonRight: studyview.ButtonState{
 			Name:    "Easy",
 			Enabled: true,
 		},
@@ -69,7 +69,7 @@ var buttonMaps = map[int]cardmodel.ButtonMap{
 }
 
 // Buttons returns the initial button state
-func (m *Model) Buttons(face int) (cardmodel.ButtonMap, error) {
+func (m *AnkiBasic) Buttons(face int) (studyview.ButtonMap, error) {
 	buttons, ok := buttonMaps[face]
 	if !ok {
 		return nil, errors.Errorf("Invalid face %d", face)
@@ -78,11 +78,7 @@ func (m *Model) Buttons(face int) (cardmodel.ButtonMap, error) {
 }
 
 // Action responds to a card action, such as a button press
-func (m *Model) Action(card *fb.Card, face *int, startTime time.Time, action cardmodel.Action) (bool, error) {
-	if action.Button == "" {
-		return false, errors.New("Invalid response; no button press")
-	}
-	button := action.Button
+func (m *AnkiBasic) Action(card *repo.Card, face *int, startTime time.Time, button studyview.Button) (bool, error) {
 	log.Debugf("%s button pressed for face %d\n", button, *face)
 	if btns, ok := buttonMaps[*face]; ok {
 		if _, valid := btns[button]; !valid {
@@ -97,24 +93,24 @@ func (m *Model) Action(card *fb.Card, face *int, startTime time.Time, action car
 		return false, nil
 	case AnswerFace:
 		log.Debugf("Old schedule: Due %s, Interval: %s, Ease: %f\n", card.Due, card.Interval, card.EaseFactor)
-		cardmodel.Schedule(card, time.Now().Sub(startTime), quality(button))
+		repo.Schedule(card, time.Now().Sub(startTime), quality(button))
 		log.Debugf("New schedule: Due %s, Interval: %s, Ease: %f\n", card.Due, card.Interval, card.EaseFactor)
 		return true, nil
 	}
-	log.Printf("Unexpected face/action combo: %d / %+v\n", *face, action)
+	log.Printf("Unexpected face/button combo: %d / %+v\n", *face, button)
 	return false, nil
 }
 
-func quality(button cardmodel.Button) cardmodel.AnswerQuality {
+func quality(button studyview.Button) repo.AnswerQuality {
 	switch button {
-	case cardmodel.ButtonLeft:
-		return cardmodel.AnswerBlackout
-	case cardmodel.ButtonCenterLeft:
-		return cardmodel.AnswerCorrectDifficult
-	case cardmodel.ButtonCenterRight:
-		return cardmodel.AnswerCorrect
-	case cardmodel.ButtonRight:
-		return cardmodel.AnswerPerfect
+	case studyview.ButtonLeft:
+		return repo.AnswerBlackout
+	case studyview.ButtonCenterLeft:
+		return repo.AnswerCorrectDifficult
+	case studyview.ButtonCenterRight:
+		return repo.AnswerCorrect
+	case studyview.ButtonRight:
+		return repo.AnswerPerfect
 	}
-	return cardmodel.AnswerBlackout
+	return repo.AnswerBlackout
 }

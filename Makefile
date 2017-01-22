@@ -67,7 +67,7 @@ www/js/cardframe.js: webclient/js/cardframe.js
 	cp $< $@
 
 .PHONY: main.js
-main.js: cardmodel/ankibasic/data.go
+main.js: controllers/ankibasic/data.go
 	rm -rf ${GOPATH}/pkg/*_js
 	gopherjs build --tags=debug ./webclient/*.go
 # 	uglifyjs main.js -c -m -o $@
@@ -98,5 +98,5 @@ www: javascript css images $(HTML_FILES) $(I18N_FILES)
 cordova-www: www
 	cat www/index.html | sed -e 's/<!-- Cordova Here -->/<script src="cordova.js"><\/script>/' > www/cordova.html
 
-cardmodel/ankibasic/data.go: $(wildcard cardmodel/ankibasic/js/*)
+controllers/ankibasic/data.go: $(wildcard controllers/ankibasic/js/*)
 	go-bindata -pkg ankibasic -nocompress -prefix "$(dir $<)" -o $@ $(dir $<)

@@ -1,22 +1,32 @@
 package repo
 
 import (
+	"encoding/json"
 	"math"
 	"strings"
 	"testing"
 	"time"
 
-	"github.com/flimzy/testify/require"
-
 	"github.com/FlashbackSRS/flashback-model"
-	"github.com/FlashbackSRS/flashback/cardmodel/mock"
+	"github.com/FlashbackSRS/flashback/webclient/views/studyview"
+	"github.com/flimzy/testify/require"
 )
 
+// We need to implement our own, minimal fake controller here, because using
+// controllers/mock results in an import cycle.
+type fakeController struct{}
+
+func (f *fakeController) Type() string                               { return "fake-model" }
+func (f *fakeController) IframeScript() []byte                       { return []byte("/* Fake Model */") }
+func (f *fakeController) Buttons(_ int) (studyview.ButtonMap, error) { return nil, nil }
+func (f *fakeController) Action(_ *Card, _ *int, _ time.Time, _ studyview.Button) (bool, error) {
+	return false, nil
+}
+
 func TestPrepareBody(t *testing.T) {
-	mock.RegisterMock("mock-model")
 	require := require.New(t)
 	doc := strings.NewReader(testDoc1)
-	result, err := prepareBody(Question, 0, "mock-model", doc)
+	result, err := prepareBody(Question, 0, &fakeController{}, doc)
 	if err != nil {
 		t.Errorf("error preparing body: %s", err)
 	}
@@ -65,6 +75,7 @@ Answer: <img src="paste-13877039333377.jpg"><br><div><sub>instrument</sub></div>
 
 </body></html>
     `
+
 var expected1 = `<!DOCTYPE html><html><head>
 <title>FB Card</title>
 <base href="https://flashback.ddns.net:4001/"/>
@@ -79,10 +90,7 @@ iframeID: '445a737462464b4e',
 <script type="text/javascript" src="js/cardframe.js"></script>
 <script type="text/javascript"></script>
 <style></style>
-<script type="text/javascript">
-		/* Mock Model */
-		console.log("Mock Model 'mock-model'");
-</script></head>
+<script type="text/javascript">/* Fake Model */</script></head>
 <body class="card">
     Question: <img src="paste-13877039333377.jpg"/><br/><div><sub>instrument</sub></div>
 </body></html>`
@@ -150,4 +158,12 @@ func parseDue(ds string) fb.Due {
 		panic(err)
 	}
 	return d
+}
+
+func TestUnmarshal(t *testing.T) {
+	raw := `{"_id":"card-alnlcvykyjxsjtijzonc3456kd5u4757.udROb8T8RmRASG5zGHNKnKL25zI.0","_rev":"1-daccd83780014e8cf35ce8f16d2a144c","created":"2015-09-08T23:55:03.000000539Z","imported":"2017-01-02T17:16:56.764985035+01:00","model":"theme-ELr8cEJJOvJU4lYz-VTXhH8wLTo/0","modified":"2016-08-02T13:05:04Z","type":"card"}`
+	card := &Card{}
+	if err := json.Unmarshal([]byte(raw), card); err != nil {
+		t.Errorf("Failed to unmarshal card: %s\n", err)
+	}
 }

@@ -6,7 +6,7 @@ import (
 
 	"github.com/flimzy/testify/require"
 
-	"github.com/FlashbackSRS/flashback/cardmodel/mock"
+	"github.com/FlashbackSRS/flashback/controllers/mock"
 	"github.com/FlashbackSRS/flashback/repository"
 )
 
