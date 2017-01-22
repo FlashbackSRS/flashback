@@ -11,9 +11,9 @@ import (
 	"github.com/gopherjs/jquery"
 	"github.com/pkg/errors"
 
-	"github.com/FlashbackSRS/flashback/cardmodel"
 	"github.com/FlashbackSRS/flashback/fserve"
 	"github.com/FlashbackSRS/flashback/repository"
+	"github.com/FlashbackSRS/flashback/webclient/views/studyview"
 )
 
 var jQuery = jquery.NewJQuery
@@ -60,11 +60,6 @@ func ShowCard(u *repo.User) error {
 	}
 	log.Debugf("Card ID: %s\n", currentCard.Card.DocID())
 
-	mh, err := currentCard.Card.ModelHandler()
-	if err != nil {
-		return errors.Wrap(err, "failed to get card's model handler")
-	}
-
 	log.Debug("Setting up the buttons\n")
 	buttons := jQuery(":mobile-pagecontainer").Find("#answer-buttons").Find(`[data-role="button"]`)
 	buttons.RemoveClass("ui-btn-active")
@@ -72,16 +67,16 @@ func ShowCard(u *repo.User) error {
 		buttons.Off() // Make sure we don't accept other press events
 		id := e.Get("currentTarget").Call("getAttribute", "data-id").String()
 		log.Debugf("Button %s was pressed!\n", id)
-		HandleCardAction(cardmodel.Button(id))
+		HandleCardAction(studyview.Button(id))
 	})
-	buttonAttrs, err := mh.Buttons(currentCard.Face)
+	buttonAttrs, err := currentCard.Card.Buttons(currentCard.Face)
 	if err != nil {
 		return errors.Wrap(err, "failed to get buttons list")
 	}
 	for i := 0; i < buttons.Length; i++ {
 		button := jQuery(buttons.Underlying().Index(i))
 		id := button.Attr("data-id")
-		attr, ok := buttonAttrs[(cardmodel.Button(id))]
+		attr, ok := buttonAttrs[(studyview.Button(id))]
 		button.Call("button")
 		if !ok {
 			button.SetText(" ")
@@ -121,16 +116,10 @@ func ShowCard(u *repo.User) error {
 	return nil
 }
 
-func HandleCardAction(button cardmodel.Button) {
+func HandleCardAction(button studyview.Button) {
 	card := currentCard.Card
-	mh, err := card.ModelHandler()
-	if err != nil {
-		log.Printf("failed to get card's model handler: %s\n", err)
-	}
 	face := currentCard.Face
-	done, err := mh.Action(card.Card, &currentCard.Face, currentCard.StartTime, cardmodel.Action{
-		Button: button,
-	})
+	done, err := card.Action(&currentCard.Face, currentCard.StartTime, button)
 	if err != nil {
 		log.Printf("Error executing card action for face %d / %+v: %s", face, card, err)
 	}

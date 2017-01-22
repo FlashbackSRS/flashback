@@ -19,8 +19,8 @@ import (
 	"golang.org/x/net/html"
 
 	"github.com/FlashbackSRS/flashback-model"
-	"github.com/FlashbackSRS/flashback/cardmodel"
 	"github.com/FlashbackSRS/flashback/util"
+	"github.com/FlashbackSRS/flashback/webclient/views/studyview"
 )
 
 const newPriority = 0.5
@@ -207,14 +207,22 @@ var faces = map[int]string{
 	Answer:   "answer",
 }
 
-// ModelHandler returns the cardmodel.Model for this card
-// FIXME: Rename this method to just Model() (??)
-func (c *Card) ModelHandler() (cardmodel.Model, error) {
-	m, err := c.Model()
+// Buttons returns the button states for the given card/face.
+func (c *Card) Buttons(face int) (studyview.ButtonMap, error) {
+	cont, err := c.getModelController()
 	if err != nil {
-		return nil, errors.Wrap(err, "retrieve model")
+		return nil, err
 	}
-	return cardmodel.GetHandler(m.Type)
+	return cont.Buttons(face)
+}
+
+// Action handles the action on the card, such as a button press.
+func (c *Card) Action(face *int, startTime time.Time, button studyview.Button) (done bool, err error) {
+	cont, err := c.getModelController()
+	if err != nil {
+		return false, err
+	}
+	return cont.Action(c, face, startTime, button)
 }
 
 // Model returns the model for the card
@@ -268,8 +276,12 @@ func (c *Card) Body(face int) (body string, iframeID string, err error) {
 	if e := tmpl.Execute(htmlDoc, ctx); e != nil {
 		return "", "", errors.Wrap(e, "Unable to execute template")
 	}
+	cont, err := c.getModelController()
+	if err != nil {
+		return "", "", errors.Wrap(err, "get model controller")
+	}
 	log.Debugf("original size = %d\n", htmlDoc.Len())
-	newBody, err := prepareBody(face, c.TemplateID(), model.Type, htmlDoc)
+	newBody, err := prepareBody(face, c.TemplateID(), cont, htmlDoc)
 	if err != nil {
 		return "", "", errors.Wrap(err, "prepare body")
 	}
@@ -279,14 +291,10 @@ func (c *Card) Body(face int) (body string, iframeID string, err error) {
 	return nbString, ctx.IframeID, nil
 }
 
-func prepareBody(face int, templateID uint32, modelType string, r io.Reader) ([]byte, error) {
+func prepareBody(face int, templateID uint32, cont ModelController, r io.Reader) ([]byte, error) {
 	cardFace, ok := faces[face]
 	if !ok {
 		return nil, errors.Errorf("Unrecognized card face %d", face)
-	}
-	handler, err := cardmodel.GetHandler(modelType)
-	if err != nil {
-		return nil, errors.Wrap(err, "model handler")
 	}
 	doc, err := goquery.NewDocumentFromReader(r)
 	if err != nil {
@@ -310,7 +318,7 @@ func prepareBody(face int, templateID uint32, modelType string, r io.Reader) ([]
 	body.Empty()
 	body.AppendHtml(containerHTML)
 
-	doc.Find("head").AppendHtml(fmt.Sprintf(`<script type="text/javascript">%s</script>`, string(handler.IframeScript())))
+	doc.Find("head").AppendHtml(fmt.Sprintf(`<script type="text/javascript">%s</script>`, string(cont.IframeScript())))
 
 	newBody, err := goquery.OuterHtml(doc.Selection)
 	if err != nil {

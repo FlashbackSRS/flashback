@@ -5,31 +5,32 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/FlashbackSRS/flashback-model"
-	"github.com/FlashbackSRS/flashback/cardmodel"
 	"github.com/flimzy/log"
+
+	repo "github.com/FlashbackSRS/flashback/repository"
+	"github.com/FlashbackSRS/flashback/webclient/views/studyview"
 )
 
-// Model is an Anki Basic model
-type Model struct {
+// Mock is an Anki Basic model
+type Mock struct {
 	t string
 }
 
-var _ cardmodel.Model = &Model{}
+var _ repo.ModelController = &Mock{}
 
 // RegisterMock registers the mock Model as the requested type, for tests.
 func RegisterMock(t string) {
-	m := &Model{t: t}
-	cardmodel.RegisterModel(m)
+	m := &Mock{t: t}
+	repo.RegisterModelController(m)
 }
 
 // Type returns the string "anki-basic", to identify this model handler's type.
-func (m *Model) Type() string {
+func (m *Mock) Type() string {
 	return m.t
 }
 
 // IframeScript returns JavaScript to run inside the iframe.
-func (m *Model) IframeScript() []byte {
+func (m *Mock) IframeScript() []byte {
 	return []byte(fmt.Sprintf(`
 		/* Mock Model */
 		console.log("Mock Model '%s'");
@@ -37,21 +38,21 @@ func (m *Model) IframeScript() []byte {
 }
 
 // Buttons returns the initial buttons state
-func (m *Model) Buttons(_ int) (cardmodel.ButtonMap, error) {
-	return cardmodel.ButtonMap{
-		cardmodel.ButtonLeft: cardmodel.AnswerButton{
+func (m *Mock) Buttons(_ int) (studyview.ButtonMap, error) {
+	return studyview.ButtonMap{
+		studyview.ButtonLeft: studyview.ButtonState{
 			Name:    "Incorrect",
 			Enabled: true,
 		},
-		cardmodel.ButtonCenterLeft: cardmodel.AnswerButton{
+		studyview.ButtonCenterLeft: studyview.ButtonState{
 			Name:    "Difficult",
 			Enabled: true,
 		},
-		cardmodel.ButtonCenterRight: cardmodel.AnswerButton{
+		studyview.ButtonCenterRight: studyview.ButtonState{
 			Name:    "Correct",
 			Enabled: true,
 		},
-		cardmodel.ButtonRight: cardmodel.AnswerButton{
+		studyview.ButtonRight: studyview.ButtonState{
 			Name:    "Easy",
 			Enabled: true,
 		},
@@ -59,7 +60,7 @@ func (m *Model) Buttons(_ int) (cardmodel.ButtonMap, error) {
 }
 
 // Action responds to a card action, such as a button press
-func (m *Model) Action(card *fb.Card, face *int, _ time.Time, action cardmodel.Action) (bool, error) {
-	log.Debugf("face: %d, action: %+v\n", face, action)
+func (m *Mock) Action(card *repo.Card, face *int, _ time.Time, button studyview.Button) (bool, error) {
+	log.Debugf("face: %d, button: %+v\n", face, button)
 	return true, nil
 }
