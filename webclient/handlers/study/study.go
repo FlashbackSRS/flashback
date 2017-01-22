@@ -64,10 +64,12 @@ func ShowCard(u *repo.User) error {
 	buttons := jQuery(":mobile-pagecontainer").Find("#answer-buttons").Find(`[data-role="button"]`)
 	buttons.RemoveClass("ui-btn-active")
 	buttons.On("click", func(e *js.Object) {
-		buttons.Off() // Make sure we don't accept other press events
-		id := e.Get("currentTarget").Call("getAttribute", "data-id").String()
-		log.Debugf("Button %s was pressed!\n", id)
-		HandleCardAction(studyview.Button(id))
+		go func() { // DB updates block
+			buttons.Off() // Make sure we don't accept other press events
+			id := e.Get("currentTarget").Call("getAttribute", "data-id").String()
+			log.Debugf("Button %s was pressed!\n", id)
+			HandleCardAction(studyview.Button(id))
+		}()
 	})
 	buttonAttrs, err := currentCard.Card.Buttons(currentCard.Face)
 	if err != nil {
