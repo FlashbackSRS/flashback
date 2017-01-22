@@ -63,14 +63,14 @@ func ShowCard(u *repo.User) error {
 	log.Debug("Setting up the buttons\n")
 	buttons := jQuery(":mobile-pagecontainer").Find("#answer-buttons").Find(`[data-role="button"]`)
 	buttons.RemoveClass("ui-btn-active")
-	buttons.On("click", func(e *js.Object) {
+	clickFunc := func(e *js.Object) {
 		go func() { // DB updates block
 			buttons.Off() // Make sure we don't accept other press events
 			id := e.Get("currentTarget").Call("getAttribute", "data-id").String()
 			log.Debugf("Button %s was pressed!\n", id)
 			HandleCardAction(studyview.Button(id))
 		}()
-	})
+	}
 	buttonAttrs, err := currentCard.Card.Buttons(currentCard.Face)
 	if err != nil {
 		return errors.Wrap(err, "failed to get buttons list")
@@ -78,17 +78,18 @@ func ShowCard(u *repo.User) error {
 	for i := 0; i < buttons.Length; i++ {
 		button := jQuery(buttons.Underlying().Index(i))
 		id := button.Attr("data-id")
-		attr, ok := buttonAttrs[(studyview.Button(id))]
 		button.Call("button")
-		if !ok {
-			button.SetText(" ")
+		attr, _ := buttonAttrs[(studyview.Button(id))] // I can ignore the ok value, because the nil value for attr works the same
+		name := attr.Name
+		if name == "" {
+			name = " "
+		}
+		button.SetText(name)
+		if attr.Enabled {
+			button.Call("button", "enable")
+			button.On("click", clickFunc)
 		} else {
-			button.SetText(attr.Name)
-			if attr.Enabled {
-				button.Call("button", "enable")
-			} else {
-				button.Call("button", "disable")
-			}
+			button.Call("button", "disable")
 		}
 	}
 
