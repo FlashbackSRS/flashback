@@ -58,6 +58,12 @@ func (c *Card) MarshalJSON() ([]byte, error) {
 	return json.Marshal(card)
 }
 
+// Save saves the card's current state to the database.
+func (c *Card) Save() error {
+	log.Debugf("Attempting to save card %s\n", c.Identity())
+	return c.db.Save(c.Card)
+}
+
 // Note returns the card's associated Note
 func (c *Card) Note() (*Note, error) {
 	if err := c.fetchNote(); err != nil {

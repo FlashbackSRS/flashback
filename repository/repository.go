@@ -10,6 +10,7 @@ import (
 
 	"github.com/flimzy/go-pouchdb"
 	"github.com/flimzy/go-pouchdb/plugins/find"
+	"github.com/flimzy/log"
 	"github.com/gopherjs/gopherjs/js"
 	"github.com/pborman/uuid"
 	"github.com/pkg/errors"
@@ -167,7 +168,10 @@ type FlashbackDoc interface {
 // Save attempts to save any valid FlashbackDoc, including merging in case the
 // document already exists from a previous import.
 func (db *DB) Save(doc FlashbackDoc) error {
-	if rev, err := db.Put(doc); err != nil {
+	var rev string
+	var err error
+	if rev, err = db.Put(doc); err != nil {
+		log.Debugf("save failed: %s\n", err)
 		if pouchdb.IsConflict(err) {
 			existing := reflect.New(reflect.TypeOf(doc).Elem()).Interface().(FlashbackDoc)
 			if e := db.Get(doc.DocID(), &existing, pouchdb.Options{}); e != nil {
@@ -185,17 +189,20 @@ func (db *DB) Save(doc FlashbackDoc) error {
 				// The existing document was mosified after import, so we won't allow further importing
 				return err
 			}
-			if changed, err := doc.MergeImport(existing); err != nil {
+			var changed bool
+			if changed, err = doc.MergeImport(existing); err != nil {
 				return err
-			} else if changed {
+			}
+			if changed {
 				if rev, err = db.Put(doc); err != nil {
 					return err
 				}
 			}
 		}
-	} else {
-		doc.SetRev(rev)
+		return err
 	}
+	log.Debugf("New rev = %s\n", rev)
+	doc.SetRev(rev)
 	return nil
 }
 

@@ -95,6 +95,9 @@ func (m *AnkiBasic) Action(card *repo.Card, face *int, startTime time.Time, butt
 		log.Debugf("Old schedule: Due %s, Interval: %s, Ease: %f\n", card.Due, card.Interval, card.EaseFactor)
 		repo.Schedule(card, time.Now().Sub(startTime), quality(button))
 		log.Debugf("New schedule: Due %s, Interval: %s, Ease: %f\n", card.Due, card.Interval, card.EaseFactor)
+		if err := card.Save(); err != nil {
+			return true, errors.Wrap(err, "save card state")
+		}
 		return true, nil
 	}
 	log.Printf("Unexpected face/button combo: %d / %+v\n", *face, button)
