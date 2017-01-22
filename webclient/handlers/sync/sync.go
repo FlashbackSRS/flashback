@@ -131,30 +131,34 @@ func Sync(source, target *repo.DB) (int32, error) {
 	return int32(result["docs_written"].(float64)), nil
 }
 
+type bundleResult struct {
+	ID string `json:"_id"`
+}
+
 // BundleSync syncs auxilary bundles to the remote server.
 func BundleSync(udb *repo.DB) (int32, int32, error) {
 	log.Debugf("Reading bundles from user database...\n")
-	doc := make(map[string][]map[string]string)
+	var bundles []bundleResult
 	err := udb.Find(map[string]interface{}{
 		"selector": map[string]string{"type": "bundle"},
 		"fields":   []string{"_id"},
-	}, &doc)
+	}, &bundles)
 	if err != nil {
-		return 0, 0, err
-	}
-	bundles := make([]string, len(doc["docs"]))
-	for i, bundle := range doc["docs"] {
-		bundles[i] = bundle["_id"]
+		if pouchdb.IsWarning(err) {
+			log.Println(err.Error())
+		} else {
+			return 0, 0, errors.Wrap(err, "BundleSync failed")
+		}
 	}
 	log.Debugf("bundles = %v\n", bundles)
 	var written, read int32
 	for _, bundle := range bundles {
 		log.Debugf("Bundle %s", bundle)
-		local, err := udb.User.NewDB(bundle)
+		local, err := udb.User.NewDB(bundle.ID)
 		if err != nil {
 			return written, read, err
 		}
-		remote, err := udb.User.NewRemoteDB(bundle)
+		remote, err := udb.User.NewRemoteDB(bundle.ID)
 		if err != nil {
 			return written, read, err
 		}

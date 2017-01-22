@@ -132,7 +132,7 @@ func CardPrio(due *fb.Due, interval *fb.Interval, now time.Time) float32 {
 
 // GetCards fetches up to limit cards from the db, in priority order.
 func GetCards(db *DB, now time.Time, limit int) ([]*Card, error) {
-	doc := make(map[string][]*fb.Card)
+	var cards []*Card
 	query := map[string]interface{}{
 		"selector": map[string]interface{}{
 			"type":    "card",
@@ -143,19 +143,23 @@ func GetCards(db *DB, now time.Time, limit int) ([]*Card, error) {
 		"sort":  []string{"due", "created"},
 		"limit": limit,
 	}
-	if err := db.Find(query, &doc); err != nil {
+	if err := db.Find(query, &cards); err != nil {
 		return nil, errors.Wrap(err, "card list")
 	}
-	cards := make([]*Card, len(doc["docs"]))
-	for i, card := range doc["docs"] {
-		cards[i] = &Card{
-			Card:     card,
-			db:       db,
-			priority: CardPrio(card.Due, card.Interval, now),
-		}
+	for _, card := range cards {
+		card.db = db
+		card.priority = CardPrio(card.Due, card.Interval, now)
 	}
 	sort.Sort(cardList(cards))
 	return cards, nil
+}
+
+// UnmarshalJSON wraps fb.Card's Unmarshaler
+func (c *Card) UnmarshalJSON(data []byte) error {
+	fbCard := &fb.Card{}
+	err := json.Unmarshal(data, fbCard)
+	c.Card = fbCard
+	return err
 }
 
 // GetNextCard gets the next card to study
