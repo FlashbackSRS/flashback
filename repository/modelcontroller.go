@@ -1,9 +1,9 @@
 package repo
 
 import (
-	"fmt"
 	"time"
 
+	"github.com/flimzy/log"
 	"github.com/pkg/errors"
 
 	"github.com/FlashbackSRS/flashback-model"
@@ -159,8 +159,8 @@ func schedule(card *Card, quality AnswerQuality) (interval fb.Interval, easeFact
 	if card.ReviewCount == 1 && observedInterval < SecondInterval {
 		return SecondInterval, ease
 	}
-	fmt.Printf("Last reviewed on %s\n", lastReviewed)
-	fmt.Printf("interval = %s, observed = %s, second = %s\n", interval, observedInterval, SecondInterval)
+	log.Debugf("Last reviewed on %s\n", lastReviewed)
+	log.Debugf("interval = %s, observed = %s, second = %s\n", interval, observedInterval, SecondInterval)
 	if observedInterval > interval {
 		interval = observedInterval
 	}
