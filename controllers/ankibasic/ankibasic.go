@@ -78,7 +78,7 @@ func (m *AnkiBasic) Buttons(face int) (studyview.ButtonMap, error) {
 }
 
 // Action responds to a card action, such as a button press
-func (m *AnkiBasic) Action(card *repo.Card, face *int, startTime time.Time, button studyview.Button) (bool, error) {
+func (m *AnkiBasic) Action(card *repo.PouchCard, face *int, startTime time.Time, button studyview.Button) (bool, error) {
 	log.Debugf("%s button pressed for face %d\n", button, *face)
 	if btns, ok := buttonMaps[*face]; ok {
 		if _, valid := btns[button]; !valid {
