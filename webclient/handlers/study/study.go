@@ -3,9 +3,12 @@
 package studyhandler
 
 import (
+	"math/rand"
 	"net/url"
+	"strings"
 	"time"
 
+	"github.com/PuerkitoBio/goquery"
 	"github.com/flimzy/log"
 	"github.com/gopherjs/gopherjs/js"
 	"github.com/gopherjs/jquery"
@@ -93,15 +96,18 @@ func ShowCard(u *repo.User) error {
 		}
 	}
 
-	body, iframeID, err := currentCard.Card.Body(currentCard.Face)
-	fserve.RegisterIframe(iframeID, currentCard.Card.DocID())
+	body, err := currentCard.Card.Body(currentCard.Face)
 	if err != nil {
-		return errors.Wrap(err, "Error fetching body")
+		return errors.Wrap(err, "fetching body")
 	}
+	iframeID := GenerateIframeID(8)
+	body, err = addIframeID(body, iframeID)
+	if err != nil {
+		return errors.Wrap(err, "failed to add iframe metadata")
+	}
+	fserve.RegisterIframe(iframeID, currentCard.Card.DocID())
 
-	doc := js.Global.Get("document")
-
-	iframe := doc.Call("createElement", "iframe")
+	iframe := js.Global.Get("document").Call("createElement", "iframe")
 	iframe.Call("setAttribute", "sandbox", "allow-scripts")
 	iframe.Call("setAttribute", "seamless", nil)
 	iframe.Set("id", iframeID)
@@ -119,6 +125,16 @@ func ShowCard(u *repo.User) error {
 	return nil
 }
 
+func addIframeID(body, iframeID string) (newBody string, err error) {
+	r := strings.NewReader(body)
+	doc, err := goquery.NewDocumentFromReader(r)
+	if err != nil {
+		return "", errors.Wrap(err, "failed to parse body")
+	}
+	doc.Find("head").AppendHtml(`<meta name="iframeid" content="` + iframeID + `">`)
+	return doc.Html()
+}
+
 func HandleCardAction(button studyview.Button) {
 	card := currentCard.Card
 	face := currentCard.Face
@@ -134,4 +150,34 @@ func HandleCardAction(button studyview.Button) {
 		}
 	}
 	jQuery(":mobile-pagecontainer").Call("pagecontainer", "change", "/study.html")
+}
+
+// Random number function borrowed from http://stackoverflow.com/a/31832326/13860
+var src = rand.NewSource(time.Now().UnixNano())
+
+const letterBytes = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
+const (
+	letterIdxBits = 6                    // 6 bits to represent a letter index
+	letterIdxMask = 1<<letterIdxBits - 1 // All 1-bits, as many as letterIdxBits
+	letterIdxMax  = 63 / letterIdxBits   // # of letter indices fitting in 63 bits
+)
+
+// GenerateIframeID returns a random string of n characters, with 6 random bits
+// per character.
+func GenerateIframeID(n int) string {
+	b := make([]byte, n)
+	// A src.Int63() generates 63 random bits, enough for letterIdxMax characters!
+	for i, cache, remain := n-1, src.Int63(), letterIdxMax; i >= 0; {
+		if remain == 0 {
+			cache, remain = src.Int63(), letterIdxMax
+		}
+		if idx := int(cache & letterIdxMask); idx < len(letterBytes) {
+			b[i] = letterBytes[idx]
+			i--
+		}
+		cache >>= letterIdxBits
+		remain--
+	}
+
+	return string(b)
 }

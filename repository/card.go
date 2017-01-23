@@ -2,7 +2,6 @@ package repo
 
 import (
 	"bytes"
-	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"html/template"
@@ -34,7 +33,7 @@ func init() {
 type Card interface {
 	DocID() string
 	Buttons(face int) (studyview.ButtonMap, error)
-	Body(face int) (body string, iframeID string, err error)
+	Body(face int) (body string, err error)
 	Action(face *int, startTime time.Time, button studyview.Button) (done bool, err error)
 }
 
@@ -214,9 +213,8 @@ func (u *User) GetNextCard() (Card, error) {
 }
 
 type cardContext struct {
-	IframeID string
-	Card     *PouchCard
-	Note     *Note
+	Card *PouchCard
+	Note *Note
 	// Model    *Model
 	// Deck     *Deck
 	BaseURI string
@@ -267,23 +265,22 @@ func (c *PouchCard) Model() (*Model, error) {
 }
 
 // Body returns the requested card face
-func (c *PouchCard) Body(face int) (body string, iframeID string, err error) {
+func (c *PouchCard) Body(face int) (body string, err error) {
 	note, err := c.Note()
 	if err != nil {
-		return "", "", errors.Wrap(err, "Unable to retrieve Note")
+		return "", errors.Wrap(err, "Unable to retrieve Note")
 	}
 	model, err := c.Model()
 	if err != nil {
-		return "", "", errors.Wrap(err, "Unable to retrieve Model")
+		return "", errors.Wrap(err, "Unable to retrieve Model")
 	}
 	tmpl, err := model.GenerateTemplate()
 	if err != nil {
-		return "", "", errors.Wrap(err, "Error generating template")
+		return "", errors.Wrap(err, "Error generating template")
 	}
 	ctx := cardContext{
-		IframeID: RandString(8),
-		Card:     c,
-		Note:     note,
+		Card: c,
+		Note: note,
 		// Model:    model,
 		BaseURI: util.BaseURI(),
 		Fields:  make(map[string]template.HTML),
@@ -294,7 +291,7 @@ func (c *PouchCard) Body(face int) (body string, iframeID string, err error) {
 		case fb.AnkiField, fb.TextField:
 			text, e := note.FieldValues[i].Text()
 			if e != nil {
-				return "", "", errors.Wrap(e, "Unable to fetch text for field value")
+				return "", errors.Wrap(e, "Unable to fetch text for field value")
 			}
 			ctx.Fields[f.Name] = template.HTML(text)
 		}
@@ -302,21 +299,21 @@ func (c *PouchCard) Body(face int) (body string, iframeID string, err error) {
 
 	htmlDoc := new(bytes.Buffer)
 	if e := tmpl.Execute(htmlDoc, ctx); e != nil {
-		return "", "", errors.Wrap(e, "Unable to execute template")
+		return "", errors.Wrap(e, "Unable to execute template")
 	}
 	cont, err := c.getModelController()
 	if err != nil {
-		return "", "", errors.Wrap(err, "get model controller")
+		return "", errors.Wrap(err, "get model controller")
 	}
 	log.Debugf("original size = %d\n", htmlDoc.Len())
 	newBody, err := prepareBody(face, c.TemplateID(), cont, htmlDoc)
 	if err != nil {
-		return "", "", errors.Wrap(err, "prepare body")
+		return "", errors.Wrap(err, "prepare body")
 	}
 
 	nbString := string(newBody)
 	log.Debugf("new body size = %d\n", len(nbString))
-	return nbString, ctx.IframeID, nil
+	return nbString, nil
 }
 
 func prepareBody(face int, templateID uint32, cont ModelController, r io.Reader) ([]byte, error) {
@@ -353,35 +350,6 @@ func prepareBody(face int, templateID uint32, cont ModelController, r io.Reader)
 		return nil, errors.Wrap(err, "outer html failed")
 	}
 	return []byte(newBody), nil
-}
-
-const letterBytes = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
-const (
-	letterIdxBits = 6                    // 6 bits to represent a letter index
-	letterIdxMask = 1<<letterIdxBits - 1 // All 1-bits, as many as letterIdxBits
-	letterIdxMax  = 63 / letterIdxBits   // # of letter indices fitting in 63 bits
-)
-
-// Random number function borrowed from http://stackoverflow.com/a/31832326/13860
-var src = rand.NewSource(time.Now().UnixNano())
-
-// RandString returns a random string of n bytes, converted to hex
-func RandString(n int) string {
-	b := make([]byte, n)
-	// A src.Int63() generates 63 random bits, enough for letterIdxMax characters!
-	for i, cache, remain := n-1, src.Int63(), letterIdxMax; i >= 0; {
-		if remain == 0 {
-			cache, remain = src.Int63(), letterIdxMax
-		}
-		if idx := int(cache & letterIdxMask); idx < len(letterBytes) {
-			b[i] = letterBytes[idx]
-			i--
-		}
-		cache >>= letterIdxBits
-		remain--
-	}
-
-	return hex.EncodeToString(b)
 }
 
 func findBody(n *html.Node) *html.Node {

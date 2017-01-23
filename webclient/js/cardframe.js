@@ -1,6 +1,17 @@
 'use strict';
 var requests = {};
+var iframeID;
 window.addEventListener('error', function(e) {
+    if (typeof(iframeID) === 'undefined') {
+        var metas = document.GetElementsByTagName('meta');
+        for (var i=0; i < metas.length; i++) {
+            if (metas[i].getAttribute("name") == "iframeid") {
+                iframeID = metas[i].getAttribute("content");
+                break;
+            }
+        }
+        console.log("Didn't find the iframe ID!!")
+    }
     var t = e.target;
     var tag = t.tagName;
     var path = tag == 'LINK' ? t.getAttribute('href') : t.getAttribute('src');
@@ -12,7 +23,7 @@ window.addEventListener('error', function(e) {
             targets: []
         };
         parent.postMessage({
-            IframeID: FB.iframeID,
+            IframeID: iframeID,
             Tag: tag,
             CardID: FB.card.id,
             Path: path,

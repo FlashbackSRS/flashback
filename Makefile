@@ -34,7 +34,7 @@ android: cordova-init cordova-www
 
 go-test: npm-install bindata
 	rm -rf ${GOPATH}/pkg/*_js
-	gopherjs test --tags=debug,safe github.com/FlashbackSRS/flashback/util github.com/FlashbackSRS/flashback/repository/test github.com/FlashbackSRS/flashback/repository
+	gopherjs test --tags=debug,safe github.com/FlashbackSRS/flashback/util github.com/FlashbackSRS/flashback/repository/test github.com/FlashbackSRS/flashback/repository github.com/FlashbackSRS/flashback/webclient/handlers/study
 
 test: go-test
 

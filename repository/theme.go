@@ -87,7 +87,6 @@ var masterTemplate = `
 <script type="text/javascript">
 'use strict';
 var FB = {
-	iframeID: '{{ .IframeID }}',
 	card: {{ .Card }},
 	note: {{ .Note }}
 };
