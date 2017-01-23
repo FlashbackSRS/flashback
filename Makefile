@@ -32,11 +32,13 @@ cordova-init: plugins platforms
 android: cordova-init cordova-www
 	cordova run android
 
-go-test: npm-install bindata
-	rm -rf ${GOPATH}/pkg/*_js
-	gopherjs test --tags=debug,safe github.com/FlashbackSRS/flashback/util github.com/FlashbackSRS/flashback/repository/test github.com/FlashbackSRS/flashback/repository
+go-test: preclean npm-install bindata
+	gopherjs test `go list ./...`
 
 test: go-test
+
+preclean:
+	rm -rf ${GOPATH}/pkg/*_js
 
 clean:
 	rm -rf www bundle.js pre-bundle.js bundle.js.map flashback main.js main.js.map
@@ -67,8 +69,7 @@ www/js/cardframe.js: webclient/js/cardframe.js
 	cp $< $@
 
 .PHONY: main.js
-main.js: bindata
-	rm -rf ${GOPATH}/pkg/*_js
+main.js: preclean bindata
 	gopherjs build --tags=debug ./webclient/*.go
 # 	uglifyjs main.js -c -m -o $@
 

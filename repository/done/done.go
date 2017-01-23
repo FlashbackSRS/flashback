@@ -38,10 +38,7 @@ func (c *Card) Action(_ *int, _ time.Time, _ studyview.Button) (done bool, err e
 }
 
 // Body returns the Done card body.
-func (c *Card) Body(_ int) (string, string, error) {
+func (c *Card) Body(_ int) (string, error) {
 	body, err := Asset("done.html")
-	if err != nil {
-		return "", "", err
-	}
-	return string(body), "doneIFrame", nil
+	return string(body), err
 }

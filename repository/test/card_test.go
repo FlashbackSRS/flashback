@@ -11,7 +11,6 @@ import (
 )
 
 var revRE = regexp.MustCompile(`"_rev":"\d-[0-9a-f]+?"`)
-var iframeRE = regexp.MustCompile(`iframeID: '[0-9a-f]+?'`)
 
 func init() {
 	mock.RegisterMock("anki-basic")
@@ -28,16 +27,14 @@ func TestCard1(t *testing.T) {
 	require.Nil(err, "Error fetching card: %s", err)
 	require.NotNil(card, "Card is nil")
 
-	question, _, err := card.Body(repo.Question)
+	question, err := card.Body(repo.Question)
 	require.Nil(err, "Unable to fetch the card's question body: %s", err)
 	question = revRE.ReplaceAllString(question, `"_rev":"X-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"`)
-	question = iframeRE.ReplaceAllString(question, `iframeID: 'xxxxxxxxxxxxxxxx'`)
 	require.LinesEqual(expectedQuestion0, question, "Card 0 question")
 
-	answer, _, err := card.Body(repo.Answer)
+	answer, err := card.Body(repo.Answer)
 	require.Nil(err, "Unable to fetch the card's answer body: %s", err)
 	answer = revRE.ReplaceAllString(answer, `"_rev":"X-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"`)
-	answer = iframeRE.ReplaceAllString(answer, `iframeID: 'xxxxxxxxxxxxxxxx'`)
 	require.LinesEqual(expectedAnswer0, answer, "Card 0 answer")
 }
 
@@ -52,16 +49,14 @@ func TestCard2(t *testing.T) {
 	require.Nil(err, "Error fetching card: %s", err)
 	require.NotNil(card, "Card is nil")
 
-	question, _, err := card.Body(repo.Question)
+	question, err := card.Body(repo.Question)
 	require.Nil(err, "Unable to fetch the card's body: %s", err)
 	question = revRE.ReplaceAllString(question, `"_rev":"X-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"`)
-	question = iframeRE.ReplaceAllString(question, `iframeID: 'xxxxxxxxxxxxxxxx'`)
 	require.LinesEqual(expectedQuestion1, question, "Card 1 question")
 
-	answer, _, err := card.Body(repo.Answer)
+	answer, err := card.Body(repo.Answer)
 	require.Nil(err, "Unable to fetch the card's answer body: %s", err)
 	answer = revRE.ReplaceAllString(answer, `"_rev":"X-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"`)
-	answer = iframeRE.ReplaceAllString(answer, `iframeID: 'xxxxxxxxxxxxxxxx'`)
 	require.LinesEqual(expectedAnswer1, answer, "Card 1 answer")
 }
 
@@ -73,7 +68,6 @@ var expectedQuestion0 = `<!DOCTYPE html><html><head>
 <script type="text/javascript">
 'use strict';
 var FB = {
-	iframeID: 'xxxxxxxxxxxxxxxx',
 	card: {"id":"card-alnlcvykyjxsjtijzonc3456kd5u4757.ZR4TpeX38xRzRvXprlgJpP4Ribo.0"},
 	note: {"id":"note-ZR4TpeX38xRzRvXprlgJpP4Ribo"}
 };
@@ -97,7 +91,6 @@ var expectedAnswer0 = `<!DOCTYPE html><html><head>
 <script type="text/javascript">
 'use strict';
 var FB = {
-	iframeID: 'xxxxxxxxxxxxxxxx',
 	card: {"id":"card-alnlcvykyjxsjtijzonc3456kd5u4757.ZR4TpeX38xRzRvXprlgJpP4Ribo.0"},
 	note: {"id":"note-ZR4TpeX38xRzRvXprlgJpP4Ribo"}
 };
@@ -125,7 +118,6 @@ var expectedQuestion1 = `<!DOCTYPE html><html><head>
 <script type="text/javascript">
 'use strict';
 var FB = {
-	iframeID: 'xxxxxxxxxxxxxxxx',
 	card: {"id":"card-alnlcvykyjxsjtijzonc3456kd5u4757.ZR4TpeX38xRzRvXprlgJpP4Ribo.1"},
 	note: {"id":"note-ZR4TpeX38xRzRvXprlgJpP4Ribo"}
 };
@@ -149,7 +141,6 @@ var expectedAnswer1 = `<!DOCTYPE html><html><head>
 <script type="text/javascript">
 'use strict';
 var FB = {
-	iframeID: 'xxxxxxxxxxxxxxxx',
 	card: {"id":"card-alnlcvykyjxsjtijzonc3456kd5u4757.ZR4TpeX38xRzRvXprlgJpP4Ribo.1"},
 	note: {"id":"note-ZR4TpeX38xRzRvXprlgJpP4Ribo"}
 };
