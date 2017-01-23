@@ -19,6 +19,7 @@ import (
 	"golang.org/x/net/html"
 
 	"github.com/FlashbackSRS/flashback-model"
+	"github.com/FlashbackSRS/flashback/repository/done"
 	"github.com/FlashbackSRS/flashback/util"
 	"github.com/FlashbackSRS/flashback/webclient/views/studyview"
 )
@@ -29,15 +30,23 @@ func init() {
 	rand.Seed(int64(time.Now().UnixNano()))
 }
 
-// Card provides a convenient interface to fb.Card and dependencies
-type Card struct {
+// Card represents a generic card-like object.
+type Card interface {
+	DocID() string
+	Buttons(face int) (studyview.ButtonMap, error)
+	Body(face int) (body string, iframeID string, err error)
+	Action(face *int, startTime time.Time, button studyview.Button) (done bool, err error)
+}
+
+// PouchCard provides a convenient interface to fb.Card and dependencies
+type PouchCard struct {
 	*fb.Card
 	db       *DB
 	note     *Note
 	priority float32
 }
 
-type cardList []*Card
+type cardList []*PouchCard
 
 func (c cardList) Len() int { return len(c) }
 func (c cardList) Less(i, j int) bool {
@@ -51,7 +60,7 @@ type jsCard struct {
 
 // MarshalJSON marshals a Card for the benefit of javascript context in HTML
 // templates.
-func (c *Card) MarshalJSON() ([]byte, error) {
+func (c *PouchCard) MarshalJSON() ([]byte, error) {
 	card := &jsCard{
 		ID: c.DocID(),
 	}
@@ -59,20 +68,20 @@ func (c *Card) MarshalJSON() ([]byte, error) {
 }
 
 // Save saves the card's current state to the database.
-func (c *Card) Save() error {
+func (c *PouchCard) Save() error {
 	log.Debugf("Attempting to save card %s\n", c.Identity())
 	return c.db.Save(c.Card)
 }
 
 // Note returns the card's associated Note
-func (c *Card) Note() (*Note, error) {
+func (c *PouchCard) Note() (*Note, error) {
 	if err := c.fetchNote(); err != nil {
 		return nil, errors.Wrap(err, "Error fetching note for Note()")
 	}
 	return c.note, nil
 }
 
-func (c *Card) fetchNote() error {
+func (c *PouchCard) fetchNote() error {
 	if c.note != nil {
 		// Nothing to do
 		return nil
@@ -94,21 +103,21 @@ func (c *Card) fetchNote() error {
 }
 
 // GetCard fetches the requested card
-func (u *User) GetCard(id string) (*Card, error) {
+func (u *User) GetCard(id string) (*PouchCard, error) {
 	db, err := u.DB()
 	if err != nil {
-		return nil, errors.Wrap(err, "GetNextCard(): Error connecting to User DB")
+		return nil, errors.Wrap(err, "connect to user DB")
 	}
 	return db.GetCard(id)
 }
 
 // GetCard fetches the requested card
-func (db *DB) GetCard(id string) (*Card, error) {
+func (db *DB) GetCard(id string) (*PouchCard, error) {
 	card := &fb.Card{}
 	if err := db.Get(id, card, pouchdb.Options{}); err != nil {
-		return nil, errors.Wrap(err, "Unable to fetch requested card")
+		return nil, errors.Wrap(err, "fetch card")
 	}
-	return &Card{
+	return &PouchCard{
 		Card: card,
 		db:   db,
 	}, nil
@@ -137,8 +146,8 @@ func CardPrio(due *fb.Due, interval *fb.Interval, now time.Time) float32 {
 }
 
 // GetCards fetches up to limit cards from the db, in priority order.
-func GetCards(db *DB, now time.Time, limit int) ([]*Card, error) {
-	var cards []*Card
+func GetCards(db *DB, now time.Time, limit int) ([]*PouchCard, error) {
+	var cards []*PouchCard
 	query := map[string]interface{}{
 		"selector": map[string]interface{}{
 			"type":    "card",
@@ -167,7 +176,7 @@ func GetCards(db *DB, now time.Time, limit int) ([]*Card, error) {
 }
 
 // UnmarshalJSON wraps fb.Card's Unmarshaler
-func (c *Card) UnmarshalJSON(data []byte) error {
+func (c *PouchCard) UnmarshalJSON(data []byte) error {
 	fbCard := &fb.Card{}
 	err := json.Unmarshal(data, fbCard)
 	c.Card = fbCard
@@ -175,7 +184,7 @@ func (c *Card) UnmarshalJSON(data []byte) error {
 }
 
 // GetNextCard gets the next card to study
-func (u *User) GetNextCard() (*Card, error) {
+func (u *User) GetNextCard() (Card, error) {
 	db, err := u.DB()
 	if err != nil {
 		return nil, errors.Wrap(err, "GetNextCard(): Error connecting to User DB")
@@ -184,6 +193,9 @@ func (u *User) GetNextCard() (*Card, error) {
 	cards, err := GetCards(db, time.Now(), 20)
 	if err != nil {
 		return nil, errors.Wrap(err, "get card list")
+	}
+	if len(cards) == 0 {
+		return done.GetCard(), nil
 	}
 	var weights float32
 	for _, c := range cards {
@@ -203,7 +215,7 @@ func (u *User) GetNextCard() (*Card, error) {
 
 type cardContext struct {
 	IframeID string
-	Card     *Card
+	Card     *PouchCard
 	Note     *Note
 	// Model    *Model
 	// Deck     *Deck
@@ -224,7 +236,7 @@ var faces = map[int]string{
 }
 
 // Buttons returns the button states for the given card/face.
-func (c *Card) Buttons(face int) (studyview.ButtonMap, error) {
+func (c *PouchCard) Buttons(face int) (studyview.ButtonMap, error) {
 	cont, err := c.getModelController()
 	if err != nil {
 		return nil, err
@@ -233,7 +245,7 @@ func (c *Card) Buttons(face int) (studyview.ButtonMap, error) {
 }
 
 // Action handles the action on the card, such as a button press.
-func (c *Card) Action(face *int, startTime time.Time, button studyview.Button) (done bool, err error) {
+func (c *PouchCard) Action(face *int, startTime time.Time, button studyview.Button) (done bool, err error) {
 	cont, err := c.getModelController()
 	if err != nil {
 		return false, err
@@ -242,7 +254,7 @@ func (c *Card) Action(face *int, startTime time.Time, button studyview.Button) (
 }
 
 // Model returns the model for the card
-func (c *Card) Model() (*Model, error) {
+func (c *PouchCard) Model() (*Model, error) {
 	note, err := c.Note()
 	if err != nil {
 		return nil, errors.Wrap(err, "retrieve Note")
@@ -255,7 +267,7 @@ func (c *Card) Model() (*Model, error) {
 }
 
 // Body returns the requested card face
-func (c *Card) Body(face int) (body string, iframeID string, err error) {
+func (c *PouchCard) Body(face int) (body string, iframeID string, err error) {
 	note, err := c.Note()
 	if err != nil {
 		return "", "", errors.Wrap(err, "Unable to retrieve Note")
@@ -409,7 +421,7 @@ func findContainer(n *html.Node, targetID, targetClass string) *html.Node {
 }
 
 // GetAttachment fetches an attachment from the note, failling back to the model
-func (c *Card) GetAttachment(filename string) (*Attachment, error) {
+func (c *PouchCard) GetAttachment(filename string) (*Attachment, error) {
 	n, err := c.Note()
 	if err != nil {
 		return nil, errors.Wrap(err, "Error fetching Note for GetAttachment()")
@@ -426,55 +438,4 @@ func (c *Card) GetAttachment(filename string) (*Attachment, error) {
 		return &Attachment{file}, nil
 	}
 	return nil, errors.Errorf("File '%s' not found", filename)
-}
-
-// Response represents a response button
-type Response struct {
-	Name    string
-	Display string
-	Icon    string
-}
-
-var showAnswer = &Response{
-	Name:    "show_answer_button",
-	Display: "Show Answer",
-	Icon:    "carat-r",
-}
-
-var wrongAnswer = &Response{
-	Name:    "wrong_answer_button",
-	Display: "Again",
-	Icon:    "delete",
-}
-
-var hardAnswer = &Response{
-	Name:    "hard_answer_button",
-	Display: "Hard",
-	Icon:    "clock",
-}
-
-var goodAnswer = &Response{
-	Name:    "good_answer_button",
-	Display: "Good",
-	Icon:    "carat-r",
-}
-
-var easyAnswer = &Response{
-	Name:    "easy_answer_button",
-	Display: "Easy",
-	Icon:    "heart",
-}
-
-// Responses returns the list of available responses for a card's face
-func (c *Card) Responses(face int) ([]*Response, error) {
-	var responses []*Response
-	switch face {
-	case Question:
-		responses = []*Response{showAnswer}
-	case Answer:
-		responses = []*Response{wrongAnswer, hardAnswer, goodAnswer, easyAnswer}
-	default:
-		return nil, errors.Errorf("Unknown card face %d", face)
-	}
-	return responses, nil
 }

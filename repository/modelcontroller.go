@@ -24,7 +24,7 @@ type ModelController interface {
 	// as true, the next card is selected. If done is false, the same card will
 	// be displayed, with the current value of face (possibly changed by the
 	// function)
-	Action(card *Card, face *int, startTime time.Time, button studyview.Button) (done bool, err error)
+	Action(card *PouchCard, face *int, startTime time.Time, button studyview.Button) (done bool, err error)
 }
 
 var modelControllers = map[string]ModelController{}
@@ -55,7 +55,7 @@ func (m *Model) getController() (ModelController, error) {
 	return c, nil
 }
 
-func (c *Card) getModelController() (ModelController, error) {
+func (c *PouchCard) getModelController() (ModelController, error) {
 	m, err := c.Model()
 	if err != nil {
 		return nil, err
@@ -113,7 +113,7 @@ const (
 )
 
 // Schedule implements the default scheduler.
-func Schedule(card *Card, answerDelay time.Duration, quality AnswerQuality) error {
+func Schedule(card *PouchCard, answerDelay time.Duration, quality AnswerQuality) error {
 	ivl, ease := schedule(card, quality)
 	due := now().Add(ivl)
 	card.Due = &due
@@ -141,7 +141,7 @@ func adjustEase(ease float32, q AnswerQuality) float32 {
 	return newEase
 }
 
-func schedule(card *Card, quality AnswerQuality) (interval fb.Interval, easeFactor float32) {
+func schedule(card *PouchCard, quality AnswerQuality) (interval fb.Interval, easeFactor float32) {
 	ease := card.EaseFactor
 	if ease == 0.0 {
 		ease = InitialEase

@@ -60,7 +60,7 @@ func (m *Mock) Buttons(_ int) (studyview.ButtonMap, error) {
 }
 
 // Action responds to a card action, such as a button press
-func (m *Mock) Action(card *repo.Card, face *int, _ time.Time, button studyview.Button) (bool, error) {
+func (m *Mock) Action(card *repo.PouchCard, face *int, _ time.Time, button studyview.Button) (bool, error) {
 	log.Debugf("face: %d, button: %+v\n", face, button)
 	return true, nil
 }
