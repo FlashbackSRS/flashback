@@ -66,3 +66,4 @@ main.js.map
 
 # go-bindata
 controllers/ankibasic/data.go
+repository/done/data.go

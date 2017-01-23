@@ -19,7 +19,7 @@ import (
 var jQuery = jquery.NewJQuery
 
 type cardState struct {
-	Card      *repo.Card
+	Card      repo.Card
 	StartTime time.Time
 	Face      int
 }

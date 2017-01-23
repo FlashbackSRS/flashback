@@ -19,6 +19,7 @@ import (
 	"golang.org/x/net/html"
 
 	"github.com/FlashbackSRS/flashback-model"
+	"github.com/FlashbackSRS/flashback/repository/done"
 	"github.com/FlashbackSRS/flashback/util"
 	"github.com/FlashbackSRS/flashback/webclient/views/studyview"
 )
@@ -27,6 +28,14 @@ const newPriority = 0.5
 
 func init() {
 	rand.Seed(int64(time.Now().UnixNano()))
+}
+
+// Card represents a generic card-like object.
+type Card interface {
+	DocID() string
+	Buttons(face int) (studyview.ButtonMap, error)
+	Body(face int) (body string, iframeID string, err error)
+	Action(face *int, startTime time.Time, button studyview.Button) (done bool, err error)
 }
 
 // PouchCard provides a convenient interface to fb.Card and dependencies
@@ -97,7 +106,7 @@ func (c *PouchCard) fetchNote() error {
 func (u *User) GetCard(id string) (*PouchCard, error) {
 	db, err := u.DB()
 	if err != nil {
-		return nil, errors.Wrap(err, "GetNextCard(): Error connecting to User DB")
+		return nil, errors.Wrap(err, "connect to user DB")
 	}
 	return db.GetCard(id)
 }
@@ -106,7 +115,7 @@ func (u *User) GetCard(id string) (*PouchCard, error) {
 func (db *DB) GetCard(id string) (*PouchCard, error) {
 	card := &fb.Card{}
 	if err := db.Get(id, card, pouchdb.Options{}); err != nil {
-		return nil, errors.Wrap(err, "Unable to fetch requested card")
+		return nil, errors.Wrap(err, "fetch card")
 	}
 	return &PouchCard{
 		Card: card,
@@ -175,7 +184,7 @@ func (c *PouchCard) UnmarshalJSON(data []byte) error {
 }
 
 // GetNextCard gets the next card to study
-func (u *User) GetNextCard() (*PouchCard, error) {
+func (u *User) GetNextCard() (Card, error) {
 	db, err := u.DB()
 	if err != nil {
 		return nil, errors.Wrap(err, "GetNextCard(): Error connecting to User DB")
@@ -184,6 +193,9 @@ func (u *User) GetNextCard() (*PouchCard, error) {
 	cards, err := GetCards(db, time.Now(), 20)
 	if err != nil {
 		return nil, errors.Wrap(err, "get card list")
+	}
+	if len(cards) == 0 {
+		return done.GetCard(), nil
 	}
 	var weights float32
 	for _, c := range cards {
