@@ -144,6 +144,12 @@ func GetCards(db *DB, now time.Time, limit int) ([]*Card, error) {
 			"type":    "card",
 			"due":     map[string]interface{}{"$gte": nil},
 			"created": map[string]interface{}{"$gte": nil},
+			// Don't review cards we already saw today, with an interval >= 1d;
+			// they would make no progress.
+			"$not": map[string]interface{}{
+				"interval":   map[string]interface{}{"$gte": 1},
+				"lastReview": map[string]interface{}{"$gte": fb.Today().String()},
+			},
 		},
 		//		"fields": []string{"_id", "due", "interval", "model", "created"},
 		"sort":  []string{"due", "created"},
