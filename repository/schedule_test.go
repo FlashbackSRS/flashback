@@ -190,7 +190,7 @@ func TestScheduling(t *testing.T) {
 		ScheduleTest{
 			Name: "Reviewed once, 10 days late, Easy",
 			Card: &fb.Card{
-				Due:         parseDuePtr("2017-01-02 00:00:00"),
+				Due:         parseDuePtr("2017-01-02"),
 				Interval:    intervalPtr(InitialInterval),
 				EaseFactor:  2.0,
 				ReviewCount: 1,
@@ -200,6 +200,20 @@ func TestScheduling(t *testing.T) {
 			ExpectedEase:     2.1,
 			ExpectedDue:      parseDue("2017-01-11"),
 			ExpectedInterval: 7 * fb.Day,
+		},
+		ScheduleTest{
+			Name: "Real world #1",
+			Now:  parseTime("2017-01-23 12:56:21"),
+			Card: &fb.Card{
+				Due:         parseDuePtr("2017-01-24"),
+				Interval:    intervalPtr(fb.Day),
+				EaseFactor:  2.36,
+				ReviewCount: 0,
+			},
+			Answer:           AnswerCorrect,
+			ExpectedEase:     2.36,
+			ExpectedDue:      parseDue("2017-01-24"),
+			ExpectedInterval: fb.Day,
 		},
 	}
 	for _, test := range tests {

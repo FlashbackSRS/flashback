@@ -121,6 +121,10 @@ func Schedule(card *Card, answerDelay time.Duration, quality AnswerQuality) erro
 	card.EaseFactor = ease
 	if quality <= AnswerIncorrectEasy {
 		card.ReviewCount = 0
+	} else {
+		now := time.Now()
+		card.LastReview = &now
+		card.ReviewCount++
 	}
 	return nil
 }
