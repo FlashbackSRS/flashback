@@ -2,6 +2,7 @@ package repo
 
 import (
 	"encoding/json"
+	"fmt"
 	"math"
 	"strings"
 	"testing"
@@ -99,6 +100,7 @@ type PrioTest struct {
 	Due      fb.Due
 	Interval fb.Interval
 	Expected float64
+	Now      time.Time
 }
 
 var PrioTests = []PrioTest{
@@ -132,24 +134,41 @@ var PrioTests = []PrioTest{
 		Interval: 7 * fb.Day,
 		Expected: 150084.109375,
 	},
+	PrioTest{
+		Due:      parseDue("2017-01-24 11:16:59"),
+		Interval: 10 * fb.Minute,
+		Expected: 132.520996,
+		Now:      parseTime("2017-01-24T11:57:58+01:00"),
+	},
 }
 
 func TestPrio(t *testing.T) {
-	now := parseTime("2017-01-01 00:00:00")
 	for _, test := range PrioTests {
-		prio := CardPrio(&test.Due, &test.Interval, now)
+		if test.Now.IsZero() {
+			test.Now = parseTime("2017-01-01 00:00:00")
+		}
+		prio := CardPrio(&test.Due, &test.Interval, test.Now)
 		if math.Abs(float64(prio)-test.Expected) > 0.000001 {
 			t.Errorf("%s / %s: Expected priority %f, got %f\n", test.Due, test.Interval, test.Expected, prio)
 		}
 	}
 }
 
+var timeFormats = []string{
+	time.RFC3339,
+	"2006-01-02 15:04:05",
+}
+
 func parseTime(ts string) time.Time {
-	t, err := time.Parse("2006-01-02 15:04:05", ts)
-	if err != nil {
-		panic(err)
+	var err error
+	var t time.Time
+	for _, format := range timeFormats {
+		t, err = time.Parse(format, ts)
+		if err == nil {
+			return t
+		}
 	}
-	return t
+	panic(fmt.Sprintf("invalid time value '%s'", ts))
 }
 
 func parseDue(ds string) fb.Due {

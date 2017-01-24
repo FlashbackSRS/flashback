@@ -141,7 +141,11 @@ func CardPrio(due *fb.Due, interval *fb.Interval, now time.Time) float32 {
 	if due == nil || interval == nil {
 		return newPriority
 	}
-	return float32(math.Pow(1+float64(now.Sub(time.Time(*due)))/float64(time.Duration(*interval)), 3))
+	// Remove the timezone
+	_, offset := now.Zone()
+	utc := now.UTC().Add(time.Duration(offset) * time.Second)
+
+	return float32(math.Pow(1+float64(utc.Sub(time.Time(*due)))/float64(time.Duration(*interval)), 3))
 }
 
 // GetCards fetches up to limit cards from the db, in priority order.
@@ -196,10 +200,12 @@ func (u *User) GetNextCard() (Card, error) {
 	if len(cards) == 0 {
 		return done.GetCard(), nil
 	}
+
 	var weights float32
 	for _, c := range cards {
 		weights += c.priority
 	}
+
 	r := rand.Float32() * weights
 	log.Debugf("Random key / total: %f / %f (%d)\n", r, weights, len(cards))
 	for i, c := range cards {
