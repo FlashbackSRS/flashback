@@ -3,7 +3,7 @@ var requests = {};
 var iframeID;
 window.addEventListener('error', function(e) {
     if (typeof(iframeID) === 'undefined') {
-        var metas = document.GetElementsByTagName('meta');
+        var metas = document.getElementsByTagName('meta');
         for (var i=0; i < metas.length; i++) {
             if (metas[i].getAttribute("name") == "iframeid") {
                 iframeID = metas[i].getAttribute("content");
