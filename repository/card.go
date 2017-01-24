@@ -148,6 +148,11 @@ func CardPrio(due *fb.Due, interval *fb.Interval, now time.Time) float32 {
 	return float32(math.Pow(1+float64(utc.Sub(time.Time(*due)))/float64(time.Duration(*interval)), 3))
 }
 
+func init() {
+	// pouchdb.Debug("*")
+	pouchdb.DebugDisable()
+}
+
 // GetCards fetches up to limit cards from the db, in priority order.
 func GetCards(db *DB, now time.Time, limit int) ([]*PouchCard, error) {
 	var cards []*PouchCard
@@ -156,14 +161,23 @@ func GetCards(db *DB, now time.Time, limit int) ([]*PouchCard, error) {
 			"type":    "card",
 			"due":     map[string]interface{}{"$gte": nil},
 			"created": map[string]interface{}{"$gte": nil},
-			// Don't review cards we already saw today, with an interval >= 1d;
-			// they would make no progress.
 			"$not": map[string]interface{}{
-				"interval":   map[string]interface{}{"$gte": 1},
-				"lastReview": map[string]interface{}{"$gte": fb.Today().String()},
+				"$or": []interface{}{
+					map[string]interface{}{
+						// Don't review cards we already saw today, with an
+						// interval >= 1d; they would make no progress.
+						"interval":   map[string]interface{}{"$gte": 1},
+						"lastReview": map[string]interface{}{"$gte": fb.Today().String()},
+					},
+					map[string]interface{}{
+						// Ignore sub-day intervals that aren't due yet. We only allow
+						// forward-fuzzing for intervals > 1day
+						"interval": map[string]interface{}{"$lt": 0},
+						"due":      map[string]interface{}{"$gt": fb.Now().String()},
+					},
+				},
 			},
 		},
-		//		"fields": []string{"_id", "due", "interval", "model", "created"},
 		"sort":  []string{"due", "created"},
 		"limit": limit,
 	}
@@ -186,6 +200,13 @@ func (c *PouchCard) UnmarshalJSON(data []byte) error {
 	return err
 }
 
+// cardBatchSize is the number of cards we fetch at once, using simple schedule
+// prioritization. This number should be large enough that the intelligent
+// scheduling has room to function, but small enough that performance isn't
+// a big problem due to fetching and prioritizing many cards we don't actually
+// use.
+const cardBatchSize = 100
+
 // GetNextCard gets the next card to study
 func (u *User) GetNextCard() (Card, error) {
 	db, err := u.DB()
@@ -193,7 +214,7 @@ func (u *User) GetNextCard() (Card, error) {
 		return nil, errors.Wrap(err, "GetNextCard(): Error connecting to User DB")
 	}
 
-	cards, err := GetCards(db, time.Now(), 20)
+	cards, err := GetCards(db, time.Now(), cardBatchSize)
 	if err != nil {
 		return nil, errors.Wrap(err, "get card list")
 	}
@@ -212,7 +233,7 @@ func (u *User) GetNextCard() (Card, error) {
 		r -= c.priority
 		if r < 0 {
 			log.Debugf("Selected card %d: %s\n", i, c.Identity())
-			return db.GetCard(c.DocID())
+			return c, nil
 		}
 	}
 	return nil, errors.New("failed to fetch card")
