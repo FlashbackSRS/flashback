@@ -10,7 +10,9 @@ window.addEventListener('error', function(e) {
                 break;
             }
         }
-        console.log("Didn't find the iframe ID!!")
+        if (typeof iframeID === 'undefined') {
+            console.log("Didn't find the iframe ID!!");
+        }
     }
     var t = e.target;
     var tag = t.tagName;
