@@ -92,9 +92,9 @@ func (m *AnkiBasic) Action(card *repo.PouchCard, face *int, startTime time.Time,
 		*face++
 		return false, nil
 	case AnswerFace:
-		log.Debugf("Old schedule: Due %s, Interval: %s, Ease: %f\n", card.Due, card.Interval, card.EaseFactor)
+		log.Debugf("Old schedule: Due %s, Interval: %s, Ease: %f, ReviewCount: %d\n", card.Due, card.Interval, card.EaseFactor, card.ReviewCount)
 		repo.Schedule(card, time.Now().Sub(startTime), quality(button))
-		log.Debugf("New schedule: Due %s, Interval: %s, Ease: %f\n", card.Due, card.Interval, card.EaseFactor)
+		log.Debugf("New schedule: Due %s, Interval: %s, Ease: %f, ReviewCount: %d\n", card.Due, card.Interval, card.EaseFactor, card.ReviewCount)
 		if err := card.Save(); err != nil {
 			return true, errors.Wrap(err, "save card state")
 		}
