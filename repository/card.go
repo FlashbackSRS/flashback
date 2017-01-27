@@ -175,6 +175,9 @@ func GetCards(db *DB, now time.Time, limit int) ([]*PouchCard, error) {
 						"interval": map[string]interface{}{"$lt": 0},
 						"due":      map[string]interface{}{"$gt": fb.Now().String()},
 					},
+					map[string]interface{}{
+						"suspended": true,
+					},
 				},
 			},
 		},

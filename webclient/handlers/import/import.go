@@ -56,7 +56,7 @@ func importFile(f *file.File) error {
 	if err != nil {
 		return err
 	}
-	log.Debugf("Gonna pretend to import %s now\n", f.Name)
+	log.Debugf("Gonna import %s now\n", f.Name)
 	b, err := f.Bytes()
 	if err != nil {
 		return err
