@@ -165,9 +165,10 @@ func GetCardList(db *DB, now time.Time, limit int) (CardList, error) {
 	var cards CardList
 	query := map[string]interface{}{
 		"selector": map[string]interface{}{
-			"type":    "card",
-			"due":     map[string]interface{}{"$gte": nil},
-			"created": map[string]interface{}{"$gte": nil},
+			"type":      "card",
+			"due":       map[string]interface{}{"$gte": nil},
+			"created":   map[string]interface{}{"$gte": nil},
+			"suspended": map[string]interface{}{"$ne": true},
 			"$not": map[string]interface{}{
 				"$or": []interface{}{
 					map[string]interface{}{
