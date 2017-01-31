@@ -103,7 +103,6 @@ func fserve(e *js.Object) error {
 	} else {
 		return errors.Errorf("iframe %s not registered", req.IframeID)
 	}
-	log.Debugf("Request from iframe %s for card %s authorized for '%s'", req.IframeID, req.CardID, req.Path)
 	att, err := fetchAttachment(req.CardID, req.Path)
 	if err != nil {
 		return errors.Wrap(err, "fetch file")
@@ -112,7 +111,6 @@ func fserve(e *js.Object) error {
 }
 
 func fetchAttachment(cardID, filename string) (*repo.Attachment, error) {
-	log.Debugf("Attempting to fetch '%s' for %s\n", filename, cardID)
 	u, err := repo.CurrentUser()
 	if err != nil {
 		return nil, errors.Wrap(err, "current user")
@@ -130,13 +128,11 @@ func sendResponse(iframeID, tag, filename string, att *repo.Attachment) error {
 		return errors.Errorf("iframe not found in DOM")
 	}
 	ab := js.NewArrayBuffer(att.Content)
-	log.Debugf("Before send, ab has %d bytes\n", ab.Get("byteLength").Int())
 	iframe.Get("contentWindow").Call("postMessage", Response{
 		Tag:         tag,
 		Path:        filename,
 		ContentType: att.ContentType,
 		Data:        ab,
 	}, "*", []interface{}{ab})
-	log.Debugf("After send, ab has %d bytes\n", ab.Get("byteLength").Int())
 	return nil
 }

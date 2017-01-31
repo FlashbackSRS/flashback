@@ -42,7 +42,7 @@ func listImport(t *testing.T) {
 		t.Fatalf("Error reading %s: %s", fbbFile, err)
 	}
 
-	user := &repo.User{listUser}
+	user := &repo.User{User: listUser}
 	if err := repo.Import(user, fbb); err != nil {
 		t.Fatalf("Error importing file: %s", err)
 	}
@@ -98,10 +98,10 @@ var now = parseTime("2017-01-01 00:00:00")
 func TestCardList(t *testing.T) {
 	listImport(t)
 
-	u := repo.User{listUser}
+	u := repo.User{User: listUser}
 	db, _ := u.DB()
 
-	cl, err := repo.GetCards(db, now, 100)
+	cl, err := repo.GetCardList(db, now, 100)
 	if err != nil {
 		t.Fatalf("GetCards() failed: %s", err)
 	}
@@ -112,8 +112,8 @@ func TestCardList(t *testing.T) {
 	}
 	expectedOrder := []string{"card-0000.0002.0", "card-0000.0001.0", "card-0000.0000.0", "card-alnlcvykyjxsjtijzonc3456kd5u4757.udROb8T8RmRASG5zGHNKnKL25zI.0", "card-alnlcvykyjxsjtijzonc3456kd5u4757.rRm8q5nIKgIMC__jMxYmhXRF_2I.0"}
 	for i, exp := range expectedOrder {
-		if cl[i].DocID() != exp {
-			t.Errorf("Position %d expected %s, got %s\n", i, exp, cl[i].DocID())
+		if cl[i].ID != exp {
+			t.Errorf("Position %d expected %s, got %s\n", i, exp, cl[i].ID)
 		}
 	}
 }
