@@ -8,7 +8,6 @@ import (
 	"io"
 	"math"
 	"math/rand"
-	"sort"
 	"time"
 
 	"github.com/PuerkitoBio/goquery"
@@ -150,24 +149,41 @@ type CardListItem struct {
 	priority    float32
 }
 
-// CardList is a listof possible cards to study
-type CardList []*CardListItem
-
-func (c CardList) Len() int { return len(c) }
-func (c CardList) Less(i, j int) bool {
-	return c[i].priority > c[j].priority || c[i].Created.Before(c[j].Created)
-}
-func (c CardList) Swap(i, j int) { c[i], c[j] = c[j], c[i] }
-
 // GetCardList returns a list, limit elements long, of cards sorted by due
 // date and created time.
-func GetCardList(db *DB, now time.Time, limit int) (CardList, error) {
-	var cards CardList
-	query := map[string]interface{}{
+func GetCardList(db *DB, limit int) ([]*CardListItem, error) {
+	var newCards []*CardListItem
+	var oldCards []*CardListItem
+	newLimit := int(float64(limit) * 0.1)
+	if newLimit < 1 {
+		newLimit = 1
+	}
+	log.Debugf("newLimit = %d\n", newLimit)
+	newQuery := map[string]interface{}{
 		"selector": map[string]interface{}{
-			"type":    "card",
-			"due":     map[string]interface{}{"$gte": nil},
-			"created": map[string]interface{}{"$gte": nil},
+			"type":      "card",
+			"created":   map[string]interface{}{"$gte": nil}, // Only so we can sort on this field
+			"due":       map[string]interface{}{"$eq": nil},
+			"suspended": map[string]interface{}{"$ne": true},
+		},
+		// Sort by due, just so we use the proper index; due is always the same
+		// for these results.
+		"sort":   []string{"due", "created"},
+		"fields": []string{"_id", "interval", "reviewCount"},
+		"limit":  newLimit,
+	}
+	if err := db.Find(newQuery, &newCards); err != nil {
+		return nil, errors.Wrap(err, "new card list")
+	}
+
+	oldLimit := limit - len(newCards)
+	log.Debugf("oldLimit = %d\n", oldLimit)
+	oldQuery := map[string]interface{}{
+		"selector": map[string]interface{}{
+			"type":      "card",
+			"due":       map[string]interface{}{"$gt": nil},
+			"created":   map[string]interface{}{"$gte": nil}, // Just so we use the proper index
+			"suspended": map[string]interface{}{"$ne": true},
 			"$not": map[string]interface{}{
 				"$or": []interface{}{
 					map[string]interface{}{
@@ -189,18 +205,18 @@ func GetCardList(db *DB, now time.Time, limit int) (CardList, error) {
 			},
 		},
 		"sort":   []string{"due", "created"},
-		"fields": []string{"due", "created", "_id", "interval", "reviewCount"},
-		"limit":  limit,
+		"fields": []string{"due", "_id", "interval", "reviewCount"},
+		"limit":  oldLimit,
 	}
-	if err := db.Find(query, &cards); err != nil {
+	if err := db.Find(oldQuery, &oldCards); err != nil {
 		return nil, errors.Wrap(err, "card list")
 	}
-	for _, card := range cards {
-		card.priority = CardPrio(card.Due, card.Interval, now)
+	cards := append(oldCards, newCards...)
+	if len(cards) > limit {
+		cards = cards[0:limit]
 	}
-	sort.Sort(cards)
+	log.Debugf("%d new cards, %d old cards (%d cards select in all)", len(newCards), len(oldCards), len(cards))
 	return cards, nil
-
 }
 
 // UnmarshalJSON wraps fb.Card's Unmarshaler
@@ -225,9 +241,12 @@ func (u *User) GetNextCard() (Card, error) {
 		return nil, errors.Wrap(err, "GetNextCard(): Error connecting to User DB")
 	}
 
-	cards, err := GetCardList(db, time.Now(), cardBatchSize)
+	cards, err := GetCardList(db, cardBatchSize)
 	if err != nil {
 		return nil, errors.Wrap(err, "get card list")
+	}
+	for _, card := range cards {
+		card.priority = CardPrio(card.Due, card.Interval, time.Now())
 	}
 	if len(cards) == 0 {
 		return done.GetCard(), nil
