@@ -40,18 +40,9 @@ type Card interface {
 // PouchCard provides a convenient interface to fb.Card and dependencies
 type PouchCard struct {
 	*fb.Card
-	db       *DB
-	note     *Note
-	priority float32
+	db   *DB
+	note *Note
 }
-
-type cardList []*PouchCard
-
-func (c cardList) Len() int { return len(c) }
-func (c cardList) Less(i, j int) bool {
-	return c[i].priority > c[j].priority || c[i].Created.Before(c[j].Created)
-}
-func (c cardList) Swap(i, j int) { c[i], c[j] = c[j], c[i] }
 
 type jsCard struct {
 	ID string `json:"id"`
@@ -148,14 +139,30 @@ func CardPrio(due *fb.Due, interval *fb.Interval, now time.Time) float32 {
 	return float32(math.Pow(1+float64(utc.Sub(time.Time(*due)))/float64(time.Duration(*interval)), 3))
 }
 
-func init() {
-	// pouchdb.Debug("*")
-	pouchdb.DebugDisable()
+// A CardListItem contains the minimal information necessary to determine
+// card ordering.
+type CardListItem struct {
+	ID          string       `json:"_id"`
+	Due         *fb.Due      `json:"due"`
+	Created     time.Time    `json:"created"`
+	Interval    *fb.Interval `json:"interval"`
+	ReviewCount int          `json:"reviewCount"`
+	priority    float32
 }
 
-// GetCards fetches up to limit cards from the db, in priority order.
-func GetCards(db *DB, now time.Time, limit int) ([]*PouchCard, error) {
-	var cards []*PouchCard
+// CardList is a listof possible cards to study
+type CardList []*CardListItem
+
+func (c CardList) Len() int { return len(c) }
+func (c CardList) Less(i, j int) bool {
+	return c[i].priority > c[j].priority || c[i].Created.Before(c[j].Created)
+}
+func (c CardList) Swap(i, j int) { c[i], c[j] = c[j], c[i] }
+
+// GetCardList returns a list, limit elements long, of cards sorted by due
+// date and created time.
+func GetCardList(db *DB, now time.Time, limit int) (CardList, error) {
+	var cards CardList
 	query := map[string]interface{}{
 		"selector": map[string]interface{}{
 			"type":    "card",
@@ -181,18 +188,19 @@ func GetCards(db *DB, now time.Time, limit int) ([]*PouchCard, error) {
 				},
 			},
 		},
-		"sort":  []string{"due", "created"},
-		"limit": limit,
+		"sort":   []string{"due", "created"},
+		"fields": []string{"due", "created", "_id", "interval", "reviewCount"},
+		"limit":  limit,
 	}
 	if err := db.Find(query, &cards); err != nil {
 		return nil, errors.Wrap(err, "card list")
 	}
 	for _, card := range cards {
-		card.db = db
 		card.priority = CardPrio(card.Due, card.Interval, now)
 	}
-	sort.Sort(cardList(cards))
+	sort.Sort(cards)
 	return cards, nil
+
 }
 
 // UnmarshalJSON wraps fb.Card's Unmarshaler
@@ -217,7 +225,7 @@ func (u *User) GetNextCard() (Card, error) {
 		return nil, errors.Wrap(err, "GetNextCard(): Error connecting to User DB")
 	}
 
-	cards, err := GetCards(db, time.Now(), cardBatchSize)
+	cards, err := GetCardList(db, time.Now(), cardBatchSize)
 	if err != nil {
 		return nil, errors.Wrap(err, "get card list")
 	}
@@ -235,8 +243,8 @@ func (u *User) GetNextCard() (Card, error) {
 	for i, c := range cards {
 		r -= c.priority
 		if r < 0 {
-			log.Debugf("Selected card %d: %s\n", i, c.Identity())
-			return c, nil
+			log.Debugf("Selected card %d: %s\n", i, c.ID)
+			return u.GetCard(c.ID)
 		}
 	}
 	return nil, errors.New("failed to fetch card")
