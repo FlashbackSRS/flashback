@@ -54,13 +54,18 @@ func listImport(t *testing.T) {
 		if err != nil {
 			t.Errorf("error creating card %s: %s\n", card.ID, err)
 		}
-		due, _ := fb.ParseDue(card.Due)
-		c.Due = &due
-		ivl, err := fb.ParseInterval(card.Interval)
-		if err != nil {
-			t.Errorf("Invalid interval '%s': %s\n", card.Interval, err)
+		if card.Due != "" {
+			due, _ := fb.ParseDue(card.Due)
+			c.Due = &due
 		}
-		c.Interval = &ivl
+		if card.Interval != "" {
+			ivl, err := fb.ParseInterval(card.Interval)
+			if err != nil {
+				t.Errorf("Invalid interval '%s': %s\n", card.Interval, err)
+			}
+			c.Interval = &ivl
+		}
+		c.Created = time.Now()
 		if _, err := db.Put(c); err != nil {
 			t.Fatalf("Failed to put additional card: %s", err)
 		}
@@ -82,11 +87,6 @@ var cards = []testCard{
 		Interval: "24h",
 	},
 	testCard{
-		ID:       "card-0000.0001.0",
-		Due:      "2017-01-01 00:00:00",
-		Interval: "48h",
-	},
-	testCard{
 		ID:       "card-0000.0002.0",
 		Due:      "2016-12-31 00:00:00",
 		Interval: "48h",
@@ -101,19 +101,27 @@ func TestCardList(t *testing.T) {
 	u := repo.User{User: listUser}
 	db, _ := u.DB()
 
-	cl, err := repo.GetCardList(db, now, 100)
+	cl, err := repo.GetCardList(db, 50)
 	if err != nil {
 		t.Fatalf("GetCards() failed: %s", err)
 	}
 
-	expectedCount := 15
+	expectedCount := 7
 	if len(cl) != expectedCount {
 		t.Errorf("Expected %d results, got %d\n", expectedCount, len(cl))
 	}
-	expectedOrder := []string{"card-0000.0002.0", "card-0000.0001.0", "card-0000.0000.0", "card-alnlcvykyjxsjtijzonc3456kd5u4757.udROb8T8RmRASG5zGHNKnKL25zI.0", "card-alnlcvykyjxsjtijzonc3456kd5u4757.rRm8q5nIKgIMC__jMxYmhXRF_2I.0"}
-	for i, exp := range expectedOrder {
-		if cl[i].ID != exp {
-			t.Errorf("Position %d expected %s, got %s\n", i, exp, cl[i].ID)
+	expectedOrder := []string{
+		"card-0000.0002.0",
+		"card-0000.0000.0",
+		"card-alnlcvykyjxsjtijzonc3456kd5u4757.udROb8T8RmRASG5zGHNKnKL25zI.0",
+		"card-alnlcvykyjxsjtijzonc3456kd5u4757.rRm8q5nIKgIMC__jMxYmhXRF_2I.0",
+		"card-alnlcvykyjxsjtijzonc3456kd5u4757.ZR4TpeX38xRzRvXprlgJpP4Ribo.0",
+		"card-alnlcvykyjxsjtijzonc3456kd5u4757.efn_5zJV184Q7hZzE8zmlclqllY.0",
+		"card-alnlcvykyjxsjtijzonc3456kd5u4757.qT9Gr_a9D_jkaapw1xy7KYfvTOs.0",
+	}
+	for i := range cl {
+		if cl[i].ID != expectedOrder[i] {
+			t.Errorf("Position %d expected %s, got %s\n", i, expectedOrder[i], cl[i].ID)
 		}
 	}
 }
