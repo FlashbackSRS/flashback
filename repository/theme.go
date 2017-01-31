@@ -52,6 +52,11 @@ func (m *Model) GenerateTemplate() (*template.Template, error) {
 			return nil, errors.Wrapf(err, "Error parsing template file `%s`", filename)
 		}
 	}
+	if css, ok := m.Theme.Files.GetFile("$main.css"); ok {
+		if _, err := tmpl.Parse(fmt.Sprintf(`{{define "style.css"}}%s{{end}}`, css.Content)); err != nil {
+			return nil, errors.Wrapf(err, "faild to parse $main.css")
+		}
+	}
 	return tmpl, nil
 }
 

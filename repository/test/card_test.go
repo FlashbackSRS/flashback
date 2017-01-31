@@ -21,7 +21,7 @@ func TestCard1(t *testing.T) {
 
 	testImport(t)
 
-	u := repo.User{testUser}
+	u := repo.User{User: testUser}
 
 	card, err := u.GetCard("card-alnlcvykyjxsjtijzonc3456kd5u4757.ZR4TpeX38xRzRvXprlgJpP4Ribo.0")
 	require.Nil(err, "Error fetching card: %s", err)
@@ -43,7 +43,7 @@ func TestCard2(t *testing.T) {
 
 	testImport(t)
 
-	u := repo.User{testUser}
+	u := repo.User{User: testUser}
 
 	card, err := u.GetCard("card-alnlcvykyjxsjtijzonc3456kd5u4757.ZR4TpeX38xRzRvXprlgJpP4Ribo.1")
 	require.Nil(err, "Error fetching card: %s", err)
@@ -74,7 +74,14 @@ var FB = {
 </script>
 <script type="text/javascript" src="js/cardframe.js"></script>
 <script type="text/javascript"></script>
-<style></style>
+<style>.card {
+ font-family: arial;
+ font-size: 20px;
+ text-align: center;
+ color: black;
+ background-color: white;
+}
+</style>
 <script type="text/javascript">
 		/* Mock Model */
 		console.log("Mock Model 'anki-basic'");
@@ -97,7 +104,14 @@ var FB = {
 </script>
 <script type="text/javascript" src="js/cardframe.js"></script>
 <script type="text/javascript"></script>
-<style></style>
+<style>.card {
+ font-family: arial;
+ font-size: 20px;
+ text-align: center;
+ color: black;
+ background-color: white;
+}
+</style>
 <script type="text/javascript">
 		/* Mock Model */
 		console.log("Mock Model 'anki-basic'");
@@ -124,7 +138,14 @@ var FB = {
 </script>
 <script type="text/javascript" src="js/cardframe.js"></script>
 <script type="text/javascript"></script>
-<style></style>
+<style>.card {
+ font-family: arial;
+ font-size: 20px;
+ text-align: center;
+ color: black;
+ background-color: white;
+}
+</style>
 <script type="text/javascript">
 		/* Mock Model */
 		console.log("Mock Model 'anki-basic'");
@@ -147,7 +168,14 @@ var FB = {
 </script>
 <script type="text/javascript" src="js/cardframe.js"></script>
 <script type="text/javascript"></script>
-<style></style>
+<style>.card {
+ font-family: arial;
+ font-size: 20px;
+ text-align: center;
+ color: black;
+ background-color: white;
+}
+</style>
 <script type="text/javascript">
 		/* Mock Model */
 		console.log("Mock Model 'anki-basic'");
