@@ -10,7 +10,6 @@ import (
 
 	"github.com/flimzy/go-pouchdb"
 	"github.com/flimzy/go-pouchdb/plugins/find"
-	"github.com/flimzy/log"
 	"github.com/gopherjs/gopherjs/js"
 	"github.com/pborman/uuid"
 	"github.com/pkg/errors"
@@ -171,37 +170,35 @@ func (db *DB) Save(doc FlashbackDoc) error {
 	var rev string
 	var err error
 	if rev, err = db.Put(doc); err != nil {
-		log.Debugf("save failed: %s\n", err)
-		if pouchdb.IsConflict(err) {
-			existing := reflect.New(reflect.TypeOf(doc).Elem()).Interface().(FlashbackDoc)
-			if e := db.Get(doc.DocID(), &existing, pouchdb.Options{}); e != nil {
-				return e
-			}
-			if doc.ImportedTime() == nil {
-				// Don't attempt to merge a non-import
-				return err
-			}
-			imported := existing.ImportedTime()
-			if imported == nil {
-				return err
-			}
-			if existing.ModifiedTime().After(*imported) {
-				// The existing document was mosified after import, so we won't allow further importing
-				return err
-			}
-			var changed bool
-			if changed, err = doc.MergeImport(existing); err != nil {
-				return err
-			}
-			if changed {
-				if rev, err = db.Put(doc); err != nil {
-					return err
-				}
+		if !pouchdb.IsConflict(err) {
+			return err
+		}
+		existing := reflect.New(reflect.TypeOf(doc).Elem()).Interface().(FlashbackDoc)
+		if e := db.Get(doc.DocID(), &existing, pouchdb.Options{}); e != nil {
+			return errors.Wrap(e, "failed to fetch existing document")
+		}
+		if doc.ImportedTime() == nil {
+			// Don't attempt to merge a non-import
+			return err
+		}
+		imported := existing.ImportedTime()
+		if imported == nil {
+			return err
+		}
+		if existing.ModifiedTime().After(*imported) {
+			// The existing document was modified after import, so we won't allow re-importing
+			return err
+		}
+		var changed bool
+		if changed, err = doc.MergeImport(existing); err != nil {
+			return errors.Wrap(err, "failed to merge into existing document")
+		}
+		if changed {
+			if rev, err = db.Put(doc); err != nil {
+				return errors.Wrap(err, "failed to store updated document")
 			}
 		}
-		return err
 	}
-	log.Debugf("New rev = %s\n", rev)
 	doc.SetRev(rev)
 	return nil
 }
