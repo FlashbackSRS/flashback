@@ -12,7 +12,8 @@ import (
 	"github.com/gopherjs/gopherjs/js"
 	"github.com/gopherjs/jquery"
 
-	"github.com/FlashbackSRS/flashback/fserve"
+	_ "github.com/FlashbackSRS/flashback/fserve" // Load the file server for card assets
+	"github.com/FlashbackSRS/flashback/iframes"
 	"github.com/FlashbackSRS/flashback/util"
 
 	_ "github.com/FlashbackSRS/flashback/controllers/ankibasic"
@@ -36,9 +37,11 @@ func main() {
 
 	var wg sync.WaitGroup
 
-	initjQuery(&wg)
+	// Call any async init functions first
 	initCordova(&wg)
-	fserve.Init(&wg)
+	// meanwhile, all the synchronous ones
+	initjQuery()
+	iframes.Init()
 
 	// Wait for the above modules to initialize before we initialize jQuery Mobile
 	wg.Wait()
@@ -47,15 +50,11 @@ func main() {
 	js.Global.Call("loadjqueryMobile")
 }
 
-func initjQuery(wg *sync.WaitGroup) {
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		js.Global.Get("jQuery").Set("cors", true)
-		jQuery(js.Global).On("resize", resizeContent)
-		jQuery(js.Global).On("orentationchange", resizeContent)
-		jQuery(document).On("pagecontainertransition", resizeContent)
-	}()
+func initjQuery() {
+	js.Global.Get("jQuery").Set("cors", true)
+	jQuery(js.Global).On("resize", resizeContent)
+	jQuery(js.Global).On("orentationchange", resizeContent)
+	jQuery(document).On("pagecontainertransition", resizeContent)
 }
 
 func initCordova(wg *sync.WaitGroup) {

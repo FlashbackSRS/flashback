@@ -3,18 +3,15 @@
 package studyhandler
 
 import (
-	"math/rand"
 	"net/url"
-	"strings"
 	"time"
 
-	"github.com/PuerkitoBio/goquery"
 	"github.com/flimzy/log"
 	"github.com/gopherjs/gopherjs/js"
 	"github.com/gopherjs/jquery"
 	"github.com/pkg/errors"
 
-	"github.com/FlashbackSRS/flashback/fserve"
+	"github.com/FlashbackSRS/flashback/iframes"
 	"github.com/FlashbackSRS/flashback/repository"
 	"github.com/FlashbackSRS/flashback/webclient/views/studyview"
 )
@@ -100,22 +97,27 @@ func ShowCard(u *repo.User) error {
 	if err != nil {
 		return errors.Wrap(err, "fetching body")
 	}
-	iframeID := GenerateIframeID(8)
-	body, err = addIframeID(body, iframeID)
-	if err != nil {
-		return errors.Wrap(err, "failed to add iframe metadata")
-	}
-	fserve.RegisterIframe(iframeID, currentCard.Card.DocID())
 
 	iframe := js.Global.Get("document").Call("createElement", "iframe")
 	iframe.Call("setAttribute", "sandbox", "allow-scripts")
 	iframe.Call("setAttribute", "seamless", nil)
-	iframe.Set("id", iframeID)
 	ab := js.NewArrayBuffer([]byte(body))
 	b := js.Global.Get("Blob").New([]interface{}{ab}, map[string]string{"type": "text/html"})
-	iframe.Set("src", js.Global.Get("URL").Call("createObjectURL", b))
+	iframeURL := js.Global.Get("URL").Call("createObjectURL", b)
+	log.Debugf("new origin = %s\n", iframeURL.Get("origin"))
+	iframe.Set("src", iframeURL)
+	iframes.RegisterIframe(iframeURL.String(), currentCard.Card.DocID())
 
 	container := jQuery(":mobile-pagecontainer")
+
+	oldIframes := jQuery("#cardframe", container).Find("iframe").Underlying()
+	for i := 0; i < oldIframes.Length(); i++ {
+		oldIframeID := oldIframes.Index(i).Get("src").String()
+		if err := iframes.UnregisterIframe(oldIframeID); err != nil {
+			log.Printf("Failed to unregister old iframe '%s': %s\n", oldIframeID, err)
+		}
+		js.Global.Get("URL").Call("revokeObjectURL", oldIframeID)
+	}
 
 	jQuery("#cardframe", container).Empty().Append(iframe)
 
@@ -123,16 +125,6 @@ func ShowCard(u *repo.User) error {
 	jQuery(".hide-until-load", container).Show()
 	currentCard.StartTime = time.Now()
 	return nil
-}
-
-func addIframeID(body, iframeID string) (newBody string, err error) {
-	r := strings.NewReader(body)
-	doc, err := goquery.NewDocumentFromReader(r)
-	if err != nil {
-		return "", errors.Wrap(err, "failed to parse body")
-	}
-	doc.Find("head").AppendHtml(`<meta name="iframeid" content="` + iframeID + `">`)
-	return doc.Html()
 }
 
 func HandleCardAction(button studyview.Button) {
@@ -150,34 +142,4 @@ func HandleCardAction(button studyview.Button) {
 		}
 	}
 	jQuery(":mobile-pagecontainer").Call("pagecontainer", "change", "/study.html")
-}
-
-// Random number function borrowed from http://stackoverflow.com/a/31832326/13860
-var src = rand.NewSource(time.Now().UnixNano())
-
-const letterBytes = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
-const (
-	letterIdxBits = 6                    // 6 bits to represent a letter index
-	letterIdxMask = 1<<letterIdxBits - 1 // All 1-bits, as many as letterIdxBits
-	letterIdxMax  = 63 / letterIdxBits   // # of letter indices fitting in 63 bits
-)
-
-// GenerateIframeID returns a random string of n characters, with 6 random bits
-// per character.
-func GenerateIframeID(n int) string {
-	b := make([]byte, n)
-	// A src.Int63() generates 63 random bits, enough for letterIdxMax characters!
-	for i, cache, remain := n-1, src.Int63(), letterIdxMax; i >= 0; {
-		if remain == 0 {
-			cache, remain = src.Int63(), letterIdxMax
-		}
-		if idx := int(cache & letterIdxMask); idx < len(letterBytes) {
-			b[i] = letterBytes[idx]
-			i--
-		}
-		cache >>= letterIdxBits
-		remain--
-	}
-
-	return string(b)
 }

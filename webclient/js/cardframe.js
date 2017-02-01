@@ -71,68 +71,62 @@
     }
 })("docReady", window);
 
-var requests = {};
-var iframeID;
-window.addEventListener('error', function(e) {
-    if ( iframeID === undefined ) {
-        var metas = document.getElementsByTagName('meta');
-        for (var i=0; i < metas.length; i++) {
-            if (metas[i].getAttribute("name") == "iframeid") {
-                iframeID = metas[i].getAttribute("content");
-                break;
-            }
+(function(baseObj) {
+    function fserve(r) {
+        var path = r.path,
+            type = r.content_type,
+            data = r.data;
+        var b = new Blob([data], {type: type})
+        var url = URL.createObjectURL(b)
+
+        var req = requests[ path ];
+        var attr = data.Tag == 'LINK' ? 'href' : 'src';
+        for ( var i = 0; i < req.targets.length; i++ ) {
+            var target = req.targets[i];
+            var attr = 'src' in target ? 'src' : 'href';
+            target[attr] = url;
         }
-        if ( iframeID === undefined ) {
-            console.log("Didn't find the iframe ID!!");
+        req.targets = [];
+    }
+
+    var requests = {};
+    baseObj.addEventListener('error', function(e) {
+        var t = e.target;
+        if ( t === undefined ) {
+            // This isn't a 404 error; so just skip it
+            return true;
         }
-    }
-    var t = e.target;
-    var tag = t.tagName;
-    if ( t === undefined ) {
-        // This isn't a 404 error; so just skip it
-        return true;
-    }
-    var path = tag == 'LINK' ? t.getAttribute('href') : t.getAttribute('src');
-    if ( requests[tag] === undefined ) {
-        requests[tag] = {};
-    }
-    if ( requests[tag][path] === undefined ) {
-        requests[tag][path] = {
-            targets: []
-        };
-        parent.postMessage({
-            IframeID: iframeID,
-            Tag: tag,
-            CardID: FB.card.id,
-            Path: path,
-        }, '*');
-    }
-    if ( requests[tag][path].url === undefined ) {
-        // This means we already requested the file, but it hasn't arrived yet
-        requests[tag][path].targets.push( t );
+        var path = t.tagName == 'LINK' ? t.getAttribute('href') : t.getAttribute('src');
+        if ( requests[path] === undefined ) {
+            requests[path] = {
+                targets: []
+            };
+            parent.postMessage({
+                type:     "fserve",
+                iframeID: window.location.href,
+                payload:  path,
+            }, '*');
+        }
+        if ( requests[path].url === undefined ) {
+            // This means we already requested the file, but it hasn't arrived yet
+            requests[path].targets.push( t );
+            return false;
+        }
+        // We've already requested the file, and we have it now!
+        t.src = requests[path].url;
         return false;
-    }
-    // We've already requested the file, and we have it now!
-    t.src = requests[tag][path].url;
-    return false;
-}, true);
+    }, true);
 
-window.addEventListener('message', function(e) {
-    var tag = e.data.Tag,
-        path = e.data.Path,
-        type = e.data.ContentType,
-        data = e.data.Data;
-    var b = new Blob([data], {type: type})
-    var url = URL.createObjectURL(b)
-
-    var req = requests[ tag ][ path ];
-    req.url = url
-    var attr = data.Tag == 'LINK' ? 'href' : 'src';
-    for ( var i = 0; i < req.targets.length; i++ ) {
-        req.targets[i][attr] = url;
-    }
-    req.targets = [];
-});
+    baseObj.addEventListener('message', function(e) {
+        switch (e.data.type) {
+            case "fserve":
+                fserve(e.data.payload);
+                break;
+            default:
+                console.log("Unexpected message type '" + e.data.type + "' from parent")
+        }
+    });
+})(window);
 
 function playaudio() {
     var media = document.getElementsByTagName("audio")
