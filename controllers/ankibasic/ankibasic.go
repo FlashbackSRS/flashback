@@ -2,13 +2,16 @@
 package ankibasic
 
 import (
+	"fmt"
 	"strings"
 	"time"
 
+	"github.com/davecgh/go-spew/spew"
 	"github.com/flimzy/log"
 	"github.com/gopherjs/gopherjs/js"
 	"github.com/pkg/errors"
 
+	"github.com/FlashbackSRS/flashback/diff"
 	repo "github.com/FlashbackSRS/flashback/repository"
 	"github.com/FlashbackSRS/flashback/webclient/views/studyview"
 )
@@ -79,6 +82,11 @@ func (m *AnkiBasic) Buttons(face int) (studyview.ButtonMap, error) {
 	return buttons, nil
 }
 
+type answer struct {
+	Text    string `json:"text"`
+	Correct bool   `json:"correct"`
+}
+
 // Action responds to a card action, such as a button press
 func (m *AnkiBasic) Action(card *repo.PouchCard, face *int, startTime time.Time, query *js.Object) (bool, error) {
 	log.Debugf("Submit recieved for face %d: %v\n", *face, query)
@@ -101,8 +109,33 @@ func (m *AnkiBasic) Action(card *repo.PouchCard, face *int, startTime time.Time,
 			}
 		}
 		if len(typedAnswers) > 0 {
+			results := make(map[string]answer)
+			m, err := card.Model()
+			if err != nil {
+				return false, errors.Wrap(err, "failed to get model")
+			}
+			n, err := card.Note()
+			if err != nil {
+				return false, errors.Wrap(err, "failed to get note")
+			}
+			for i, field := range m.Fields {
+				fmt.Printf("field.Name = %s\n", field.Name)
+				if typedAnswer, ok := typedAnswers["type:"+field.Name]; ok {
+					fmt.Printf("Found one\n")
+					correctAnswer, err := n.FieldValues[i].Text()
+					if err != nil {
+						panic("no text for typed answer !!")
+					}
+					correct, d := diff.Diff(correctAnswer, typedAnswer)
+					results[field.Name] = answer{
+						Text:    d,
+						Correct: correct,
+					}
+				}
+			}
+			spew.Dump(results)
 			card.Context = map[string]interface{}{
-				"typedAnswers": typedAnswers,
+				"typedAnswers": results,
 			}
 			if err := card.Save(); err != nil {
 				return true, errors.Wrap(err, "save typedAnswers to card state")
