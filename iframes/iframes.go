@@ -4,7 +4,6 @@ package iframes
 import (
 	"fmt"
 
-	"github.com/davecgh/go-spew/spew"
 	"github.com/flimzy/log"
 	"github.com/gopherjs/gopherjs/js"
 	"github.com/pkg/errors"
@@ -64,7 +63,6 @@ func receiveMessage(e *js.Object) error {
 	if err != nil {
 		return errors.Wrap(err, "invalid frame registration")
 	}
-	spew.Dump(listeners)
 	for mtype, lfunc := range listeners {
 		if mtype == msg.Type {
 			return lfunc(cardID, msg.Payload, responder(msg.IframeID))

@@ -100,6 +100,6 @@ var FB = {
 <script type="text/javascript">{{ block "script.js" .Fields }}{{end}}</script>
 <style>{{ block "style.css" .Fields }}{{end}}</style>
 </head>
-<body class="card">{{ block "template.html" .Fields }}{{end}}</body>
+<body>{{ block "template.html" .Fields }}{{end}}</body>
 </html>
 `

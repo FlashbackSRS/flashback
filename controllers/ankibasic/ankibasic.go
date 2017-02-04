@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/flimzy/log"
+	"github.com/gopherjs/gopherjs/js"
 	"github.com/pkg/errors"
 
 	repo "github.com/FlashbackSRS/flashback/repository"
@@ -78,8 +79,10 @@ func (m *AnkiBasic) Buttons(face int) (studyview.ButtonMap, error) {
 }
 
 // Action responds to a card action, such as a button press
-func (m *AnkiBasic) Action(card *repo.PouchCard, face *int, startTime time.Time, button studyview.Button) (bool, error) {
-	log.Debugf("%s button pressed for face %d\n", button, *face)
+func (m *AnkiBasic) Action(card *repo.PouchCard, face *int, startTime time.Time, query *js.Object) (bool, error) {
+	log.Debugf("Submit recieved for face %d: %v\n", *face, query)
+	button := studyview.Button(query.Get("submit").String())
+	log.Debugf("Button %s pressed\n", button)
 	if btns, ok := buttonMaps[*face]; ok {
 		if _, valid := btns[button]; !valid {
 			return false, errors.Errorf("Unexpected button press %s", button)

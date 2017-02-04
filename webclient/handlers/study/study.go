@@ -60,15 +60,32 @@ func ShowCard(u *repo.User) error {
 	}
 	log.Debugf("Card ID: %s\n", currentCard.Card.DocID())
 
+	body, err := currentCard.Card.Body(currentCard.Face)
+	if err != nil {
+		return errors.Wrap(err, "fetching body")
+	}
+
+	iframe := js.Global.Get("document").Call("createElement", "iframe")
+	iframe.Call("setAttribute", "sandbox", "allow-scripts")
+	iframe.Call("setAttribute", "seamless", nil)
+	ab := js.NewArrayBuffer([]byte(body))
+	b := js.Global.Get("Blob").New([]interface{}{ab}, map[string]string{"type": "text/html"})
+	iframeURL := js.Global.Get("URL").Call("createObjectURL", b)
+	iframe.Set("src", iframeURL)
+	respond, err := iframes.RegisterIframe(iframeURL.String(), currentCard.Card.DocID())
+	if err != nil {
+		return errors.Wrap(err, "failed to register iframe")
+	}
+
 	log.Debug("Setting up the buttons\n")
 	buttons := jQuery(":mobile-pagecontainer").Find("#answer-buttons").Find(`[data-role="button"]`)
 	buttons.RemoveClass("ui-btn-active")
 	clickFunc := func(e *js.Object) {
 		go func() { // DB updates block
 			buttons.Off() // Make sure we don't accept other press events
-			id := e.Get("currentTarget").Call("getAttribute", "data-id").String()
-			log.Debugf("Button %s was pressed!\n", id)
-			HandleCardAction(studyview.Button(id))
+			buttonID := e.Get("currentTarget").Call("getAttribute", "data-id").String()
+			log.Debugf("Button %s was pressed!\n", buttonID)
+			respond("submit", buttonID)
 		}()
 	}
 	buttonAttrs, err := currentCard.Card.Buttons(currentCard.Face)
@@ -93,21 +110,6 @@ func ShowCard(u *repo.User) error {
 		}
 	}
 
-	body, err := currentCard.Card.Body(currentCard.Face)
-	if err != nil {
-		return errors.Wrap(err, "fetching body")
-	}
-
-	iframe := js.Global.Get("document").Call("createElement", "iframe")
-	iframe.Call("setAttribute", "sandbox", "allow-scripts")
-	iframe.Call("setAttribute", "seamless", nil)
-	ab := js.NewArrayBuffer([]byte(body))
-	b := js.Global.Get("Blob").New([]interface{}{ab}, map[string]string{"type": "text/html"})
-	iframeURL := js.Global.Get("URL").Call("createObjectURL", b)
-	log.Debugf("new origin = %s\n", iframeURL.Get("origin"))
-	iframe.Set("src", iframeURL)
-	iframes.RegisterIframe(iframeURL.String(), currentCard.Card.DocID())
-
 	container := jQuery(":mobile-pagecontainer")
 
 	oldIframes := jQuery("#cardframe", container).Find("iframe").Underlying()
@@ -127,10 +129,17 @@ func ShowCard(u *repo.User) error {
 	return nil
 }
 
-func HandleCardAction(button studyview.Button) {
+func init() {
+	iframes.RegisterListener("submit", handleSubmit)
+}
+
+func handleSubmit(cardID string, payload *js.Object, _ iframes.Respond) error {
 	card := currentCard.Card
 	face := currentCard.Face
-	done, err := card.Action(&currentCard.Face, currentCard.StartTime, button)
+	if card.DocID() != cardID {
+		return errors.Errorf("received submit for unexpected card. Got %s, expected %s", cardID, card.DocID())
+	}
+	done, err := card.Action(&currentCard.Face, currentCard.StartTime, payload)
 	if err != nil {
 		log.Printf("Error executing card action for face %d / %+v: %s", face, card, err)
 	}
@@ -142,4 +151,5 @@ func HandleCardAction(button studyview.Button) {
 		}
 	}
 	jQuery(":mobile-pagecontainer").Call("pagecontainer", "change", "/study.html")
+	return nil
 }

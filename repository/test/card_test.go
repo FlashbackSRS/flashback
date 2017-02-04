@@ -86,9 +86,9 @@ var FB = {
 		/* Mock Model */
 		console.log("Mock Model 'anki-basic'");
 </script></head>
-<body class="card">
+<body class="card card1"><form id="mainform">
 		Question: <img src="paste-13877039333377.jpg"/><br/><div><sub>instrument</sub></div>
-	</body></html>`
+	</form></body></html>`
 
 var expectedAnswer0 = `<!DOCTYPE html><html><head>
 	<title>FB Card</title>
@@ -116,13 +116,13 @@ var FB = {
 		/* Mock Model */
 		console.log("Mock Model 'anki-basic'");
 </script></head>
-<body class="card">
+<body class="card card1"><form id="mainform">
 		Question: <img src="paste-13877039333377.jpg"/><br/><div><sub>instrument</sub></div>
 
 <hr id="answer"/>
 
 Answer: <div>instrumento</div><div>[sound:pronunciation_es_instrumento.3gp]</div>
-	</body></html>`
+	</form></body></html>`
 
 var expectedQuestion1 = `<!DOCTYPE html><html><head>
 	<title>FB Card</title>
@@ -150,9 +150,9 @@ var FB = {
 		/* Mock Model */
 		console.log("Mock Model 'anki-basic'");
 </script></head>
-<body class="card">
+<body class="card card2"><form id="mainform">
 		Question: <div>instrumento</div><div>[sound:pronunciation_es_instrumento.3gp]</div>
-	</body></html>`
+	</form></body></html>`
 
 var expectedAnswer1 = `<!DOCTYPE html><html><head>
 	<title>FB Card</title>
@@ -180,9 +180,9 @@ var FB = {
 		/* Mock Model */
 		console.log("Mock Model 'anki-basic'");
 </script></head>
-<body class="card">
+<body class="card card2"><form id="mainform">
 		<hr id="answer"/>
 
 <br/>
 Answer: <img src="paste-13877039333377.jpg"/><br/><div><sub>instrument</sub></div>
-	</body></html>`
+	</form></body></html>`
