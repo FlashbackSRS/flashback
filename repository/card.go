@@ -45,14 +45,16 @@ type PouchCard struct {
 }
 
 type jsCard struct {
-	ID string `json:"id"`
+	ID      string      `json:"id"`
+	Context interface{} `json:"context,omitempty"`
 }
 
 // MarshalJSON marshals a Card for the benefit of javascript context in HTML
 // templates.
 func (c *PouchCard) MarshalJSON() ([]byte, error) {
 	card := &jsCard{
-		ID: c.DocID(),
+		ID:      c.DocID(),
+		Context: c.Context,
 	}
 	return json.Marshal(card)
 }
@@ -272,6 +274,7 @@ func (u *User) GetNextCard() (Card, error) {
 
 type cardContext struct {
 	Card *PouchCard
+	Face int
 	Note *Note
 	// Model    *Model
 	// Deck     *Deck
@@ -338,6 +341,7 @@ func (c *PouchCard) Body(face int) (body string, err error) {
 	}
 	ctx := cardContext{
 		Card: c,
+		Face: face,
 		Note: note,
 		// Model:    model,
 		BaseURI: util.BaseURI(),

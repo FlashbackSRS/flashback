@@ -2,6 +2,7 @@
 package ankibasic
 
 import (
+	"strings"
 	"time"
 
 	"github.com/flimzy/log"
@@ -93,11 +94,26 @@ func (m *AnkiBasic) Action(card *repo.PouchCard, face *int, startTime time.Time,
 	switch *face {
 	case QuestionFace:
 		*face++
+		typedAnswers := make(map[string]string)
+		for _, k := range js.Keys(query) {
+			if strings.HasPrefix(k, "type:") {
+				typedAnswers[k] = query.Get(k).String()
+			}
+		}
+		if len(typedAnswers) > 0 {
+			card.Context = map[string]interface{}{
+				"typedAnswers": typedAnswers,
+			}
+			if err := card.Save(); err != nil {
+				return true, errors.Wrap(err, "save typedAnswers to card state")
+			}
+		}
 		return false, nil
 	case AnswerFace:
 		log.Debugf("Old schedule: Due %s, Interval: %s, Ease: %f, ReviewCount: %d\n", card.Due, card.Interval, card.EaseFactor, card.ReviewCount)
 		repo.Schedule(card, time.Now().Sub(startTime), quality(button))
 		log.Debugf("New schedule: Due %s, Interval: %s, Ease: %f, ReviewCount: %d\n", card.Due, card.Interval, card.EaseFactor, card.ReviewCount)
+		card.Context = nil // Clear any saved answers
 		if err := card.Save(); err != nil {
 			return true, errors.Wrap(err, "save card state")
 		}

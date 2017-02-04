@@ -92,6 +92,7 @@ var masterTemplate = `
 <script type="text/javascript">
 'use strict';
 var FB = {
+	face: {{ .Face }},
 	card: {{ .Card }},
 	note: {{ .Note }}
 };
