@@ -87,8 +87,8 @@ var masterTemplate = `
 	<title>FB Card</title>
 	<base href="{{ .BaseURI }}">
 	<meta charset="UTF-8">
-	<meta http-equiv="Content-Security-Policy"
-		content="script-src 'unsafe-inline' {{ .BaseURI }}">
+	<meta http-equiv="Content-Security-Policy" content="script-src 'unsafe-inline' {{ .BaseURI }}">
+	<link rel="stylesheet" type="text/css" href="css/cardframe.css">
 <script type="text/javascript">
 'use strict';
 var FB = {

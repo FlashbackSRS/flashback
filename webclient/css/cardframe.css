@@ -1,0 +1,29 @@
+div.type, input.type {
+    width: 12em;
+    font-family: "Courier New", Courier, monospace;
+    font-size: inherit;
+    font-weight: inherit;
+    background-color: #fff;
+}
+
+div.type {
+    display: inline-block;
+    vertical-align: middle;
+    box-shadow: 0 0 3px #CC0000;
+}
+
+.type .good {
+    color: #0f0;
+}
+
+.type .ins {
+    color: #000;
+    text-decoration: line-through;
+    -moz-text-decoration-color: #f00;
+    -webkit-text-decoration-color: #f00;
+    text-decoration-color: #f00;
+}
+
+.type .del {
+    color: #f00;
+}

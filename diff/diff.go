@@ -2,6 +2,7 @@ package diff
 
 import (
 	"bytes"
+	"fmt"
 	"html"
 	"strings"
 
@@ -11,8 +12,10 @@ import (
 // Diff finds the differences between two strings, returned as HTML, and a
 // boolean indicating if the strings are the same.
 func Diff(text1, text2 string) (equal bool, diff string) {
+	text1 = strings.TrimSpace(text1)
+	text2 = strings.TrimSpace(text2)
 	if text1 == text2 {
-		return true, text1
+		return true, fmt.Sprintf("<spam class=\"good\">%s</span>", text1)
 	}
 	dmp := diffmatchpatch.New()
 	diffs := dmp.DiffMain(text1, text2, false)
