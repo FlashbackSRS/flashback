@@ -16,7 +16,7 @@ import (
 	"github.com/FlashbackSRS/flashback/iframes"
 	"github.com/FlashbackSRS/flashback/util"
 
-	_ "github.com/FlashbackSRS/flashback/controllers/ankibasic"
+	_ "github.com/FlashbackSRS/flashback/controllers/anki" // Anki model controllers
 	"github.com/FlashbackSRS/flashback/webclient/handlers/auth"
 	"github.com/FlashbackSRS/flashback/webclient/handlers/general"
 	"github.com/FlashbackSRS/flashback/webclient/handlers/import"
