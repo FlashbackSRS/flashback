@@ -92,11 +92,14 @@ func (m *AnkiBasic) Action(card *repo.PouchCard, face *int, startTime time.Time,
 	log.Debugf("Submit recieved for face %d: %v\n", *face, query)
 	button := studyview.Button(query.Get("submit").String())
 	log.Debugf("Button %s pressed\n", button)
-	if btns, ok := buttonMaps[*face]; ok {
-		if _, valid := btns[button]; !valid {
+	switch *face {
+	case QuestionFace:
+		// Any input is fine; the only options are the right button, or 'ENTER' in a text field.
+	case AnswerFace:
+		if _, valid := buttonMaps[*face][button]; !valid {
 			return false, errors.Errorf("Unexpected button press %s", button)
 		}
-	} else {
+	default:
 		return false, errors.Errorf("Unexpected face %d", *face)
 	}
 	switch *face {

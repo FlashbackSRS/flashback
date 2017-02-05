@@ -66,7 +66,7 @@ func ShowCard(u *repo.User) error {
 	}
 
 	iframe := js.Global.Get("document").Call("createElement", "iframe")
-	iframe.Call("setAttribute", "sandbox", "allow-scripts")
+	iframe.Call("setAttribute", "sandbox", "allow-scripts allow-forms")
 	iframe.Call("setAttribute", "seamless", nil)
 	ab := js.NewArrayBuffer([]byte(body))
 	b := js.Global.Get("Blob").New([]interface{}{ab}, map[string]string{"type": "text/html"})
