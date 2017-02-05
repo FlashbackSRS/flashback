@@ -46,6 +46,7 @@ type PouchCard struct {
 
 type jsCard struct {
 	ID      string      `json:"id"`
+	Model   int         `json:"model"`
 	Context interface{} `json:"context,omitempty"`
 }
 
@@ -54,6 +55,7 @@ type jsCard struct {
 func (c *PouchCard) MarshalJSON() ([]byte, error) {
 	card := &jsCard{
 		ID:      c.DocID(),
+		Model:   int(c.ModelID()),
 		Context: c.Context,
 	}
 	return json.Marshal(card)
