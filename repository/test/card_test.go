@@ -65,9 +65,11 @@ var expectedQuestion0 = `<!DOCTYPE html><html><head>
 	<base href=""/>
 	<meta charset="UTF-8"/>
 	<meta http-equiv="Content-Security-Policy" content="script-src &#39;unsafe-inline&#39; "/>
+	<link rel="stylesheet" type="text/css" href="css/cardframe.css"/>
 <script type="text/javascript">
 'use strict';
 var FB = {
+	face:  0 ,
 	card: {"id":"card-alnlcvykyjxsjtijzonc3456kd5u4757.ZR4TpeX38xRzRvXprlgJpP4Ribo.0"},
 	note: {"id":"note-ZR4TpeX38xRzRvXprlgJpP4Ribo"}
 };
@@ -95,9 +97,11 @@ var expectedAnswer0 = `<!DOCTYPE html><html><head>
 	<base href=""/>
 	<meta charset="UTF-8"/>
 	<meta http-equiv="Content-Security-Policy" content="script-src &#39;unsafe-inline&#39; "/>
+	<link rel="stylesheet" type="text/css" href="css/cardframe.css"/>
 <script type="text/javascript">
 'use strict';
 var FB = {
+	face:  1 ,
 	card: {"id":"card-alnlcvykyjxsjtijzonc3456kd5u4757.ZR4TpeX38xRzRvXprlgJpP4Ribo.0"},
 	note: {"id":"note-ZR4TpeX38xRzRvXprlgJpP4Ribo"}
 };
@@ -129,9 +133,11 @@ var expectedQuestion1 = `<!DOCTYPE html><html><head>
 	<base href=""/>
 	<meta charset="UTF-8"/>
 	<meta http-equiv="Content-Security-Policy" content="script-src &#39;unsafe-inline&#39; "/>
+	<link rel="stylesheet" type="text/css" href="css/cardframe.css"/>
 <script type="text/javascript">
 'use strict';
 var FB = {
+	face:  0 ,
 	card: {"id":"card-alnlcvykyjxsjtijzonc3456kd5u4757.ZR4TpeX38xRzRvXprlgJpP4Ribo.1"},
 	note: {"id":"note-ZR4TpeX38xRzRvXprlgJpP4Ribo"}
 };
@@ -159,9 +165,11 @@ var expectedAnswer1 = `<!DOCTYPE html><html><head>
 	<base href=""/>
 	<meta charset="UTF-8"/>
 	<meta http-equiv="Content-Security-Policy" content="script-src &#39;unsafe-inline&#39; "/>
+	<link rel="stylesheet" type="text/css" href="css/cardframe.css"/>
 <script type="text/javascript">
 'use strict';
 var FB = {
+	face:  1 ,
 	card: {"id":"card-alnlcvykyjxsjtijzonc3456kd5u4757.ZR4TpeX38xRzRvXprlgJpP4Ribo.1"},
 	note: {"id":"note-ZR4TpeX38xRzRvXprlgJpP4Ribo"}
 };
