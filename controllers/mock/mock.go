@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/flimzy/log"
+	"github.com/gopherjs/gopherjs/js"
 
 	repo "github.com/FlashbackSRS/flashback/repository"
 	"github.com/FlashbackSRS/flashback/webclient/views/studyview"
@@ -60,7 +61,8 @@ func (m *Mock) Buttons(_ int) (studyview.ButtonMap, error) {
 }
 
 // Action responds to a card action, such as a button press
-func (m *Mock) Action(card *repo.PouchCard, face *int, _ time.Time, button studyview.Button) (bool, error) {
+func (m *Mock) Action(card *repo.PouchCard, face *int, _ time.Time, query *js.Object) (bool, error) {
+	button := studyview.Button(query.Get("submit").String())
 	log.Debugf("face: %d, button: %+v\n", face, button)
 	return true, nil
 }

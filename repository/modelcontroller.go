@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"github.com/flimzy/log"
+	"github.com/gopherjs/gopherjs/js"
 	"github.com/pkg/errors"
 
 	"github.com/FlashbackSRS/flashback-model"
@@ -20,11 +21,12 @@ type ModelController interface {
 	// Buttons returns the attributes for the three available answer buttons'
 	// initial state. Index 0 = left button, 1 = center, 2 = right
 	Buttons(face int) (studyview.ButtonMap, error)
-	// Action is called when the user presses a button. If done is returned
-	// as true, the next card is selected. If done is false, the same card will
-	// be displayed, with the current value of face (possibly changed by the
-	// function)
-	Action(card *PouchCard, face *int, startTime time.Time, button studyview.Button) (done bool, err error)
+	// Action is called when the card submits the 'mainform' form. `query` is the
+	// deserialized content of the form submission, which should include at minimum
+	// `submit` key. If done is returned as true, the next card is selected. If
+	// done is false, the same card will be displayed, with the current value
+	// of face (possibly changed by the function)
+	Action(card *PouchCard, face *int, startTime time.Time, query *js.Object) (done bool, err error)
 }
 
 var modelControllers = map[string]ModelController{}

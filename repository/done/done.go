@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/FlashbackSRS/flashback/webclient/views/studyview"
+	"github.com/gopherjs/gopherjs/js"
 )
 
 // Card is a card displaying a "no cards to study" message
@@ -33,7 +34,7 @@ func (c *Card) Buttons(_ int) (studyview.ButtonMap, error) {
 }
 
 // Action always returns true, to allow checking for new due cards.
-func (c *Card) Action(_ *int, _ time.Time, _ studyview.Button) (done bool, err error) {
+func (c *Card) Action(_ *int, _ time.Time, _ *js.Object) (done bool, err error) {
 	return true, nil
 }
 

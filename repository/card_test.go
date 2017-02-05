@@ -11,6 +11,7 @@ import (
 	"github.com/FlashbackSRS/flashback-model"
 	"github.com/FlashbackSRS/flashback/webclient/views/studyview"
 	"github.com/flimzy/testify/require"
+	"github.com/gopherjs/gopherjs/js"
 )
 
 // We need to implement our own, minimal fake controller here, because using
@@ -20,7 +21,7 @@ type fakeController struct{}
 func (f *fakeController) Type() string                               { return "fake-model" }
 func (f *fakeController) IframeScript() []byte                       { return []byte("/* Fake Model */") }
 func (f *fakeController) Buttons(_ int) (studyview.ButtonMap, error) { return nil, nil }
-func (f *fakeController) Action(_ *PouchCard, _ *int, _ time.Time, _ studyview.Button) (bool, error) {
+func (f *fakeController) Action(_ *PouchCard, _ *int, _ time.Time, _ *js.Object) (bool, error) {
 	return false, nil
 }
 
@@ -92,9 +93,9 @@ iframeID: '445a737462464b4e',
 <script type="text/javascript"></script>
 <style></style>
 <script type="text/javascript">/* Fake Model */</script></head>
-<body class="card">
+<body class="card  card1"><form id="mainform">
     Question: <img src="paste-13877039333377.jpg"/><br/><div><sub>instrument</sub></div>
-</body></html>`
+</form></body></html>`
 
 type PrioTest struct {
 	Due      fb.Due

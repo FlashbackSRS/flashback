@@ -13,6 +13,7 @@ import (
 	"github.com/PuerkitoBio/goquery"
 	"github.com/flimzy/go-pouchdb"
 	"github.com/flimzy/log"
+	"github.com/gopherjs/gopherjs/js"
 	"github.com/pkg/errors"
 	"golang.org/x/net/html"
 
@@ -33,7 +34,7 @@ type Card interface {
 	DocID() string
 	Buttons(face int) (studyview.ButtonMap, error)
 	Body(face int) (body string, err error)
-	Action(face *int, startTime time.Time, button studyview.Button) (done bool, err error)
+	Action(face *int, startTime time.Time, query *js.Object) (done bool, err error)
 }
 
 // PouchCard provides a convenient interface to fb.Card and dependencies
@@ -44,14 +45,16 @@ type PouchCard struct {
 }
 
 type jsCard struct {
-	ID string `json:"id"`
+	ID      string      `json:"id"`
+	Context interface{} `json:"context,omitempty"`
 }
 
 // MarshalJSON marshals a Card for the benefit of javascript context in HTML
 // templates.
 func (c *PouchCard) MarshalJSON() ([]byte, error) {
 	card := &jsCard{
-		ID: c.DocID(),
+		ID:      c.DocID(),
+		Context: c.Context,
 	}
 	return json.Marshal(card)
 }
@@ -271,6 +274,7 @@ func (u *User) GetNextCard() (Card, error) {
 
 type cardContext struct {
 	Card *PouchCard
+	Face int
 	Note *Note
 	// Model    *Model
 	// Deck     *Deck
@@ -300,12 +304,12 @@ func (c *PouchCard) Buttons(face int) (studyview.ButtonMap, error) {
 }
 
 // Action handles the action on the card, such as a button press.
-func (c *PouchCard) Action(face *int, startTime time.Time, button studyview.Button) (done bool, err error) {
+func (c *PouchCard) Action(face *int, startTime time.Time, query *js.Object) (done bool, err error) {
 	cont, err := c.getModelController()
 	if err != nil {
 		return false, err
 	}
-	return cont.Action(c, face, startTime, button)
+	return cont.Action(c, face, startTime, query)
 }
 
 // Model returns the model for the card
@@ -337,6 +341,7 @@ func (c *PouchCard) Body(face int) (body string, err error) {
 	}
 	ctx := cardContext{
 		Card: c,
+		Face: face,
 		Note: note,
 		// Model:    model,
 		BaseURI: util.BaseURI(),
@@ -398,7 +403,8 @@ func prepareBody(face int, templateID uint32, cont ModelController, r io.Reader)
 	}
 
 	body.Empty()
-	body.AppendHtml(containerHTML)
+	body.AppendHtml(fmt.Sprintf(`<form id="mainform">%s</form>`, containerHTML))
+	body.AddClass("card", fmt.Sprintf("card%d", templateID+1))
 
 	doc.Find("head").AppendHtml(fmt.Sprintf(`<script type="text/javascript">%s</script>`, string(cont.IframeScript())))
 
