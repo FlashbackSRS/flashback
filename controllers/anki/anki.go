@@ -3,6 +3,7 @@ package anki
 
 import (
 	"fmt"
+	"html/template"
 	"strings"
 	"time"
 
@@ -32,6 +33,7 @@ type AnkiCloze struct {
 }
 
 var _ repo.ModelController = &AnkiCloze{}
+var _ repo.FuncMapper = &AnkiCloze{}
 
 func init() {
 	log.Debug("Registering anki models\n")
@@ -182,4 +184,9 @@ func quality(button studyview.Button) repo.AnswerQuality {
 		return repo.AnswerPerfect
 	}
 	return repo.AnswerBlackout
+}
+
+// FuncMap returns a function map for Cloze templates.
+func (m *AnkiCloze) FuncMap() template.FuncMap {
+	return nil
 }

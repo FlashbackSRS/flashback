@@ -20,6 +20,18 @@ type Model struct {
 	*fb.Model
 }
 
+// FuncMap returns the model controller's FuncMap, if any.
+func (m *Model) FuncMap() (template.FuncMap, error) {
+	c, err := m.getController()
+	if err != nil {
+		return nil, err
+	}
+	if funcMapper, ok := c.(FuncMapper); ok {
+		return funcMapper.FuncMap(), nil
+	}
+	return nil, nil
+}
+
 // GenerateTemplate returns a string representing the Model's rendered template.
 func (m *Model) GenerateTemplate() (*template.Template, error) {
 	mainTemplate := fmt.Sprintf("$template.%d.html", m.ID)
@@ -41,7 +53,11 @@ func (m *Model) GenerateTemplate() (*template.Template, error) {
 	// Rename to match the masterTemplate expectation
 	templates["template.html"] = templates[mainTemplate]
 	delete(templates, mainTemplate)
-	tmpl, err := template.New("template").Parse(masterTemplate)
+	funcs, err := m.FuncMap()
+	if err != nil {
+		return nil, err
+	}
+	tmpl, err := template.New("template").Funcs(funcs).Parse(masterTemplate)
 	if err != nil {
 		return nil, errors.Wrap(err, "Error parsing master template")
 	}
