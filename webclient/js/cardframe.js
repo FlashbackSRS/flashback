@@ -250,8 +250,16 @@
 
     docReady(function() {
         playaudio();
-        // Set up form handling
         var form = document.getElementById('mainform');
+        // Disable autocomplete everywhere
+        var inputs = form.getElementsByTagName('input')
+        for ( var i = 0; i < inputs.length; i++ ) {
+            inputs[i].setAttribute('autocomplete', 'off');
+            inputs[i].setAttribute('autocorrect', 'off');
+            inputs[i].setAttribute('autocapitalize', 'off');
+            inputs[i].setAttribute('spellcheck', 'false');
+        }
+        // Set up form submission
         if (form.attachEvent) {
             form.attachEvent('submit', processForm);
         } else {
