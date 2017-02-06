@@ -187,8 +187,8 @@ func quality(button studyview.Button) repo.AnswerQuality {
 }
 
 // FuncMap returns a function map for Cloze templates.
-func (m *AnkiCloze) FuncMap() template.FuncMap {
+func (m *AnkiCloze) FuncMap(model, face int) template.FuncMap {
 	return map[string]interface{}{
-		"cloze": cloze,
+		"cloze": cloze(model, face),
 	}
 }

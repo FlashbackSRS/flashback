@@ -21,13 +21,13 @@ type Model struct {
 }
 
 // FuncMap returns the model controller's FuncMap, if any.
-func (m *Model) FuncMap() (template.FuncMap, error) {
+func (m *Model) FuncMap(face int) (template.FuncMap, error) {
 	c, err := m.getController()
 	if err != nil {
 		return nil, err
 	}
 	if funcMapper, ok := c.(FuncMapper); ok {
-		return funcMapper.FuncMap(), nil
+		return funcMapper.FuncMap(int(m.ID), face), nil
 	}
 	return nil, nil
 }
@@ -53,7 +53,8 @@ func (m *Model) GenerateTemplate() (*template.Template, error) {
 	// Rename to match the masterTemplate expectation
 	templates["template.html"] = templates[mainTemplate]
 	delete(templates, mainTemplate)
-	funcs, err := m.FuncMap()
+	// We pass face 0 here; the FuncMap will be replaced with the proper face before execution
+	funcs, err := m.FuncMap(0)
 	if err != nil {
 		return nil, err
 	}
@@ -116,6 +117,9 @@ var FB = {
 <script type="text/javascript" src="js/cardframe.js"></script>
 <script type="text/javascript">{{ block "script.js" .Fields }}{{end}}</script>
 <style>{{ block "style.css" .Fields }}{{end}}</style>
+<meta face="{{ .Face }}">
+<meta modelid="{{ .Card.ModelID }}">
+</style>
 </head>
 <body>{{ block "template.html" .Fields }}{{end}}</body>
 </html>

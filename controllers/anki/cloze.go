@@ -14,23 +14,26 @@ var placeholder = fmt.Sprintf(span, "[...]")
 
 var clozeRE = regexp.MustCompile(`{{c(\d+)::(.*?)}}`)
 
-func cloze(face int, cardNo int, text string) template.HTML {
-	var found bool
-	for _, match := range clozeRE.FindAllStringSubmatch(text, -1) {
-		fieldNo, _ := strconv.Atoi(match[1])
-		if fieldNo == cardNo {
-			found = true
-			if face == 0 {
-				text = strings.Replace(text, match[0], placeholder, -1)
+func cloze(face int, cardNo int) func(template.HTML) template.HTML {
+	return func(text template.HTML) template.HTML {
+		str := string(text)
+		var found bool
+		for _, match := range clozeRE.FindAllStringSubmatch(str, -1) {
+			fieldNo, _ := strconv.Atoi(match[1])
+			if fieldNo == cardNo {
+				found = true
+				if face == 0 {
+					str = strings.Replace(str, match[0], placeholder, -1)
+				} else {
+					str = strings.Replace(str, match[0], fmt.Sprintf(span, match[2]), -1)
+				}
 			} else {
-				text = strings.Replace(text, match[0], fmt.Sprintf(span, match[2]), -1)
+				str = strings.Replace(str, match[0], match[2], -1)
 			}
-		} else {
-			text = strings.Replace(text, match[0], match[2], -1)
 		}
+		if found {
+			return template.HTML(str)
+		}
+		return ""
 	}
-	if found {
-		return template.HTML(text)
-	}
-	return ""
 }

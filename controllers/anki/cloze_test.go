@@ -1,6 +1,8 @@
 package anki
 
 import (
+	"bytes"
+	"fmt"
 	"html/template"
 	"testing"
 )
@@ -57,4 +59,27 @@ func TestCloze(t *testing.T) {
 			t.Errorf("Card %d, Face %d, %s\n\tExpected: %s\n\t  Actual: %s\n", test.CardNo, test.Face, test.Text, test.Expected, result)
 		}
 	}
+}
+
+type card struct{}
+
+func (c *card) ModelID() int {
+	return 1
+}
+
+func TestClozeTemplate(t *testing.T) {
+	tmpl, err := template.New("template").Funcs(map[string]interface{}{"cloze": cloze}).Parse("{{cloze .Face .Card.ModelID .Foo}}")
+	if err != nil {
+		t.Fatalf("error parsing template: %s\n", err)
+	}
+	ctx := map[string]interface{}{
+		"Face": 1,
+		"Card": &card{},
+		"Foo":  "Foo {{c1::bar}} baz",
+	}
+	result := new(bytes.Buffer)
+	if err := tmpl.Execute(result, ctx); err != nil {
+		t.Fatalf("Error executing template: %s\n", err)
+	}
+	fmt.Printf("Reesult = %s\n", result.String())
 }

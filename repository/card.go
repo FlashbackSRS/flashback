@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/PuerkitoBio/goquery"
+	"github.com/davecgh/go-spew/spew"
 	"github.com/flimzy/go-pouchdb"
 	"github.com/flimzy/log"
 	"github.com/gopherjs/gopherjs/js"
@@ -46,7 +47,7 @@ type PouchCard struct {
 
 type jsCard struct {
 	ID      string      `json:"id"`
-	Model   int         `json:"model"`
+	ModelID int         `json:"model"`
 	Context interface{} `json:"context,omitempty"`
 }
 
@@ -55,7 +56,7 @@ type jsCard struct {
 func (c *PouchCard) MarshalJSON() ([]byte, error) {
 	card := &jsCard{
 		ID:      c.DocID(),
-		Model:   int(c.ModelID()),
+		ModelID: int(c.ModelID()),
 		Context: c.Context,
 	}
 	return json.Marshal(card)
@@ -361,9 +362,16 @@ func (c *PouchCard) Body(face int) (body string, err error) {
 		}
 	}
 
+	spew.Dump(ctx)
+
+	funcs, err := model.FuncMap(face)
+	if err != nil {
+		return "", errors.Wrap(err, "failed to get FuncMap")
+	}
+
 	htmlDoc := new(bytes.Buffer)
-	if e := tmpl.Execute(htmlDoc, ctx); e != nil {
-		return "", errors.Wrap(e, "Unable to execute template")
+	if err = tmpl.Funcs(funcs).Execute(htmlDoc, ctx); err != nil {
+		return "", errors.Wrap(err, "Unable to execute template")
 	}
 	cont, err := c.getModelController()
 	if err != nil {
@@ -396,6 +404,8 @@ func prepareBody(face int, templateID uint32, cont ModelController, r io.Reader)
 	sel := fmt.Sprintf("div.%s[data-id='%d']", cardFace, templateID)
 	container := body.Find(sel)
 	if container.Length() == 0 {
+		html, _ := goquery.OuterHtml(doc.Selection)
+		fmt.Printf("----------\n%s\n----------------\n", html)
 		return nil, errors.Errorf("No div matching '%s' found in template output", sel)
 	}
 
