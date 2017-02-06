@@ -21,13 +21,25 @@ type Model struct {
 }
 
 // FuncMap returns the model controller's FuncMap, if any.
-func (m *Model) FuncMap(face int) (template.FuncMap, error) {
-	c, err := m.getController()
+func (c *PouchCard) FuncMap(face int) (template.FuncMap, error) {
+	mc, err := c.getModelController()
 	if err != nil {
 		return nil, err
 	}
-	if funcMapper, ok := c.(FuncMapper); ok {
-		return funcMapper.FuncMap(int(m.ID), face), nil
+	if funcMapper, ok := mc.(FuncMapper); ok {
+		return funcMapper.FuncMap(c, face), nil
+	}
+	return nil, nil
+}
+
+// FuncMap returns a placeholder template.FuncMap for use when parsing templates.
+func (m *Model) FuncMap() (template.FuncMap, error) {
+	mc, err := m.getController()
+	if err != nil {
+		return nil, err
+	}
+	if funcMapper, ok := mc.(FuncMapper); ok {
+		return funcMapper.FuncMap(nil, 0), nil
 	}
 	return nil, nil
 }
@@ -54,7 +66,7 @@ func (m *Model) GenerateTemplate() (*template.Template, error) {
 	templates["template.html"] = templates[mainTemplate]
 	delete(templates, mainTemplate)
 	// We pass face 0 here; the FuncMap will be replaced with the proper face before execution
-	funcs, err := m.FuncMap(0)
+	funcs, err := m.FuncMap()
 	if err != nil {
 		return nil, err
 	}

@@ -11,7 +11,6 @@ import (
 	"time"
 
 	"github.com/PuerkitoBio/goquery"
-	"github.com/davecgh/go-spew/spew"
 	"github.com/flimzy/go-pouchdb"
 	"github.com/flimzy/log"
 	"github.com/gopherjs/gopherjs/js"
@@ -362,9 +361,7 @@ func (c *PouchCard) Body(face int) (body string, err error) {
 		}
 	}
 
-	spew.Dump(ctx)
-
-	funcs, err := model.FuncMap(face)
+	funcs, err := c.FuncMap(face)
 	if err != nil {
 		return "", errors.Wrap(err, "failed to get FuncMap")
 	}
@@ -404,8 +401,6 @@ func prepareBody(face int, templateID uint32, cont ModelController, r io.Reader)
 	sel := fmt.Sprintf("div.%s[data-id='%d']", cardFace, templateID)
 	container := body.Find(sel)
 	if container.Length() == 0 {
-		html, _ := goquery.OuterHtml(doc.Selection)
-		fmt.Printf("----------\n%s\n----------------\n", html)
 		return nil, errors.Errorf("No div matching '%s' found in template output", sel)
 	}
 

@@ -32,10 +32,11 @@ type ModelController interface {
 
 // FuncMapper is an optional interface that a ModelController may fulfill.
 type FuncMapper interface {
-	// FuncMap is given the card's model, and the face, and is expected to
-	// return a template.FuncMap which can be used when parsing the HTML
-	// templates for this note type.
-	FuncMap(model, face int) template.FuncMap
+	// FuncMap is given the card and face, and is expected to return a
+	// template.FuncMap which can be used when parsing the HTML templates for
+	// this note type. If card is nil, the function is fine to return only
+	// non-functional, placeholder methods.
+	FuncMap(card *PouchCard, face int) template.FuncMap
 }
 
 var modelControllers = map[string]ModelController{}
