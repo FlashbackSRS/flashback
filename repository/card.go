@@ -8,9 +8,12 @@ import (
 	"io"
 	"math"
 	"math/rand"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/PuerkitoBio/goquery"
+	"github.com/davecgh/go-spew/spew"
 	"github.com/flimzy/go-pouchdb"
 	"github.com/flimzy/log"
 	"github.com/gopherjs/gopherjs/js"
@@ -35,6 +38,7 @@ type Card interface {
 	Buttons(face int) (studyview.ButtonMap, error)
 	Body(face int) (body string, err error)
 	Action(face *int, startTime time.Time, query *js.Object) (done bool, err error)
+	BuryRelated() error
 }
 
 // PouchCard provides a convenient interface to fb.Card and dependencies
@@ -476,4 +480,90 @@ func (c *PouchCard) GetAttachment(filename string) (*Attachment, error) {
 		return &Attachment{file}, nil
 	}
 	return nil, errors.Errorf("File '%s' not found", filename)
+}
+
+func init() {
+	// pouchdb.DebugDi("*")
+	pouchdb.DebugDisable()
+}
+
+// NewBuryTime sets the time to bury related new cards.
+const NewBuryTime = 7 * fb.Day
+
+// MinBuryTime is the minimal burial time.
+const MinBuryTime = 1 * fb.Day
+
+// MaxBuryRatio is the maximum burial-time / interval ratio.
+const MaxBuryRatio = 0.20
+
+// BuryRelated buries related cards.
+//
+// The burial strategy involves the following:
+//
+// 1. New cards (reviewCount = 0) are buried for NewBuryTime. This should help
+//    start of new card review to get off on the right foot.
+// 2. All related cards are buried for a minimum of 1 day (this is all Anki does)
+// 3. The target burial time is the current card's interval, divided by the number
+//    of related cards. NewBuryTime is used as the minimum target burial time.
+// 4. The maximum burial is MaxBuryRatio of the card's interval.
+func (c *PouchCard) BuryRelated() error {
+	fmt.Printf("-------------------------------- bury\n")
+	db := c.db
+	startKey := strings.TrimSuffix(c.DocID(), strconv.Itoa(int(c.TemplateID())))
+	fmt.Printf("startKey = %s\n", startKey)
+	var result struct {
+		Rows []struct {
+			Doc *fb.Card `json:"doc"`
+		} `json:"rows"`
+	}
+	err := db.AllDocs(&result, pouchdb.Options{
+		IncludeDocs: true,
+		StartKey:    startKey,
+		EndKey:      startKey + string(rune(0x10FFFF)),
+	})
+	if err != nil {
+		return errors.Wrap(err, "failed to fetch cards to bury")
+	}
+	cards := make([]*fb.Card, 0, len(result.Rows)-1)
+	fmt.Printf("My ID = %s\n", c.DocID())
+	for _, row := range result.Rows {
+		card := row.Doc
+		if card.DocID() == c.DocID() {
+			// Skip the current card
+			continue
+		}
+		var cInterval, interval fb.Interval
+		if c.Interval != nil {
+			cInterval = *c.Interval
+		}
+		if card.Interval != nil {
+			interval = *card.Interval
+		}
+		buryIvl := buryInterval(cInterval, interval, c.ReviewCount == 0)
+		buryUntil := fb.DueIn(buryIvl)
+		card.BuriedUntil = &buryUntil
+		cards = append(cards, card)
+	}
+	spew.Dump(cards)
+	if _, err := db.BulkDocs(cards, pouchdb.Options{}); err != nil {
+		return errors.Wrap(err, "failed to update buried docs")
+	}
+	return nil
+}
+
+func buryInterval(bury fb.Interval, ivl fb.Interval, new bool) fb.Interval {
+	if new {
+		return NewBuryTime
+	}
+	var maxBury fb.Interval
+	if ivl > 0 {
+		maxBury = fb.Interval(float64(ivl) * MaxBuryRatio)
+	}
+	if bury > maxBury {
+		bury = maxBury
+	}
+	if bury < MinBuryTime {
+		bury = MinBuryTime
+	}
+	return bury
 }

@@ -43,3 +43,8 @@ func (c *Card) Body(_ int) (string, error) {
 	body, err := Asset("done.html")
 	return string(body), err
 }
+
+// BuryRelated does nothing
+func (c *Card) BuryRelated() error {
+	return nil
+}
