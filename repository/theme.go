@@ -98,6 +98,7 @@ func extractTemplateFiles(v *fb.FileCollectionView) (map[string]string, error) {
 }
 
 var masterTemplate = `
+{{- $g := . -}}
 <!DOCTYPE html>
 <html>
 <head>
@@ -115,12 +116,10 @@ var FB = {
 };
 </script>
 <script type="text/javascript" src="js/cardframe.js"></script>
-<script type="text/javascript">{{ block "script.js" .Fields }}{{end}}</script>
-<style>{{ block "style.css" .Fields }}{{end}}</style>
-<meta face="{{ .Face }}">
-<meta modelid="{{ .Card.ModelID }}">
+<script type="text/javascript">{{ block "script.js" $g }}{{end}}</script>
+<style>{{ block "style.css" $g }}{{end}}</style>
 </style>
 </head>
-<body>{{ block "template.html" .Fields }}{{end}}</body>
+<body>{{ block "template.html" $g }}{{end}}</body>
 </html>
 `
