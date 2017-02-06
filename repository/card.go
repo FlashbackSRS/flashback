@@ -13,7 +13,6 @@ import (
 	"time"
 
 	"github.com/PuerkitoBio/goquery"
-	"github.com/davecgh/go-spew/spew"
 	"github.com/flimzy/go-pouchdb"
 	"github.com/flimzy/log"
 	"github.com/gopherjs/gopherjs/js"
@@ -27,10 +26,6 @@ import (
 )
 
 const newPriority = 0.5
-
-func init() {
-	rand.Seed(int64(time.Now().UnixNano()))
-}
 
 // Card represents a generic card-like object.
 type Card interface {
@@ -174,6 +169,14 @@ func GetCardList(db *DB, limit int) ([]*CardListItem, error) {
 			"created":   map[string]interface{}{"$gte": nil}, // Only so we can sort on this field
 			"due":       map[string]interface{}{"$eq": nil},
 			"suspended": map[string]interface{}{"$ne": true},
+			"$not": map[string]interface{}{
+				"$or": []interface{}{
+					map[string]interface{}{
+						// Ignore buried cards
+						"buriedUntil": map[string]interface{}{"$gte": fb.Now().String()},
+					},
+				},
+			},
 		},
 		// Sort by due, just so we use the proper index; due is always the same
 		// for these results.
@@ -208,7 +211,8 @@ func GetCardList(db *DB, limit int) ([]*CardListItem, error) {
 						"due":      map[string]interface{}{"$gt": fb.Now().String()},
 					},
 					map[string]interface{}{
-						"suspended": true,
+						// Ignore buried cards
+						"buriedUntil": map[string]interface{}{"$gte": fb.Now().String()},
 					},
 				},
 			},
@@ -482,11 +486,6 @@ func (c *PouchCard) GetAttachment(filename string) (*Attachment, error) {
 	return nil, errors.Errorf("File '%s' not found", filename)
 }
 
-func init() {
-	// pouchdb.DebugDi("*")
-	pouchdb.DebugDisable()
-}
-
 // NewBuryTime sets the time to bury related new cards.
 const NewBuryTime = 7 * fb.Day
 
@@ -544,7 +543,6 @@ func (c *PouchCard) BuryRelated() error {
 		card.BuriedUntil = &buryUntil
 		cards = append(cards, card)
 	}
-	spew.Dump(cards)
 	if _, err := db.BulkDocs(cards, pouchdb.Options{}); err != nil {
 		return errors.Wrap(err, "failed to update buried docs")
 	}
