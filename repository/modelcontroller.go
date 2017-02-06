@@ -1,6 +1,7 @@
 package repo
 
 import (
+	"html/template"
 	"time"
 
 	"github.com/flimzy/log"
@@ -27,6 +28,15 @@ type ModelController interface {
 	// done is false, the same card will be displayed, with the current value
 	// of face (possibly changed by the function)
 	Action(card *PouchCard, face *int, startTime time.Time, query *js.Object) (done bool, err error)
+}
+
+// FuncMapper is an optional interface that a ModelController may fulfill.
+type FuncMapper interface {
+	// FuncMap is given the card and face, and is expected to return a
+	// template.FuncMap which can be used when parsing the HTML templates for
+	// this note type. If card is nil, the function is fine to return only
+	// non-functional, placeholder methods.
+	FuncMap(card *PouchCard, face int) template.FuncMap
 }
 
 var modelControllers = map[string]ModelController{}

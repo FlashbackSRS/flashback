@@ -1,8 +1,9 @@
-// Package ankibasic is the model handler for the Basic Anki model type.
-package ankibasic
+// Package anki is the model handler for the Anki models.
+package anki
 
 import (
 	"fmt"
+	"html/template"
 	"strings"
 	"time"
 
@@ -27,14 +28,26 @@ type AnkiBasic struct{}
 
 var _ repo.ModelController = &AnkiBasic{}
 
+type AnkiCloze struct {
+	*AnkiBasic
+}
+
+var _ repo.ModelController = &AnkiCloze{}
+var _ repo.FuncMapper = &AnkiCloze{}
+
 func init() {
-	log.Debug("Registering anki-basic model\n")
+	log.Debug("Registering anki models\n")
 	repo.RegisterModelController(&AnkiBasic{})
+	repo.RegisterModelController(&AnkiCloze{})
 }
 
 // Type returns the string "anki-basic", to identify this model handler's type.
 func (m *AnkiBasic) Type() string {
 	return "anki-basic"
+}
+
+func (m *AnkiCloze) Type() string {
+	return "anki-cloze"
 }
 
 // IframeScript returns JavaScript to run inside the iframe.
@@ -171,4 +184,16 @@ func quality(button studyview.Button) repo.AnswerQuality {
 		return repo.AnswerPerfect
 	}
 	return repo.AnswerBlackout
+}
+
+// FuncMap returns a function map for Cloze templates.
+func (m *AnkiCloze) FuncMap(card *repo.PouchCard, face int) template.FuncMap {
+	var templateID uint32
+	if card != nil {
+		// Need to do this check, because card may be nil during template parsing
+		templateID = card.TemplateID()
+	}
+	return map[string]interface{}{
+		"cloze": cloze(templateID, face),
+	}
 }

@@ -46,6 +46,7 @@ type PouchCard struct {
 
 type jsCard struct {
 	ID      string      `json:"id"`
+	ModelID int         `json:"model"`
 	Context interface{} `json:"context,omitempty"`
 }
 
@@ -54,6 +55,7 @@ type jsCard struct {
 func (c *PouchCard) MarshalJSON() ([]byte, error) {
 	card := &jsCard{
 		ID:      c.DocID(),
+		ModelID: int(c.ModelID()),
 		Context: c.Context,
 	}
 	return json.Marshal(card)
@@ -359,9 +361,14 @@ func (c *PouchCard) Body(face int) (body string, err error) {
 		}
 	}
 
+	funcs, err := c.FuncMap(face)
+	if err != nil {
+		return "", errors.Wrap(err, "failed to get FuncMap")
+	}
+
 	htmlDoc := new(bytes.Buffer)
-	if e := tmpl.Execute(htmlDoc, ctx); e != nil {
-		return "", errors.Wrap(e, "Unable to execute template")
+	if err = tmpl.Funcs(funcs).Execute(htmlDoc, ctx); err != nil {
+		return "", errors.Wrap(err, "Unable to execute template")
 	}
 	cont, err := c.getModelController()
 	if err != nil {

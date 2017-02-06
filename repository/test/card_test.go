@@ -70,7 +70,7 @@ var expectedQuestion0 = `<!DOCTYPE html><html><head>
 'use strict';
 var FB = {
 	face:  0 ,
-	card: {"id":"card-alnlcvykyjxsjtijzonc3456kd5u4757.ZR4TpeX38xRzRvXprlgJpP4Ribo.0"},
+	card: {"id":"card-alnlcvykyjxsjtijzonc3456kd5u4757.ZR4TpeX38xRzRvXprlgJpP4Ribo.0","model":0},
 	note: {"id":"note-ZR4TpeX38xRzRvXprlgJpP4Ribo"}
 };
 </script>
@@ -84,6 +84,7 @@ var FB = {
  background-color: white;
 }
 </style>
+
 <script type="text/javascript">
 		/* Mock Model */
 		console.log("Mock Model 'anki-basic'");
@@ -102,7 +103,7 @@ var expectedAnswer0 = `<!DOCTYPE html><html><head>
 'use strict';
 var FB = {
 	face:  1 ,
-	card: {"id":"card-alnlcvykyjxsjtijzonc3456kd5u4757.ZR4TpeX38xRzRvXprlgJpP4Ribo.0"},
+	card: {"id":"card-alnlcvykyjxsjtijzonc3456kd5u4757.ZR4TpeX38xRzRvXprlgJpP4Ribo.0","model":0},
 	note: {"id":"note-ZR4TpeX38xRzRvXprlgJpP4Ribo"}
 };
 </script>
@@ -116,6 +117,7 @@ var FB = {
  background-color: white;
 }
 </style>
+
 <script type="text/javascript">
 		/* Mock Model */
 		console.log("Mock Model 'anki-basic'");
@@ -125,7 +127,7 @@ var FB = {
 
 <hr id="answer"/>
 
-Answer: <div>instrumento</div><div>[sound:pronunciation_es_instrumento.3gp]</div>
+Answer: <div>instrumento</div><div><audio src="pronunciation_es_instrumento.3gp" type="audio/3gpp"></audio></div>
 	</form></body></html>`
 
 var expectedQuestion1 = `<!DOCTYPE html><html><head>
@@ -138,7 +140,7 @@ var expectedQuestion1 = `<!DOCTYPE html><html><head>
 'use strict';
 var FB = {
 	face:  0 ,
-	card: {"id":"card-alnlcvykyjxsjtijzonc3456kd5u4757.ZR4TpeX38xRzRvXprlgJpP4Ribo.1"},
+	card: {"id":"card-alnlcvykyjxsjtijzonc3456kd5u4757.ZR4TpeX38xRzRvXprlgJpP4Ribo.1","model":0},
 	note: {"id":"note-ZR4TpeX38xRzRvXprlgJpP4Ribo"}
 };
 </script>
@@ -152,12 +154,13 @@ var FB = {
  background-color: white;
 }
 </style>
+
 <script type="text/javascript">
 		/* Mock Model */
 		console.log("Mock Model 'anki-basic'");
 </script></head>
 <body class="card card2"><form id="mainform">
-		Question: <div>instrumento</div><div>[sound:pronunciation_es_instrumento.3gp]</div>
+		Question: <div>instrumento</div><div><audio src="pronunciation_es_instrumento.3gp" type="audio/3gpp"></audio></div>
 	</form></body></html>`
 
 var expectedAnswer1 = `<!DOCTYPE html><html><head>
@@ -170,7 +173,7 @@ var expectedAnswer1 = `<!DOCTYPE html><html><head>
 'use strict';
 var FB = {
 	face:  1 ,
-	card: {"id":"card-alnlcvykyjxsjtijzonc3456kd5u4757.ZR4TpeX38xRzRvXprlgJpP4Ribo.1"},
+	card: {"id":"card-alnlcvykyjxsjtijzonc3456kd5u4757.ZR4TpeX38xRzRvXprlgJpP4Ribo.1","model":0},
 	note: {"id":"note-ZR4TpeX38xRzRvXprlgJpP4Ribo"}
 };
 </script>
@@ -184,6 +187,7 @@ var FB = {
  background-color: white;
 }
 </style>
+
 <script type="text/javascript">
 		/* Mock Model */
 		console.log("Mock Model 'anki-basic'");

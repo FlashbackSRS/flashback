@@ -99,10 +99,10 @@ www: javascript css images $(HTML_FILES) $(I18N_FILES)
 cordova-www: www
 	cat www/index.html | sed -e 's/<!-- Cordova Here -->/<script src="cordova.js"><\/script>/' > www/cordova.html
 
-bindata: controllers/ankibasic/data.go repository/done/data.go
+bindata: controllers/anki/data.go repository/done/data.go
 
-controllers/ankibasic/data.go: $(wildcard controllers/ankibasic/js/*)
-	go-bindata -pkg ankibasic -nocompress -prefix "$(dir $<)" -o $@ $(dir $<)
+controllers/anki/data.go: $(wildcard controllers/anki/files/*)
+	go-bindata -pkg anki -nocompress -prefix "$(dir $<)" -o $@ $(dir $<)
 
-repository/done/data.go: $(wildcard repository/done/html/*)
+repository/done/data.go: $(wildcard repository/done/files/*)
 	go-bindata -pkg done -nocompress -prefix "$(dir $<)" -o $@ $(dir $<)
