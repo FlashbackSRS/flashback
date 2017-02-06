@@ -540,11 +540,18 @@ func (c *PouchCard) BuryRelated() error {
 		}
 		buryIvl := buryInterval(cInterval, interval, c.ReviewCount == 0)
 		buryUntil := fb.DueIn(buryIvl)
-		card.BuriedUntil = &buryUntil
-		cards = append(cards, card)
+		// Now update the card, but only if we're trying to bury it longer
+		// than it already is, to avoid unnecessary updates.
+		if card.BuriedUntil == nil || buryUntil.After(*card.BuriedUntil) {
+			card.BuriedUntil = &buryUntil
+			cards = append(cards, card)
+		}
 	}
-	if _, err := db.BulkDocs(cards, pouchdb.Options{}); err != nil {
-		return errors.Wrap(err, "failed to update buried docs")
+	if len(cards) > 0 {
+		if _, err := db.BulkDocs(cards, pouchdb.Options{}); err != nil {
+			return errors.Wrap(err, "failed to update buried docs")
+		}
+
 	}
 	return nil
 }
