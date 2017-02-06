@@ -106,13 +106,25 @@ func TestCardList(t *testing.T) {
 		t.Fatalf("GetCards() failed: %s", err)
 	}
 
-	expectedCount := 7
+	expectedCount := 14
 	if len(cl) != expectedCount {
 		t.Errorf("Expected %d results, got %d\n", expectedCount, len(cl))
 	}
 	expectedOrder := []string{
 		"card-0000.0002.0",
 		"card-0000.0000.0",
+		"card-alnlcvykyjxsjtijzonc3456kd5u4757.71ARDtSu7S-pF3Lsys21n8I8g2Y.0",
+		"card-alnlcvykyjxsjtijzonc3456kd5u4757.71ARDtSu7S-pF3Lsys21n8I8g2Y.3",
+		"card-alnlcvykyjxsjtijzonc3456kd5u4757.aucxuxHEw1A-0ziIaL02Qzh70nY.1",
+		"card-alnlcvykyjxsjtijzonc3456kd5u4757.71ARDtSu7S-pF3Lsys21n8I8g2Y.4",
+		"card-alnlcvykyjxsjtijzonc3456kd5u4757.aucxuxHEw1A-0ziIaL02Qzh70nY.2",
+		"card-alnlcvykyjxsjtijzonc3456kd5u4757.aucxuxHEw1A-0ziIaL02Qzh70nY.0",
+		"card-alnlcvykyjxsjtijzonc3456kd5u4757.71ARDtSu7S-pF3Lsys21n8I8g2Y.1",
+		"card-alnlcvykyjxsjtijzonc3456kd5u4757.udROb8T8RmRASG5zGHNKnKL25zI.0",
+		"card-alnlcvykyjxsjtijzonc3456kd5u4757.rRm8q5nIKgIMC__jMxYmhXRF_2I.0",
+		"card-alnlcvykyjxsjtijzonc3456kd5u4757.ZR4TpeX38xRzRvXprlgJpP4Ribo.0",
+		"card-alnlcvykyjxsjtijzonc3456kd5u4757.efn_5zJV184Q7hZzE8zmlclqllY.0",
+		"card-alnlcvykyjxsjtijzonc3456kd5u4757.qT9Gr_a9D_jkaapw1xy7KYfvTOs.0",
 		"card-alnlcvykyjxsjtijzonc3456kd5u4757.udROb8T8RmRASG5zGHNKnKL25zI.0",
 		"card-alnlcvykyjxsjtijzonc3456kd5u4757.rRm8q5nIKgIMC__jMxYmhXRF_2I.0",
 		"card-alnlcvykyjxsjtijzonc3456kd5u4757.ZR4TpeX38xRzRvXprlgJpP4Ribo.0",

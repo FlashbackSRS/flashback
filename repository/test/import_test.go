@@ -25,8 +25,15 @@ var bundleID = "bundle-alnlcvykyjxsjtijzonc3456kd5u4757"
 var expectedUserDBIDs = []string{
 	"_design/idx-740f58f89a91c3283d5ef9b896e9ac9f",
 	bundleID,
+	"card-alnlcvykyjxsjtijzonc3456kd5u4757.71ARDtSu7S-pF3Lsys21n8I8g2Y.0",
+	"card-alnlcvykyjxsjtijzonc3456kd5u4757.71ARDtSu7S-pF3Lsys21n8I8g2Y.1",
+	"card-alnlcvykyjxsjtijzonc3456kd5u4757.71ARDtSu7S-pF3Lsys21n8I8g2Y.3",
+	"card-alnlcvykyjxsjtijzonc3456kd5u4757.71ARDtSu7S-pF3Lsys21n8I8g2Y.4",
 	"card-alnlcvykyjxsjtijzonc3456kd5u4757.ZR4TpeX38xRzRvXprlgJpP4Ribo.0",
 	"card-alnlcvykyjxsjtijzonc3456kd5u4757.ZR4TpeX38xRzRvXprlgJpP4Ribo.1",
+	"card-alnlcvykyjxsjtijzonc3456kd5u4757.aucxuxHEw1A-0ziIaL02Qzh70nY.0",
+	"card-alnlcvykyjxsjtijzonc3456kd5u4757.aucxuxHEw1A-0ziIaL02Qzh70nY.1",
+	"card-alnlcvykyjxsjtijzonc3456kd5u4757.aucxuxHEw1A-0ziIaL02Qzh70nY.2",
 	"card-alnlcvykyjxsjtijzonc3456kd5u4757.efn_5zJV184Q7hZzE8zmlclqllY.0",
 	"card-alnlcvykyjxsjtijzonc3456kd5u4757.efn_5zJV184Q7hZzE8zmlclqllY.1",
 	"card-alnlcvykyjxsjtijzonc3456kd5u4757.l2ZvABKQnCBZbuaYOlSIrZWqRQI.0",
@@ -44,13 +51,17 @@ var expectedBundleDBIDs = []string{
 	bundleID,
 	"deck-MoAm80CALRtrMk7Y4eOmGtCzzjY",
 	"deck-sXxr9js6DFSFotJ6yuISxOQCuKU",
+	"note-71ARDtSu7S-pF3Lsys21n8I8g2Y",
 	"note-ZR4TpeX38xRzRvXprlgJpP4Ribo",
+	"note-aucxuxHEw1A-0ziIaL02Qzh70nY",
 	"note-efn_5zJV184Q7hZzE8zmlclqllY",
 	"note-l2ZvABKQnCBZbuaYOlSIrZWqRQI",
 	"note-qT9Gr_a9D_jkaapw1xy7KYfvTOs",
 	"note-rRm8q5nIKgIMC__jMxYmhXRF_2I",
 	"note-udROb8T8RmRASG5zGHNKnKL25zI",
+	"theme-0eLFOKi_y8y7JTlmxlVa2Fv7smg",
 	"theme-ELr8cEJJOvJU4lYz-VTXhH8wLTo",
+	"theme-jZ8Wj_XJNJksDh9aGzMmbLi-6UE",
 }
 
 var importComplete bool
@@ -66,7 +77,7 @@ func testImport(t *testing.T) {
 	fbb, err := os.Open(fbbFile)
 	require.Nil(err, "Error reading %s: %s", fbbFile, err)
 
-	user := &repo.User{testUser}
+	user := &repo.User{User: testUser}
 	err = repo.Import(user, fbb)
 	require.Nil(err, "Error importing file: %+v", err)
 
@@ -76,7 +87,7 @@ func testImport(t *testing.T) {
 func TestImport(t *testing.T) {
 	require := require.New(t)
 
-	user := &repo.User{testUser}
+	user := &repo.User{User: testUser}
 	udb, err := user.DB()
 	require.Nil(err, "Error connecting to User DB: %s", err)
 
