@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"io"
 
+	pouchdb "github.com/flimzy/go-pouchdb"
+	"github.com/flimzy/log"
 	"github.com/hashicorp/go-multierror"
 	"github.com/pkg/errors"
 
@@ -57,32 +59,27 @@ func Import(user *User, r io.Reader) error {
 	var errs *multierror.Error
 
 	// Themes
-	for _, t := range pkg.Themes {
-		if err := bdb.Save(t); err != nil {
-			errs = multierror.Append(errs, errors.Wrapf(err, "Unable to save Theme %s", t.ID.Identity()))
-		}
+	log.Debugln("Saving themes")
+	if _, err := bdb.BulkDocs(pkg.Themes, pouchdb.Options{}); err != nil {
+		errs = multierror.Append(errs, errors.Wrapf(err, "failure saving themes"))
 	}
 
 	// Notes
-	for _, n := range pkg.Notes {
-		if err := bdb.Save(n); err != nil {
-			errs = multierror.Append(errs, errors.Wrapf(err, "Unable to save Note %s", n.ID.Identity()))
-		}
+	log.Debugln("Saving notes")
+	if _, err := bdb.BulkDocs(pkg.Notes, pouchdb.Options{}); err != nil {
+		errs = multierror.Append(errs, errors.Wrapf(err, "failure saving notes"))
 	}
 
 	// Decks
-	for _, d := range pkg.Decks {
-		if err := bdb.Save(d); err != nil {
-			errs = multierror.Append(errs, errors.Wrapf(err, "Unable to save Deck %s", d.ID.Identity()))
-			continue
-		}
+	log.Debugln("Saving decks")
+	if _, err := bdb.BulkDocs(pkg.Decks, pouchdb.Options{}); err != nil {
+		errs = multierror.Append(errs, errors.Wrapf(err, "failure saving decks"))
 	}
 
 	// Cards
-	for _, c := range cards {
-		if err := udb.Save(c); err != nil {
-			errs = multierror.Append(errs, errors.Wrapf(err, "Unable to save Card %s", c.Identity()))
-		}
+	log.Debugln("Saving cards")
+	if _, err := udb.BulkDocs(cards, pouchdb.Options{}); err != nil {
+		errs = multierror.Append(errs, errors.Wrapf(err, "failure saving cards"))
 	}
 	return errs.ErrorOrNil()
 }
