@@ -35,7 +35,7 @@ func BeforeTransition(event *jquery.Event, ui *js.Object, _ url.Values) bool {
 	}
 	go func() {
 		if err := ShowCard(u); err != nil {
-			log.Printf("Error showing card: %+v", err)
+			log.Printf("Error showing card: %v", err)
 		}
 	}()
 

@@ -131,104 +131,177 @@ func (p prioritizedCards) Swap(i, j int) { p[i], p[j] = p[j], p[i] }
 
 // CardPrio returns a number 0 or greater, as a priority to be used in
 // determining card study order.
-func CardPrio(due *fb.Due, interval *fb.Interval, now time.Time) float32 {
-	if due == nil || interval == nil {
+func CardPrio(due fb.Due, interval fb.Interval, now time.Time) float64 {
+	if due.IsZero() || interval == 0 {
 		return newPriority
 	}
 	// Remove the timezone
 	_, offset := now.Zone()
 	utc := now.UTC().Add(time.Duration(offset) * time.Second)
 
-	return float32(math.Pow(1+float64(utc.Sub(time.Time(*due)))/float64(time.Duration(*interval)), 3))
+	return float64(math.Pow(1+float64(utc.Sub(time.Time(due)))/float64(time.Duration(interval)), 3))
 }
 
 // A CardListItem contains the minimal information necessary to determine
 // card ordering.
 type CardListItem struct {
-	ID          string       `json:"_id"`
-	Due         *fb.Due      `json:"due"`
-	Created     time.Time    `json:"created"`
-	Interval    *fb.Interval `json:"interval"`
-	ReviewCount int          `json:"reviewCount"`
-	priority    float32
+	ID          string
+	Due         fb.Due      `json:"due"`
+	Created     time.Time   `json:"created"`
+	Interval    fb.Interval `json:"interval"`
+	LastReview  time.Time   `json:"lastReview"`
+	BuriedUntil fb.Due      `json:"buriedUntil"`
+	priority    float64
+}
+
+// UnmarshalJSON fulfils json.Unmarshaler
+func (c *CardListItem) UnmarshalJSON(data []byte) error {
+	var doc struct {
+		ID    string          `json:"id"`
+		Value json.RawMessage `json:"value"`
+	}
+	if err := json.Unmarshal(data, &doc); err != nil {
+		return err
+	}
+	type alias CardListItem
+	var ca alias
+	if err := json.Unmarshal(doc.Value, &ca); err != nil {
+		return err
+	}
+	*c = CardListItem(ca)
+	c.ID = doc.ID
+	return nil
+}
+
+// CardList is a list of cards, which can be sorted
+type CardList []*CardListItem
+
+// Len for sort.Interface
+func (cl CardList) Len() int { return len(cl) }
+
+// Less for sort.Interface
+func (cl CardList) Less(i, j int) bool {
+	if cl[j].Due.After(cl[i].Due) {
+		return true
+	}
+	if cl[j].Created.After(cl[i].Created) {
+		return true
+	}
+	return false
+}
+
+// Swap for sort.Interface
+func (cl CardList) Swap(i, j int) {
+	cl[i], cl[j] = cl[j], cl[i]
+}
+
+func init() {
+	// pouchdb.Debug("*")
+	pouchdb.DebugDisable()
+}
+
+type (
+	// Map is an alias for map[string]interface{}
+	Map map[string]interface{}
+	// Array is an alias for []interface{}
+	Array []interface{}
+)
+
+type pouchResult struct {
+	TotalRows int      `json:"total_rows"`
+	Offset    int      `json:"offset"`
+	Cards     CardList `json:"rows"`
+}
+
+func newCards(db *DB, limit, offset int) (CardList, error) {
+	log.Debugf("newCards() limit = %d, offset = %d\n", limit, offset)
+	var result pouchResult
+	err := db.Query("cards/NewCardsMap", &result, pouchdb.Options{
+		Limit: int(float64(limit) * 1.5),
+	})
+	if err != nil {
+		return nil, err
+	}
+	cards := make(CardList, 0, limit)
+	for _, card := range result.Cards {
+		if card.BuriedUntil.After(fb.Now()) {
+			continue
+		}
+		cards = append(cards, card)
+		if len(cards) == limit {
+			return cards, nil
+		}
+	}
+	if result.TotalRows > limit+offset {
+		more, err := newCards(db, limit-len(cards), offset+len(result.Cards))
+		return append(cards, more...), err
+	}
+	return cards, nil
+}
+
+func oldCards(db *DB, limit, offset int) (CardList, error) {
+	log.Debugf("oldCards() limit = %d, offset = %d\n", limit, offset)
+	var result pouchResult
+	err := db.Query("cards/OldCardsMap", &result, pouchdb.Options{
+		Limit: int(float64(limit) * 1.5),
+	})
+	if err != nil {
+		return nil, err
+	}
+	cards := make(CardList, 0, limit)
+	for _, card := range result.Cards {
+		if card.BuriedUntil.After(fb.Now()) {
+			continue
+		}
+		// Don't review cards we already saw today, with an interval >= 1d; they would make no progress.
+		if card.Interval >= 1 && !time.Time(fb.Today()).After(card.LastReview) {
+			continue
+		}
+		// Ignore sub-day intervals that aren't due yet. We only allow forward-fuzzing for intervals > 1day
+		if card.Interval < 0 && card.Due.After(fb.Now()) {
+			continue
+		}
+		cards = append(cards, card)
+		if len(cards) == limit {
+			return cards, nil
+		}
+	}
+	if result.TotalRows > limit+offset {
+		more, err := newCards(db, limit-len(cards), offset+len(result.Cards))
+		return append(cards, more...), err
+	}
+	return cards, nil
 }
 
 // GetCardList returns a list, limit elements long, of cards sorted by due
 // date and created time.
-func GetCardList(db *DB, limit int) ([]*CardListItem, error) {
-	var newCards []*CardListItem
-	var oldCards []*CardListItem
+func GetCardList(db *DB, limit int) (CardList, error) {
+	log.Debugln("GetCardList()")
 	newLimit := int(float64(limit) * 0.1)
+	log.Debugf("newLimit = %d\n", newLimit)
 	if newLimit < 1 {
 		newLimit = 1
 	}
-	log.Debugf("newLimit = %d\n", newLimit)
-	newQuery := map[string]interface{}{
-		"selector": map[string]interface{}{
-			"type":      "card",
-			"created":   map[string]interface{}{"$gte": nil}, // Only so we can sort on this field
-			"due":       map[string]interface{}{"$eq": nil},
-			"suspended": map[string]interface{}{"$ne": true},
-			"$not": map[string]interface{}{
-				"$or": []interface{}{
-					map[string]interface{}{
-						// Ignore buried cards
-						"buriedUntil": map[string]interface{}{"$gte": fb.Now().String()},
-					},
-				},
-			},
-		},
-		// Sort by due, just so we use the proper index; due is always the same
-		// for these results.
-		"sort":   []string{"due", "created"},
-		"fields": []string{"_id", "interval", "reviewCount"},
-		"limit":  newLimit,
-	}
-	if err := db.Find(newQuery, &newCards); err != nil {
-		return nil, errors.Wrap(err, "new card list")
+	start := time.Now()
+	newCards, err := newCards(db, newLimit, 0)
+	log.Debugf("NewCardsMap query time = %s\n", time.Now().Sub(start))
+	if err != nil {
+		return nil, err
 	}
 
-	oldLimit := limit - len(newCards)
-	log.Debugf("oldLimit = %d\n", oldLimit)
-	oldQuery := map[string]interface{}{
-		"selector": map[string]interface{}{
-			"type":      "card",
-			"due":       map[string]interface{}{"$gt": nil},
-			"created":   map[string]interface{}{"$gte": nil}, // Just so we use the proper index
-			"suspended": map[string]interface{}{"$ne": true},
-			"$not": map[string]interface{}{
-				"$or": []interface{}{
-					map[string]interface{}{
-						// Don't review cards we already saw today, with an
-						// interval >= 1d; they would make no progress.
-						"interval":   map[string]interface{}{"$gte": 1},
-						"lastReview": map[string]interface{}{"$gte": fb.Today().String()},
-					},
-					map[string]interface{}{
-						// Ignore sub-day intervals that aren't due yet. We only allow
-						// forward-fuzzing for intervals > 1day
-						"interval": map[string]interface{}{"$lt": 0},
-						"due":      map[string]interface{}{"$gt": fb.Now().String()},
-					},
-					map[string]interface{}{
-						// Ignore buried cards
-						"buriedUntil": map[string]interface{}{"$gte": fb.Now().String()},
-					},
-				},
-			},
-		},
-		"sort":   []string{"due", "created"},
-		"fields": []string{"due", "_id", "interval", "reviewCount"},
-		"limit":  oldLimit,
+	start = time.Now()
+	oldCards, err := oldCards(db, limit-len(newCards), 0)
+	log.Debugf("OldCardsMap query time = %s\n", time.Now().Sub(start))
+	if err != nil {
+		return nil, errors.Wrap(err, "old card query")
 	}
-	if err := db.Find(oldQuery, &oldCards); err != nil {
-		return nil, errors.Wrap(err, "card list")
-	}
-	cards := append(oldCards, newCards...)
+	fmt.Printf("old cards = %d, new cards = %d\n", len(oldCards), len(newCards))
+	cards := append(newCards, oldCards...)
+
 	if len(cards) > limit {
-		cards = cards[0:limit]
+		cards = cards[:limit-1]
 	}
-	log.Debugf("%d new cards, %d old cards (%d cards select in all)", len(newCards), len(oldCards), len(cards))
+	log.Debugf("%d new cards, %d old cards (%d cards returned)", len(newCards), len(oldCards), len(cards))
 	return cards, nil
 }
 
@@ -247,30 +320,30 @@ func (c *PouchCard) UnmarshalJSON(data []byte) error {
 // use.
 const cardBatchSize = 100
 
+var rnd = rand.New(rand.NewSource(time.Now().UnixNano()))
+
 // GetNextCard gets the next card to study
 func (u *User) GetNextCard() (Card, error) {
+	log.Debugln("GetNextCard()")
 	db, err := u.DB()
 	if err != nil {
-		return nil, errors.Wrap(err, "GetNextCard(): Error connecting to User DB")
+		return nil, errors.Wrap(err, "failed to connect to user db")
 	}
 
 	cards, err := GetCardList(db, cardBatchSize)
 	if err != nil {
 		return nil, errors.Wrap(err, "get card list")
 	}
+	var weights float64
 	for _, card := range cards {
 		card.priority = CardPrio(card.Due, card.Interval, time.Now())
+		weights += card.priority
 	}
 	if len(cards) == 0 {
 		return done.GetCard(), nil
 	}
 
-	var weights float32
-	for _, c := range cards {
-		weights += c.priority
-	}
-
-	r := rand.Float32() * weights
+	r := rnd.Float64() * weights
 	log.Debugf("Random key / total: %f / %f (%d)\n", r, weights, len(cards))
 	for i, c := range cards {
 		r -= c.priority
@@ -506,10 +579,8 @@ const MaxBuryRatio = 0.20
 //    of related cards. NewBuryTime is used as the minimum target burial time.
 // 4. The maximum burial is MaxBuryRatio of the card's interval.
 func (c *PouchCard) BuryRelated() error {
-	fmt.Printf("-------------------------------- bury\n")
 	db := c.db
 	startKey := strings.TrimSuffix(c.DocID(), strconv.Itoa(int(c.TemplateID())))
-	fmt.Printf("startKey = %s\n", startKey)
 	var result struct {
 		Rows []struct {
 			Doc *fb.Card `json:"doc"`
@@ -524,7 +595,6 @@ func (c *PouchCard) BuryRelated() error {
 		return errors.Wrap(err, "failed to fetch cards to bury")
 	}
 	cards := make([]*fb.Card, 0, len(result.Rows)-1)
-	fmt.Printf("My ID = %s\n", c.DocID())
 	for _, row := range result.Rows {
 		card := row.Doc
 		if card.DocID() == c.DocID() {

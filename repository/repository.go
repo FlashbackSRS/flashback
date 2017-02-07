@@ -40,22 +40,8 @@ type DB struct {
 type dbInitFunc func(*DB) error
 
 var initFuncs = map[string]dbInitFunc{
-	"user": func(db *DB) error {
-		return commonDBInit(db)
-	},
-	"bundle": func(db *DB) error {
-		return commonDBInit(db)
-	},
-}
-
-func commonDBInit(db *DB) error {
-	err := db.CreateIndex(find.Index{
-		Fields: []string{"due", "created", "type"},
-	})
-	if err != nil && !find.IsIndexExists(err) {
-		return err
-	}
-	return nil
+	"user":   userDBInit,
+	"bundle": bundleDBInit,
 }
 
 // BundleDB returns a DB handle for the Bundle
@@ -91,7 +77,7 @@ func (u *User) NewDB(name string) (*DB, error) {
 
 func initDB(name string, db *DB) error {
 	if initFunc, ok := initFuncs[name]; ok {
-		return initFunc(db)
+		return errors.Wrap(initFunc(db), "db init")
 	}
 	return nil
 }
