@@ -11,6 +11,7 @@ import (
 	"github.com/flimzy/go-pouchdb"
 	"github.com/flimzy/go-pouchdb/plugins/find"
 	"github.com/gopherjs/gopherjs/js"
+	multierror "github.com/hashicorp/go-multierror"
 	"github.com/pborman/uuid"
 	"github.com/pkg/errors"
 
@@ -137,7 +138,14 @@ func getCouchCookie(cookieHeader string) string {
 
 // Compact compacts the requested DB
 func (db *DB) Compact() error {
-	return db.PouchDB.Compact(pouchdb.Options{})
+	var errs error
+	if err := db.PouchDB.Compact(pouchdb.Options{}); err != nil {
+		errs = multierror.Append(errs, err)
+	}
+	if err := db.PouchDB.ViewCleanup(); err != nil {
+		errs = multierror.Append(errs, err)
+	}
+	return errs
 }
 
 // FlashbackDoc is a generic interface for all types of FB docs
