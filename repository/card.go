@@ -295,7 +295,6 @@ func GetCardList(db *DB, limit int) (CardList, error) {
 	if err != nil {
 		return nil, errors.Wrap(err, "old card query")
 	}
-	fmt.Printf("old cards = %d, new cards = %d\n", len(oldCards), len(newCards))
 	cards := append(newCards, oldCards...)
 
 	if len(cards) > limit {

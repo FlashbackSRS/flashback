@@ -143,13 +143,17 @@ var PrioTests = []PrioTest{
 	},
 }
 
+func floatCompare(x, y float64) bool {
+	return math.Abs(x-y) < 0.01
+}
+
 func TestPrio(t *testing.T) {
 	for _, test := range PrioTests {
 		if test.Now.IsZero() {
 			test.Now = parseTime("2017-01-01 00:00:00")
 		}
-		prio := CardPrio(&test.Due, &test.Interval, test.Now)
-		if math.Abs(float64(prio)-test.Expected) > 0.000001 {
+		prio := CardPrio(test.Due, test.Interval, test.Now)
+		if !floatCompare(float64(prio), test.Expected) {
 			t.Errorf("%s / %s: Expected priority %f, got %f\n", test.Due, test.Interval, test.Expected, prio)
 		}
 	}
