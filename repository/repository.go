@@ -11,6 +11,7 @@ import (
 	"github.com/flimzy/go-pouchdb"
 	"github.com/flimzy/go-pouchdb/plugins/find"
 	"github.com/gopherjs/gopherjs/js"
+	multierror "github.com/hashicorp/go-multierror"
 	"github.com/pborman/uuid"
 	"github.com/pkg/errors"
 
@@ -40,22 +41,8 @@ type DB struct {
 type dbInitFunc func(*DB) error
 
 var initFuncs = map[string]dbInitFunc{
-	"user": func(db *DB) error {
-		return commonDBInit(db)
-	},
-	"bundle": func(db *DB) error {
-		return commonDBInit(db)
-	},
-}
-
-func commonDBInit(db *DB) error {
-	err := db.CreateIndex(find.Index{
-		Fields: []string{"due", "created", "type"},
-	})
-	if err != nil && !find.IsIndexExists(err) {
-		return err
-	}
-	return nil
+	"user":   userDBInit,
+	"bundle": bundleDBInit,
 }
 
 // BundleDB returns a DB handle for the Bundle
@@ -91,7 +78,7 @@ func (u *User) NewDB(name string) (*DB, error) {
 
 func initDB(name string, db *DB) error {
 	if initFunc, ok := initFuncs[name]; ok {
-		return initFunc(db)
+		return errors.Wrap(initFunc(db), "db init")
 	}
 	return nil
 }
@@ -151,7 +138,14 @@ func getCouchCookie(cookieHeader string) string {
 
 // Compact compacts the requested DB
 func (db *DB) Compact() error {
-	return db.PouchDB.Compact(pouchdb.Options{})
+	var errs error
+	if err := db.PouchDB.Compact(pouchdb.Options{}); err != nil {
+		errs = multierror.Append(errs, err)
+	}
+	if err := db.PouchDB.ViewCleanup(); err != nil {
+		errs = multierror.Append(errs, err)
+	}
+	return errs
 }
 
 // FlashbackDoc is a generic interface for all types of FB docs

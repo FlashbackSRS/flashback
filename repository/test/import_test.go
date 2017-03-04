@@ -23,7 +23,7 @@ func init() {
 var bundleID = "bundle-alnlcvykyjxsjtijzonc3456kd5u4757"
 
 var expectedUserDBIDs = []string{
-	"_design/idx-740f58f89a91c3283d5ef9b896e9ac9f",
+	"_design/cards",
 	bundleID,
 	"card-alnlcvykyjxsjtijzonc3456kd5u4757.71ARDtSu7S-pF3Lsys21n8I8g2Y.0",
 	"card-alnlcvykyjxsjtijzonc3456kd5u4757.71ARDtSu7S-pF3Lsys21n8I8g2Y.1",
@@ -47,7 +47,6 @@ var expectedUserDBIDs = []string{
 }
 
 var expectedBundleDBIDs = []string{
-	"_design/idx-740f58f89a91c3283d5ef9b896e9ac9f",
 	bundleID,
 	"deck-MoAm80CALRtrMk7Y4eOmGtCzzjY",
 	"deck-sXxr9js6DFSFotJ6yuISxOQCuKU",
