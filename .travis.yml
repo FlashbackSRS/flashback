@@ -14,6 +14,7 @@ before_install:
     # To ensure the default version of node/npm isn't used
     - rm -rf /home/travis/.nvm/v0.10.36 $HOME/.npmrc $HOME/.node-gyp
     - sudo npm install --global node-gyp
+    - npm install source-map-support
     - go get -u github.com/gopherjs/gopherjs
     # Provide syscall support for the GopherJS tests
     - ( cd $GOPATH/src/github.com/gopherjs/gopherjs/node-syscall && node-gyp rebuild && mkdir -p ~/.node_libraries/ && cp build/Release/syscall.node ~/.node_libraries/syscall.node )
