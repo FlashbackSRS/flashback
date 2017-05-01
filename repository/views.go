@@ -1,7 +1,8 @@
 package repo
 
 import (
-	pouchdb "github.com/flimzy/go-pouchdb"
+	"context"
+
 	"github.com/flimzy/log"
 	"github.com/pkg/errors"
 )
@@ -29,15 +30,20 @@ func userDBInit(db *DB) error {
 		},
 	}
 	log.Debugf("Creating _design/cards\n")
-	updated, err := Upsert(db, ddoc, pouchdb.Options{})
+	updated, err := Upsert(context.TODO(), db, ddoc, nil)
 	if err != nil {
 		log.Debugf("error creating view: %s\n", err)
 	}
 	if updated {
 		// Query the views, so the indexes are created immediately
-		var result interface{}
-		_ = db.Query("cards/NewCardsMap", &result, pouchdb.Options{Limit: 1})
-		_ = db.Query("cards/OldCardsMap", &result, pouchdb.Options{Limit: 1})
+		rows, _ := db.Query(context.TODO(), "cards", "NewCardsMap", map[string]interface{}{"limit": 1})
+		if rows != nil {
+			rows.Close()
+		}
+		rows, _ = db.Query(context.TODO(), "cards", "OldCardsMap", map[string]interface{}{"limit": 1})
+		if rows != nil {
+			rows.Close()
+		}
 	}
 	return err
 }

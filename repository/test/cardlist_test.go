@@ -1,6 +1,7 @@
 package test
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"sync"
@@ -66,7 +67,7 @@ func listImport(t *testing.T) {
 			c.Interval = &ivl
 		}
 		c.Created = time.Now()
-		if _, err := db.Put(c); err != nil {
+		if _, err := db.Put(context.TODO(), c.DocID(), c); err != nil {
 			t.Fatalf("Failed to put additional card: %s", err)
 		}
 	}

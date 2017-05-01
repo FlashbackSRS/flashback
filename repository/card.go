@@ -2,6 +2,7 @@ package repo
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"html/template"
@@ -13,7 +14,6 @@ import (
 	"time"
 
 	"github.com/PuerkitoBio/goquery"
-	"github.com/flimzy/go-pouchdb"
 	"github.com/flimzy/log"
 	"github.com/gopherjs/gopherjs/js"
 	"github.com/pkg/errors"
@@ -85,8 +85,12 @@ func (c *PouchCard) fetchNote() error {
 		return errors.Wrap(err, "fetchNote() can't connect to bundle DB")
 	}
 	n := &fb.Note{}
-	if err := db.Get(c.NoteID(), n, pouchdb.Options{Attachments: true}); err != nil {
+	row, err := db.Get(context.TODO(), c.NoteID(), map[string]interface{}{"attachments": true})
+	if err != nil {
 		return errors.Wrapf(err, "fetchNote() can't fetch %s", c.NoteID())
+	}
+	if err = row.ScanDoc(&n); err != nil {
+		return errors.Wrapf(err, "fetchNote() can't scan %s", c.NoteID())
 	}
 	c.note = &Note{
 		Note: n,
@@ -106,9 +110,13 @@ func (u *User) GetCard(id string) (*PouchCard, error) {
 
 // GetCard fetches the requested card
 func (db *DB) GetCard(id string) (*PouchCard, error) {
-	card := &fb.Card{}
-	if err := db.Get(id, card, pouchdb.Options{}); err != nil {
+	row, err := db.Get(context.TODO(), id)
+	if err != nil {
 		return nil, errors.Wrap(err, "fetch card")
+	}
+	card := &fb.Card{}
+	if err = row.ScanDoc(&card); err != nil {
+		return nil, errors.Wrap(err, "scan card")
 	}
 	return &PouchCard{
 		Card: card,
@@ -197,7 +205,7 @@ func (cl CardList) Swap(i, j int) {
 
 func init() {
 	// pouchdb.Debug("*")
-	pouchdb.DebugDisable()
+	// pouchdb.DebugDisable()
 }
 
 type (
@@ -215,25 +223,31 @@ type pouchResult struct {
 
 func newCards(db *DB, limit, offset int) (CardList, error) {
 	log.Debugf("newCards() limit = %d, offset = %d\n", limit, offset)
-	var result pouchResult
-	err := db.Query("cards/NewCardsMap", &result, pouchdb.Options{
-		Limit: int(float64(limit) * 1.5),
+	rows, err := db.Query(context.TODO(), "cards", "NewCardsMap", map[string]interface{}{
+		"limit": int(float64(limit) * 1.5),
 	})
 	if err != nil {
 		return nil, err
 	}
+	defer rows.Close()
 	cards := make(CardList, 0, limit)
-	for _, card := range result.Cards {
+	var count int
+	for rows.Next() {
+		count++
+		var card CardListItem
+		if err := rows.ScanDoc(&card); err != nil {
+			return nil, errors.Wrapf(err, "failed to scan doc: %s", err)
+		}
 		if card.BuriedUntil.After(fb.Now()) {
 			continue
 		}
-		cards = append(cards, card)
+		cards = append(cards, &card)
 		if len(cards) == limit {
 			return cards, nil
 		}
 	}
-	if result.TotalRows > limit+offset {
-		more, err := newCards(db, limit-len(cards), offset+len(result.Cards))
+	if rows.TotalRows() > int64(limit+offset) {
+		more, err := newCards(db, limit-len(cards), offset+count)
 		return append(cards, more...), err
 	}
 	return cards, nil
@@ -241,15 +255,21 @@ func newCards(db *DB, limit, offset int) (CardList, error) {
 
 func oldCards(db *DB, limit, offset int) (CardList, error) {
 	log.Debugf("oldCards() limit = %d, offset = %d\n", limit, offset)
-	var result pouchResult
-	err := db.Query("cards/OldCardsMap", &result, pouchdb.Options{
-		Limit: int(float64(limit) * 1.5),
+	rows, err := db.Query(context.TODO(), "cards", "OldCardsMap", map[string]interface{}{
+		"limit": int(float64(limit) * 1.5),
 	})
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "oldCards query failed")
 	}
+	defer rows.Close()
 	cards := make(CardList, 0, limit)
-	for _, card := range result.Cards {
+	var count int
+	for rows.Next() {
+		count++
+		var card CardListItem
+		if err = rows.ScanDoc(&card); err != nil {
+			return nil, errors.Wrap(err, "failed to scan card")
+		}
 		if card.BuriedUntil.After(fb.Now()) {
 			continue
 		}
@@ -261,13 +281,13 @@ func oldCards(db *DB, limit, offset int) (CardList, error) {
 		if card.Interval < 0 && card.Due.After(fb.Now()) {
 			continue
 		}
-		cards = append(cards, card)
+		cards = append(cards, &card)
 		if len(cards) == limit {
 			return cards, nil
 		}
 	}
-	if result.TotalRows > limit+offset {
-		more, err := newCards(db, limit-len(cards), offset+len(result.Cards))
+	if rows.TotalRows() > int64(limit+offset) {
+		more, err := newCards(db, limit-len(cards), offset+count)
 		return append(cards, more...), err
 	}
 	return cards, nil
@@ -585,20 +605,24 @@ func (c *PouchCard) BuryRelated() error {
 			Doc *fb.Card `json:"doc"`
 		} `json:"rows"`
 	}
-	err := db.AllDocs(&result, pouchdb.Options{
-		IncludeDocs: true,
-		StartKey:    startKey,
-		EndKey:      startKey + string(rune(0x10FFFF)),
+	rows, err := db.AllDocs(context.TODO(), map[string]interface{}{
+		"include_docs": true,
+		"start_key":    startKey,
+		"end_key":      startKey + string(rune(0x10FFFF)),
 	})
 	if err != nil {
 		return errors.Wrap(err, "failed to fetch cards to bury")
 	}
+	defer rows.Close()
 	cards := make([]*fb.Card, 0, len(result.Rows)-1)
-	for _, row := range result.Rows {
-		card := row.Doc
-		if card.DocID() == c.DocID() {
+	for rows.Next() {
+		if c.DocID() == rows.ID() {
 			// Skip the current card
 			continue
+		}
+		var card fb.Card
+		if err = rows.ScanDoc(&card); err != nil {
+			return errors.Wrap(err, "failed to scan card")
 		}
 		var cInterval, interval fb.Interval
 		if c.Interval != nil {
@@ -613,14 +637,20 @@ func (c *PouchCard) BuryRelated() error {
 		// than it already is, to avoid unnecessary updates.
 		if card.BuriedUntil == nil || buryUntil.After(*card.BuriedUntil) {
 			card.BuriedUntil = &buryUntil
-			cards = append(cards, card)
+			cards = append(cards, &card)
 		}
 	}
 	if len(cards) > 0 {
-		if _, err := db.BulkDocs(cards, pouchdb.Options{}); err != nil {
+		results, err := db.BulkDocs(context.TODO(), cards)
+		if err != nil {
 			return errors.Wrap(err, "failed to update buried docs")
 		}
-
+		defer results.Close()
+		for results.Next() {
+			if err := results.UpdateErr(); err != nil {
+				return errors.Wrapf(err, "failed to bury doc %s", results.ID())
+			}
+		}
 	}
 	return nil
 }

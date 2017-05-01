@@ -1,10 +1,10 @@
 package repo
 
 import (
+	"context"
 	"encoding/json"
 	"io"
 
-	pouchdb "github.com/flimzy/go-pouchdb"
 	"github.com/flimzy/log"
 	"github.com/hashicorp/go-multierror"
 	"github.com/pkg/errors"
@@ -60,26 +60,40 @@ func Import(user *User, r io.Reader) error {
 
 	// Themes
 	log.Debugln("Saving themes")
-	if _, err := bdb.BulkDocs(pkg.Themes, pouchdb.Options{}); err != nil {
+	if err := bulkInsert(context.TODO(), bdb, pkg.Themes); err != nil {
 		errs = multierror.Append(errs, errors.Wrapf(err, "failure saving themes"))
 	}
 
 	// Notes
 	log.Debugln("Saving notes")
-	if _, err := bdb.BulkDocs(pkg.Notes, pouchdb.Options{}); err != nil {
+	if err := bulkInsert(context.TODO(), bdb, pkg.Notes); err != nil {
 		errs = multierror.Append(errs, errors.Wrapf(err, "failure saving notes"))
 	}
 
 	// Decks
 	log.Debugln("Saving decks")
-	if _, err := bdb.BulkDocs(pkg.Decks, pouchdb.Options{}); err != nil {
+	if err := bulkInsert(context.TODO(), bdb, pkg.Decks); err != nil {
 		errs = multierror.Append(errs, errors.Wrapf(err, "failure saving decks"))
 	}
 
 	// Cards
 	log.Debugln("Saving cards")
-	if _, err := udb.BulkDocs(cards, pouchdb.Options{}); err != nil {
+	if err := bulkInsert(context.TODO(), udb, cards); err != nil {
 		errs = multierror.Append(errs, errors.Wrapf(err, "failure saving cards"))
 	}
 	return errs.ErrorOrNil()
+}
+
+func bulkInsert(ctx context.Context, db *DB, docs interface{}) error {
+	results, err := db.BulkDocs(ctx, docs)
+	if err != nil {
+		return err
+	}
+	var errs *multierror.Error
+	for results.Next() {
+		if err := results.UpdateErr(); err != nil {
+			errs = multierror.Append(errs, errors.Wrapf(err, "failed to save doc %s", results.ID()))
+		}
+	}
+	return errs
 }

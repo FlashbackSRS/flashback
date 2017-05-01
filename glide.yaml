@@ -9,13 +9,13 @@ import:
   subpackages:
   - spew
 - package: github.com/flimzy/go-cordova
-- package: github.com/flimzy/go-pouchdb
-  subpackages:
-  - plugins/find
 - package: github.com/flimzy/goweb
   subpackages:
   - file
 - package: github.com/flimzy/jqeventrouter
+- package: github.com/flimzy/kivik
+  subpackages:
+  - driver/pouchdb
 - package: github.com/flimzy/log
 - package: github.com/gopherjs/jquery
 - package: github.com/gopherjs/jsbuiltin

@@ -1,12 +1,12 @@
 package test
 
 import (
+	"context"
 	"encoding/json"
 	"io/ioutil"
 	"testing"
 
-	"github.com/flimzy/go-pouchdb"
-	"github.com/flimzy/go-pouchdb/plugins/find"
+	"github.com/flimzy/kivik"
 	"github.com/flimzy/testify/require"
 	"github.com/gopherjs/gopherjs/js"
 
@@ -23,11 +23,11 @@ func init() {
 }
 
 func DB() *repo.DB {
-	db := pouchdb.NewWithOpts("db", pouchdb.Options{DB: memdown})
+	client, _ := kivik.New(context.TODO(), "pouch", "")
+	db, _ := client.DB(context.TODO(), "db", map[string]interface{}{"db": memdown})
 	return &repo.DB{
-		PouchDB:         db,
-		PouchPluginFind: find.New(db),
-		DBName:          "db",
+		DB:     db,
+		DBName: "db",
 	}
 }
 
@@ -46,8 +46,13 @@ func TestRepo(t *testing.T) {
 	require.Nil(err, "Error saving theme: %s", err)
 
 	var i interface{}
-	err = db.Get(th.DocID(), &i, pouchdb.Options{})
-	require.Nil(err, "Error re-fetching Theme: %s", err)
+	row, err := db.Get(context.TODO(), th.DocID())
+	if err != nil {
+		t.Fatalf("Failed to fetch theme doc: %s", err)
+	}
+	if err := row.ScanDoc(&i); err != nil {
+		t.Errorf("Failied to scan theme doc: %s", err)
+	}
 
 	e := Expected(th.DocID(), i.(map[string]interface{})["_rev"].(string))
 	require.DeepEqualJSON(e, i, "Theme")
