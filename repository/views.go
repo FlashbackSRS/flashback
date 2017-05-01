@@ -6,6 +6,8 @@ import (
 	"github.com/pkg/errors"
 )
 
+//go:generate go-bindata -pkg repo -nocompress -prefix files -o data.go files
+
 func userDBInit(db *DB) error {
 	newCardsMapFunc, err := Asset("NewCardsMap.js")
 	if err != nil {

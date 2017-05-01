@@ -32,8 +32,8 @@ cordova-init: plugins platforms
 android: cordova-init cordova-www
 	cordova run android
 
-go-test: preclean npm-install bindata
-	gopherjs test $(go list ./... | grep -v /vendor/)
+go-test: preclean npm-install
+	gopherjs test $$(go list ./... | grep -v /vendor/)
 
 test: go-test
 
@@ -69,7 +69,7 @@ www/js/cardframe.js: webclient/js/cardframe.js
 	cp $< $@
 
 .PHONY: main.js
-main.js: preclean bindata
+main.js: preclean
 	gopherjs build --tags=debug ./webclient/*.go
 # 	uglifyjs main.js -c -m -o $@
 
@@ -98,14 +98,3 @@ www: javascript css images $(HTML_FILES) $(I18N_FILES)
 
 cordova-www: www
 	cat www/index.html | sed -e 's/<!-- Cordova Here -->/<script src="cordova.js"><\/script>/' > www/cordova.html
-
-bindata: controllers/anki/data.go repository/done/data.go repository/data.go
-
-controllers/anki/data.go: $(wildcard controllers/anki/files/*)
-	go-bindata -pkg anki -nocompress -prefix "$(dir $<)" -o $@ $(dir $<)
-
-repository/done/data.go: $(wildcard repository/done/files/*)
-	go-bindata -pkg done -nocompress -prefix "$(dir $<)" -o $@ $(dir $<)
-
-repository/data.go: $(wildcard repository/files/*)
-	go-bindata -pkg repo -nocompress -prefix "$(dir $<)" -o $@ $(dir $<)

@@ -24,5 +24,5 @@ install:
     - go generate $(go list ./... | grep -v /vendor/)
 
 script:
-    - diff -u <(echo -n) <(gofmt -e -d $(find . -type f -name '*.go' -not -path "./vendor/*"))
+    - diff -u <(echo -n) <(gofmt -e -d $(find . -type f -name '*.go' -not -path "./vendor/*" -not -path "*/data.go"))
     - make test
