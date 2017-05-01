@@ -33,7 +33,7 @@ android: cordova-init cordova-www
 	cordova run android
 
 go-test: preclean npm-install bindata
-	gopherjs test `go list ./...`
+	gopherjs test $(go list ./... | grep -v /vendor/)
 
 test: go-test
 

@@ -3,25 +3,26 @@ sudo: required
 dist: trusty
 
 go:
-    - 1.8
+    - 1.8.x
 
 before_install:
+    # To install glide
+    - sudo add-apt-repository -y ppa:masterminds/glide && sudo apt-get update
     # To install the latest version of Node.js
     - curl -sL https://deb.nodesource.com/setup_6.x | sudo -E bash -
-    - sudo apt-get install nodejs
+    - sudo apt-get install nodejs glide
     # To ensure the default version of node/npm isn't used
     - rm -rf /home/travis/.nvm/v0.10.36 $HOME/.npmrc $HOME/.node-gyp
     - sudo npm install --global node-gyp
     - go get -u github.com/gopherjs/gopherjs
     # Provide syscall support for the GopherJS tests
     - ( cd $GOPATH/src/github.com/gopherjs/gopherjs/node-syscall && node-gyp rebuild && mkdir -p ~/.node_libraries/ && cp build/Release/syscall.node ~/.node_libraries/syscall.node )
+    - go get -u github.com/jteeuwen/go-bindata/...
 
 install:
-    - go get -u github.com/pmezard/go-difflib/difflib
-    - go get -u github.com/jteeuwen/go-bindata/...
-    - go get -u github.com/flimzy/testify
-    - go get -u -d -tags=js ./...
+    - glide update
+    - go generate $(go list ./... | grep -v /vendor/)
 
 script:
-    - diff -u <(echo -n) <(gofmt -d ./)
+    - diff -u <(echo -n) <(gofmt -e -d $(find . -type f -name '*.go' -not -path "./vendor/*"))
     - make test
