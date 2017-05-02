@@ -153,7 +153,7 @@ func CardPrio(due fb.Due, interval fb.Interval, now time.Time) float64 {
 // A CardListItem contains the minimal information necessary to determine
 // card ordering.
 type CardListItem struct {
-	ID          string
+	ID          string      `json:"_id"`
 	Due         fb.Due      `json:"due"`
 	Created     time.Time   `json:"created"`
 	Interval    fb.Interval `json:"interval"`
@@ -205,7 +205,8 @@ type pouchResult struct {
 func newCards(db *DB, limit, offset int) (CardList, error) {
 	log.Debugf("newCards() limit = %d, offset = %d\n", limit, offset)
 	rows, err := db.Query(context.TODO(), "cards", "NewCardsMap", map[string]interface{}{
-		"limit": int(float64(limit) * 1.5),
+		"limit":        int(float64(limit) * 1.5),
+		"include_docs": true,
 	})
 	if err != nil {
 		return nil, err
@@ -237,7 +238,8 @@ func newCards(db *DB, limit, offset int) (CardList, error) {
 func oldCards(db *DB, limit, offset int) (CardList, error) {
 	log.Debugf("oldCards() limit = %d, offset = %d\n", limit, offset)
 	rows, err := db.Query(context.TODO(), "cards", "OldCardsMap", map[string]interface{}{
-		"limit": int(float64(limit) * 1.5),
+		"limit":        int(float64(limit) * 1.5),
+		"include_docs": true,
 	})
 	if err != nil {
 		return nil, errors.Wrap(err, "oldCards query failed")
@@ -248,7 +250,7 @@ func oldCards(db *DB, limit, offset int) (CardList, error) {
 	for rows.Next() {
 		count++
 		var card CardListItem
-		if err = rows.ScanValue(&card); err != nil {
+		if err = rows.ScanDoc(&card); err != nil {
 			return nil, errors.Wrap(err, "failed to scan old card doc")
 		}
 		if card.BuriedUntil.After(fb.Now()) {
