@@ -162,25 +162,6 @@ type CardListItem struct {
 	priority    float64
 }
 
-// UnmarshalJSON fulfils json.Unmarshaler
-func (c *CardListItem) UnmarshalJSON(data []byte) error {
-	var doc struct {
-		ID    string          `json:"id"`
-		Value json.RawMessage `json:"value"`
-	}
-	if err := json.Unmarshal(data, &doc); err != nil {
-		return err
-	}
-	type alias CardListItem
-	var ca alias
-	if err := json.Unmarshal(doc.Value, &ca); err != nil {
-		return err
-	}
-	*c = CardListItem(ca)
-	c.ID = doc.ID
-	return nil
-}
-
 // CardList is a list of cards, which can be sorted
 type CardList []*CardListItem
 
@@ -236,7 +217,7 @@ func newCards(db *DB, limit, offset int) (CardList, error) {
 		count++
 		var card CardListItem
 		if err := rows.ScanDoc(&card); err != nil {
-			return nil, errors.Wrapf(err, "failed to scan doc: %s", err)
+			return nil, errors.Wrapf(err, "failed to scan new card doc: %s", err)
 		}
 		if card.BuriedUntil.After(fb.Now()) {
 			continue
@@ -267,8 +248,8 @@ func oldCards(db *DB, limit, offset int) (CardList, error) {
 	for rows.Next() {
 		count++
 		var card CardListItem
-		if err = rows.ScanDoc(&card); err != nil {
-			return nil, errors.Wrap(err, "failed to scan card")
+		if err = rows.ScanValue(&card); err != nil {
+			return nil, errors.Wrap(err, "failed to scan old card doc")
 		}
 		if card.BuriedUntil.After(fb.Now()) {
 			continue
