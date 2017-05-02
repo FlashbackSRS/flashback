@@ -145,10 +145,10 @@ func getCouchCookie(cookieHeader string) string {
 func (db *DB) Compact(ctx context.Context) error {
 	var errs error
 	if err := db.DB.Compact(ctx); err != nil {
-		errs = multierror.Append(errs, err)
+		errs = multierror.Append(errs, errors.Wrap(err, "compaction failed"))
 	}
 	if err := db.DB.ViewCleanup(ctx); err != nil {
-		errs = multierror.Append(errs, err)
+		errs = multierror.Append(errs, errors.Wrap(err, "view cleanup failed"))
 	}
 	return errs
 }
