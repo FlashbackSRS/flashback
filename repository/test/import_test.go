@@ -85,6 +85,8 @@ func testImport(t *testing.T) {
 func TestImport(t *testing.T) {
 	require := require.New(t)
 
+	testImport(t)
+
 	user := &repo.User{User: testUser}
 	udb, err := user.DB()
 	require.Nil(err, "Error connecting to User DB: %s", err)
@@ -94,14 +96,11 @@ func TestImport(t *testing.T) {
 		t.Fatalf("AllDocs failed for userdb: %s", err)
 	}
 	var uids []string
-	var doc struct {
-		ID string `json:"id"`
-	}
 	for rows.Next() {
-		if rowsErr := rows.ScanDoc(&doc); err != nil {
-			t.Errorf("Failed to scan doc: %s", rowsErr)
-		}
-		uids = append(uids, doc.ID)
+		uids = append(uids, rows.ID())
+	}
+	if err = rows.Err(); err != nil {
+		t.Fatalf("Userdb AllDocs iteration failed: %s", err)
 	}
 
 	require.DeepEqual(expectedUserDBIDs, uids, "User DB IDs")
@@ -115,10 +114,10 @@ func TestImport(t *testing.T) {
 	}
 	var bids []string
 	for rows.Next() {
-		if rowsErr := rows.ScanDoc(&doc); err != nil {
-			t.Errorf("failed to scan bundle doc: %s", rowsErr)
-		}
-		bids = append(bids, doc.ID)
+		bids = append(bids, rows.ID())
+	}
+	if err = rows.Err(); err != nil {
+		t.Fatalf("Bundle AllDocs iteration failed: %s", err)
 	}
 	require.DeepEqual(expectedBundleDBIDs, bids, "Bundle DB IDs")
 }
