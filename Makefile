@@ -53,7 +53,7 @@ javascript: www/js/flashback.js www/js/worker.sql.js www/js/cardframe.js
 www/js/flashback.js: package.json webclient/main.js main.js npm-install
 	mkdir -p www/js
 #	browserify js/main.js > $@ || ( stats=$?; rm -f $@; exit $? )
-	browserify --debug . -o pre-bundle.js
+	browserify --exclude pouchdb-all-dbs --exclude xhr2 --debug . -o pre-bundle.js
 	cat pre-bundle.js | exorcist bundle.js.map > bundle.js
 	cp pre-bundle.js $@
 # 	uglifyjs bundle.js -c -m -o $@ \
