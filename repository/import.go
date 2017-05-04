@@ -101,7 +101,7 @@ func Import(user *User, r io.Reader) error {
 }
 
 func bulkInsert(ctx context.Context, db *DB, docs ...interface{}) error {
-	results, err := db.BulkDocs(ctx, docs...)
+	results, err := db.BulkDocs(ctx, docs)
 	if err != nil {
 		return err
 	}

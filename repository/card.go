@@ -628,7 +628,7 @@ func (c *PouchCard) BuryRelated() error {
 		for i, card := range cards {
 			cardsi[i] = card
 		}
-		results, err := db.BulkDocs(context.TODO(), cardsi...)
+		results, err := db.BulkDocs(context.TODO(), cardsi)
 		if err != nil {
 			return errors.Wrap(err, "failed to update buried docs")
 		}
