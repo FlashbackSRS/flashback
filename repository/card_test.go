@@ -40,7 +40,6 @@ var testDoc1 = `<!DOCTYPE html>
 <title>FB Card</title>
 <base href="https://flashback.ddns.net:4001/">
 <meta charset="UTF-8">
-<meta http-equiv="Content-Security-Policy" content="script-src 'unsafe-inline' https://flashback.ddns.net:4001/">
 <script type="text/javascript">
 'use strict';
 var FB = {
@@ -82,7 +81,6 @@ var expected1 = `<!DOCTYPE html><html><head>
 <title>FB Card</title>
 <base href="https://flashback.ddns.net:4001/"/>
 <meta charset="UTF-8"/>
-<meta http-equiv="Content-Security-Policy" content="script-src &#39;unsafe-inline&#39; https://flashback.ddns.net:4001/"/>
 <script type="text/javascript">
 'use strict';
 var FB = {
