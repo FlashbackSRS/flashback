@@ -1,11 +1,11 @@
 package repo
 
 import (
+	"context"
 	"fmt"
 	"testing"
 
-	pouchdb "github.com/flimzy/go-pouchdb"
-	"github.com/flimzy/go-pouchdb/plugins/find"
+	"github.com/flimzy/kivik"
 	"github.com/pborman/uuid"
 
 	"github.com/FlashbackSRS/flashback-model"
@@ -19,18 +19,20 @@ func BenchmarkSaveCard(b *testing.B) {
 		panic(err)
 	}
 	user := &User{u}
+	client, _ := kivik.New(context.TODO(), "pouch", "")
+	if err = client.DestroyDB(context.TODO(), u.ID.String()); err != nil {
+		panic(err)
+	}
 	db, err := user.DB()
 	if err != nil {
 		panic(err)
 	}
-	db.Destroy(pouchdb.Options{})
-	db, err = user.DB()
+	err = db.CreateIndex(context.TODO(), "", "", map[string]interface{}{
+		"fields": []string{"due", "created", "type"},
+	})
 	if err != nil {
 		panic(err)
 	}
-	_ = db.CreateIndex(find.Index{
-		Fields: []string{"due", "created", "type"},
-	})
 	cards := make([]*fb.Card, b.N)
 	for i := 0; i < b.N; i++ {
 		id := fmt.Sprintf("card-bundle.%x.0", i)

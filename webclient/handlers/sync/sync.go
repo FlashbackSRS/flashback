@@ -3,11 +3,12 @@
 package synchandler
 
 import (
+	"context"
 	"net/url"
 	"sync/atomic"
 
-	"github.com/flimzy/go-pouchdb"
 	"github.com/flimzy/jqeventrouter"
+	"github.com/flimzy/kivik"
 	"github.com/flimzy/log"
 	"github.com/gopherjs/gopherjs/js"
 	"github.com/gopherjs/jquery"
@@ -115,7 +116,7 @@ func DoSync() error {
 
 	log.Debugf("Synced %d docs from server, %d to server, and %d review logs\n", docsRead, docsWritten, reviewsWritten)
 	log.Debugf("Compacting...\n")
-	if err := ldb.Compact(); err != nil {
+	if err := ldb.Compact(context.TODO()); err != nil {
 		return errors.Errorf("Error compacting database: %s\n", err)
 	}
 	log.Debugf("Compacting complete\n")
@@ -124,11 +125,20 @@ func DoSync() error {
 
 // Sync synchronizes local changes with the server
 func Sync(source, target *repo.DB) (int32, error) {
-	result, err := pouchdb.Replicate(source.PouchDB, target.PouchDB, pouchdb.Options{})
+	client, _ := kivik.New(context.TODO(), "pouch", "")
+	rep, err := client.Replicate(context.TODO(), "", "", map[string]interface{}{
+		"source": source.DB,
+		"target": target.DB,
+	})
 	if err != nil {
 		return 0, err
 	}
-	return int32(result["docs_written"].(float64)), nil
+	// Just wait until the replication is complete
+	// TODO: Visual updates
+	for rep.IsActive() {
+		rep.Update(context.TODO())
+	}
+	return int32(rep.DocsWritten()), rep.Err()
 }
 
 type bundleResult struct {
@@ -138,17 +148,25 @@ type bundleResult struct {
 // BundleSync syncs auxilary bundles to the remote server.
 func BundleSync(udb *repo.DB) (int32, int32, error) {
 	log.Debugf("Reading bundles from user database...\n")
-	var bundles []bundleResult
-	err := udb.Find(map[string]interface{}{
+	rows, err := udb.Find(context.TODO(), map[string]interface{}{
 		"selector": map[string]string{"type": "bundle"},
 		"fields":   []string{"_id"},
-	}, &bundles)
+	})
 	if err != nil {
-		if pouchdb.IsWarning(err) {
-			log.Println(err.Error())
-		} else {
-			return 0, 0, errors.Wrap(err, "BundleSync failed")
+		// FIXME: I'm going to need to find a way to solve this
+		// if pouchdb.IsWarning(err) {
+		// 	log.Println(err.Error())
+		// } else {
+		return 0, 0, errors.Wrap(err, "BundleSync failed")
+		// }
+	}
+	var bundles []bundleResult
+	for rows.Next() {
+		var bundle bundleResult
+		if err := rows.ScanDoc(&bundle); err != nil {
+			return 0, 0, errors.Wrapf(err, "failed to scan bundle %s", rows.ID())
 		}
+		bundles = append(bundles, bundle)
 	}
 	log.Debugf("bundles = %v\n", bundles)
 	var written, read int32

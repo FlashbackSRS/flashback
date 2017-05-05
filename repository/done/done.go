@@ -38,6 +38,8 @@ func (c *Card) Action(_ *int, _ time.Time, _ *js.Object) (done bool, err error) 
 	return true, nil
 }
 
+//go:generate go-bindata -pkg done -nocompress -prefix files -o data.go files
+
 // Body returns the Done card body.
 func (c *Card) Body(_ int) (string, error) {
 	body, err := Asset("done.html")

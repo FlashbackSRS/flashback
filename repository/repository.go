@@ -1,6 +1,7 @@
 package repo
 
 import (
+	"context"
 	"encoding/base64"
 	"fmt"
 	"net/url"
@@ -8,8 +9,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/flimzy/go-pouchdb"
-	"github.com/flimzy/go-pouchdb/plugins/find"
+	"github.com/flimzy/kivik"
+	_ "github.com/flimzy/kivik/driver/pouchdb" // PouchDB driver
 	"github.com/gopherjs/gopherjs/js"
 	multierror "github.com/hashicorp/go-multierror"
 	"github.com/pborman/uuid"
@@ -19,9 +20,9 @@ import (
 	"github.com/FlashbackSRS/flashback/util"
 )
 
-// PouchDBOptions is passed to pouchdb.New(), and exists for the sake of automated
+// PouchDBOptions is passed to Open(), and exists for the sake of automated
 // tests. It should generally be ignored otherwise.
-var PouchDBOptions pouchdb.Options
+var PouchDBOptions kivik.Options
 
 var couchHost string
 
@@ -29,11 +30,9 @@ func init() {
 	couchHost = util.FindLink("flashbackdb")
 }
 
-// DB provides a simple wrapper around a pouchdb.DB object, complete with
-// the pouchdb-find plugin
+// DB provides a simple wrapper around a DB object.
 type DB struct {
-	*pouchdb.PouchDB
-	*find.PouchPluginFind
+	*kivik.DB
 	User   *User
 	DBName string
 }
@@ -56,12 +55,18 @@ func (u *User) NewRemoteDB(name string) (*DB, error) {
 }
 
 func (u *User) newDB(name string) *DB {
-	pdb := pouchdb.NewWithOpts(name, PouchDBOptions)
+	client, err := kivik.New(context.TODO(), "pouch", "")
+	if err != nil {
+		panic(err)
+	}
+	db, err := client.DB(context.TODO(), name, PouchDBOptions)
+	if err != nil {
+		panic(err)
+	}
 	return &DB{
-		PouchDB:         pdb,
-		PouchPluginFind: find.New(pdb),
-		DBName:          name,
-		User:            u,
+		DB:     db,
+		DBName: name,
+		User:   u,
 	}
 }
 
@@ -137,13 +142,13 @@ func getCouchCookie(cookieHeader string) string {
 }
 
 // Compact compacts the requested DB
-func (db *DB) Compact() error {
+func (db *DB) Compact(ctx context.Context) error {
 	var errs error
-	if err := db.PouchDB.Compact(pouchdb.Options{}); err != nil {
-		errs = multierror.Append(errs, err)
+	if err := db.DB.Compact(ctx); err != nil {
+		errs = multierror.Append(errs, errors.Wrap(err, "compaction failed"))
 	}
-	if err := db.PouchDB.ViewCleanup(); err != nil {
-		errs = multierror.Append(errs, err)
+	if err := db.DB.ViewCleanup(ctx); err != nil {
+		errs = multierror.Append(errs, errors.Wrap(err, "view cleanup failed"))
 	}
 	return errs
 }
@@ -163,13 +168,17 @@ type FlashbackDoc interface {
 func (db *DB) Save(doc FlashbackDoc) error {
 	var rev string
 	var err error
-	if rev, err = db.Put(doc); err != nil {
-		if !pouchdb.IsConflict(err) {
+	if rev, err = db.Put(context.TODO(), doc.DocID(), doc); err != nil {
+		if kivik.StatusCode(err) != kivik.StatusConflict {
 			return err
 		}
 		existing := reflect.New(reflect.TypeOf(doc).Elem()).Interface().(FlashbackDoc)
-		if e := db.Get(doc.DocID(), &existing, pouchdb.Options{}); e != nil {
-			return errors.Wrap(e, "failed to fetch existing document")
+		row, err := db.Get(context.TODO(), doc.DocID())
+		if err != nil {
+			return errors.Wrap(err, "failed to fetch existing document")
+		}
+		if err = row.ScanDoc(&existing); err != nil {
+			return errors.Wrap(err, "failed to parse existing document")
 		}
 		if doc.ImportedTime() == nil {
 			// Don't attempt to merge a non-import
@@ -188,7 +197,7 @@ func (db *DB) Save(doc FlashbackDoc) error {
 			return errors.Wrap(err, "failed to merge into existing document")
 		}
 		if changed {
-			if rev, err = db.Put(doc); err != nil {
+			if rev, err = db.Put(context.TODO(), doc.DocID(), doc); err != nil {
 				return errors.Wrap(err, "failed to store updated document")
 			}
 		}

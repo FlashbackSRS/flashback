@@ -1,10 +1,10 @@
 package repo
 
 import (
+	"context"
 	"encoding/json"
 	"io"
 
-	pouchdb "github.com/flimzy/go-pouchdb"
 	"github.com/flimzy/log"
 	"github.com/hashicorp/go-multierror"
 	"github.com/pkg/errors"
@@ -60,26 +60,56 @@ func Import(user *User, r io.Reader) error {
 
 	// Themes
 	log.Debugln("Saving themes")
-	if _, err := bdb.BulkDocs(pkg.Themes, pouchdb.Options{}); err != nil {
-		errs = multierror.Append(errs, errors.Wrapf(err, "failure saving themes"))
+	themes := make([]interface{}, len(pkg.Themes))
+	for i, theme := range pkg.Themes {
+		themes[i] = theme
+	}
+	if themeErr := bulkInsert(context.TODO(), bdb, themes...); themeErr != nil {
+		errs = multierror.Append(errs, errors.Wrapf(themeErr, "failure saving themes"))
 	}
 
 	// Notes
 	log.Debugln("Saving notes")
-	if _, err := bdb.BulkDocs(pkg.Notes, pouchdb.Options{}); err != nil {
-		errs = multierror.Append(errs, errors.Wrapf(err, "failure saving notes"))
+	notes := make([]interface{}, len(pkg.Notes))
+	for i, note := range pkg.Notes {
+		notes[i] = note
+	}
+	if noteErr := bulkInsert(context.TODO(), bdb, notes...); noteErr != nil {
+		errs = multierror.Append(errs, errors.Wrapf(noteErr, "failure saving notes"))
 	}
 
 	// Decks
 	log.Debugln("Saving decks")
-	if _, err := bdb.BulkDocs(pkg.Decks, pouchdb.Options{}); err != nil {
-		errs = multierror.Append(errs, errors.Wrapf(err, "failure saving decks"))
+	decks := make([]interface{}, len(pkg.Decks))
+	for i, deck := range pkg.Decks {
+		decks[i] = deck
+	}
+	if deckErr := bulkInsert(context.TODO(), bdb, decks...); deckErr != nil {
+		errs = multierror.Append(errs, errors.Wrapf(deckErr, "failure saving decks"))
 	}
 
 	// Cards
 	log.Debugln("Saving cards")
-	if _, err := udb.BulkDocs(cards, pouchdb.Options{}); err != nil {
-		errs = multierror.Append(errs, errors.Wrapf(err, "failure saving cards"))
+	cardsi := make([]interface{}, len(cards))
+	for i, card := range cards {
+		cardsi[i] = card
+	}
+	if cardErr := bulkInsert(context.TODO(), udb, cardsi...); cardErr != nil {
+		errs = multierror.Append(errs, errors.Wrapf(cardErr, "failure saving cards"))
+	}
+	return errs.ErrorOrNil()
+}
+
+func bulkInsert(ctx context.Context, db *DB, docs ...interface{}) error {
+	results, err := db.BulkDocs(ctx, docs)
+	if err != nil {
+		return err
+	}
+	var errs *multierror.Error
+	for results.Next() {
+		if err := results.UpdateErr(); err != nil {
+			errs = multierror.Append(errs, errors.Wrapf(err, "failed to save doc %s", results.ID()))
+		}
 	}
 	return errs.ErrorOrNil()
 }

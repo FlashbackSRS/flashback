@@ -50,6 +50,8 @@ func (m *AnkiCloze) Type() string {
 	return "anki-cloze"
 }
 
+//go:generate go-bindata -pkg anki -nocompress -prefix files -o data.go files
+
 // IframeScript returns JavaScript to run inside the iframe.
 func (m *AnkiBasic) IframeScript() []byte {
 	data, err := Asset("script.js")

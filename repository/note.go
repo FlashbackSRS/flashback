@@ -1,9 +1,9 @@
 package repo
 
 import (
+	"context"
 	"encoding/json"
 
-	pouchdb "github.com/flimzy/go-pouchdb"
 	"github.com/flimzy/log"
 	"github.com/pkg/errors"
 
@@ -55,8 +55,12 @@ func (n *Note) fetchTheme() error {
 	}
 	log.Debugf("Fetching theme %s", n.ThemeID)
 	t := &fb.Theme{}
-	if err := n.db.Get(n.ThemeID, t, pouchdb.Options{Attachments: true}); err != nil {
+	row, err := n.db.Get(context.TODO(), n.ThemeID, map[string]interface{}{"attachments": true})
+	if err != nil {
 		return errors.Wrapf(err, "fetchTheme() can't fetch %s", n.ThemeID)
+	}
+	if err = row.ScanDoc(&t); err != nil {
+		return errors.Wrapf(err, "failed to scan theme %s", n.ThemeID)
 	}
 	m := t.Models[n.ModelID]
 	n.theme = &Theme{t}

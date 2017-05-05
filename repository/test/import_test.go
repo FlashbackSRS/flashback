@@ -1,13 +1,12 @@
 package test
 
 import (
+	"context"
 	"os"
 	"sync"
 	"testing"
 
 	"github.com/flimzy/testify/require"
-
-	"github.com/flimzy/go-pouchdb"
 	"github.com/gopherjs/gopherjs/js"
 
 	"github.com/FlashbackSRS/flashback/repository"
@@ -15,8 +14,8 @@ import (
 
 func init() {
 	memdown := js.Global.Call("require", "memdown")
-	repo.PouchDBOptions = pouchdb.Options{
-		DB: memdown,
+	repo.PouchDBOptions = map[string]interface{}{
+		"db": memdown,
 	}
 }
 
@@ -86,33 +85,39 @@ func testImport(t *testing.T) {
 func TestImport(t *testing.T) {
 	require := require.New(t)
 
+	testImport(t)
+
 	user := &repo.User{User: testUser}
 	udb, err := user.DB()
 	require.Nil(err, "Error connecting to User DB: %s", err)
 
-	var allUserDocs, allBundleDocs map[string]interface{}
-	err = udb.AllDocs(&allUserDocs, pouchdb.Options{})
-	require.Nil(err, "Error fetching AllDocs(): %s", err)
-
-	// Remove the revs, because they're random
-	urows := allUserDocs["rows"].([]interface{})
-	uids := make([]string, len(urows))
-	for i, row := range urows {
-		uids[i] = row.(map[string]interface{})["id"].(string)
+	rows, err := udb.AllDocs(context.TODO())
+	if err != nil {
+		t.Fatalf("AllDocs failed for userdb: %s", err)
 	}
+	var uids []string
+	for rows.Next() {
+		uids = append(uids, rows.ID())
+	}
+	if err = rows.Err(); err != nil {
+		t.Fatalf("Userdb AllDocs iteration failed: %s", err)
+	}
+
 	require.DeepEqual(expectedUserDBIDs, uids, "User DB IDs")
 
 	bdb, err := user.NewDB(bundleID)
 	require.Nil(err, "Error connecting to Bundle DB: %s", err)
 
-	if err := bdb.AllDocs(&allBundleDocs, pouchdb.Options{}); err != nil {
-		t.Fatalf("Error fetching AllDocs(): %s", err)
+	rows, err = bdb.AllDocs(context.TODO())
+	if err != nil {
+		t.Fatalf("AllDocs failed for bundle: %s", err)
 	}
-	// Remove the revs, because they're random
-	brows := allBundleDocs["rows"].([]interface{})
-	bids := make([]string, len(brows))
-	for i, row := range brows {
-		bids[i] = row.(map[string]interface{})["id"].(string)
+	var bids []string
+	for rows.Next() {
+		bids = append(bids, rows.ID())
+	}
+	if err = rows.Err(); err != nil {
+		t.Fatalf("Bundle AllDocs iteration failed: %s", err)
 	}
 	require.DeepEqual(expectedBundleDBIDs, bids, "Bundle DB IDs")
 }

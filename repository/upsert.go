@@ -1,23 +1,27 @@
 package repo
 
 import (
+	"context"
 	"reflect"
 
-	pouchdb "github.com/flimzy/go-pouchdb"
+	"github.com/flimzy/kivik"
 )
 
 // Upsert creates or replaces the target document
-func Upsert(db *DB, doc map[string]interface{}, opts pouchdb.Options) (bool, error) {
-	_, err := db.Put(doc)
+func Upsert(ctx context.Context, db *DB, doc, opts map[string]interface{}) (bool, error) {
+	_, err := db.Put(ctx, doc["_id"].(string), doc)
 	if err == nil {
 		return true, nil
 	}
-	if !pouchdb.IsConflict(err) {
+	if kivik.StatusCode(err) != kivik.StatusConflict {
 		return false, err
 	}
 	var existing map[string]interface{}
-	err = db.Get(doc["_id"].(string), &existing, opts)
+	row, err := db.Get(ctx, doc["_id"].(string), opts)
 	if err != nil {
+		return false, err
+	}
+	if err = row.ScanDoc(&existing); err != nil {
 		return false, err
 	}
 	doc["_rev"] = existing["_rev"]
@@ -25,6 +29,6 @@ func Upsert(db *DB, doc map[string]interface{}, opts pouchdb.Options) (bool, err
 		// No update needed
 		return false, nil
 	}
-	_, err = db.Put(doc)
+	_, err = db.Put(ctx, doc["_id"].(string), doc)
 	return true, err
 }
