@@ -64,7 +64,6 @@ var expectedQuestion0 = `<!DOCTYPE html><html><head>
 	<title>FB Card</title>
 	<base href=""/>
 	<meta charset="UTF-8"/>
-	<meta http-equiv="Content-Security-Policy" content="script-src &#39;unsafe-inline&#39; "/>
 	<link rel="stylesheet" type="text/css" href="css/cardframe.css"/>
 <script type="text/javascript">
 'use strict';
@@ -97,7 +96,6 @@ var expectedAnswer0 = `<!DOCTYPE html><html><head>
 	<title>FB Card</title>
 	<base href=""/>
 	<meta charset="UTF-8"/>
-	<meta http-equiv="Content-Security-Policy" content="script-src &#39;unsafe-inline&#39; "/>
 	<link rel="stylesheet" type="text/css" href="css/cardframe.css"/>
 <script type="text/javascript">
 'use strict';
@@ -134,7 +132,6 @@ var expectedQuestion1 = `<!DOCTYPE html><html><head>
 	<title>FB Card</title>
 	<base href=""/>
 	<meta charset="UTF-8"/>
-	<meta http-equiv="Content-Security-Policy" content="script-src &#39;unsafe-inline&#39; "/>
 	<link rel="stylesheet" type="text/css" href="css/cardframe.css"/>
 <script type="text/javascript">
 'use strict';
@@ -167,7 +164,6 @@ var expectedAnswer1 = `<!DOCTYPE html><html><head>
 	<title>FB Card</title>
 	<base href=""/>
 	<meta charset="UTF-8"/>
-	<meta http-equiv="Content-Security-Policy" content="script-src &#39;unsafe-inline&#39; "/>
 	<link rel="stylesheet" type="text/css" href="css/cardframe.css"/>
 <script type="text/javascript">
 'use strict';

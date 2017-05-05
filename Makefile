@@ -7,10 +7,6 @@ I18N_FILES = $(wildcard translations/*.all.json)
 
 COUCH_SERVER = $(shell echo $$FLASHBACK_COUCH_URL | sed -e 's|//.*@|//|')
 
-# I know this is an ugly hack, but it works on my dev machine. If ever
-# anyone else is using this, we can find a better solution
-#FLASHBACK_API_BASEURI = https://$(shell ip -f inet addr show wlan0 | tr -s ' ' | egrep '^\s*inet' | cut -d' ' -f3 | cut -d'/' -f1):4002/
-
 server: www
 	go run ./server/*
 
@@ -93,6 +89,7 @@ www: javascript css images $(HTML_FILES) $(I18N_FILES)
 	mkdir -p www/translations
 	cp $(HTML_FILES) www
 	cp $(I18N_FILES) www/translations
+	sed -i -e 's|__STATIC_SERVER__|$(FLASHBACK_STATIC_URI)|g' www/index.html
 	sed -i -e 's|__API_SERVER__|$(FLASHBACK_API_BASEURI)|g' www/index.html
 	sed -i -e 's|__COUCH_SERVER__|$(COUCH_SERVER)|g' www/index.html
 
