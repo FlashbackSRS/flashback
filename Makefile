@@ -5,7 +5,7 @@ SVG_FILES = $(shell find webclient/images/ -type f -name '*.svg')
 WEBP_FILES = $(shell find webclient/images/ -type f -name '*.webp')
 I18N_FILES = $(wildcard translations/*.all.json)
 
-COUCH_SERVER = $(shell echo $$FLASHBACK_COUCH_URL | sed -e 's|//.*@|//|')
+COUCH_SERVER = $(shell echo $$FLASHBACK_SERVERx | sed -e 's|//.*@|//|')
 
 server: www
 	go run ./server/*
@@ -28,7 +28,7 @@ cordova-init: plugins platforms
 android: cordova-init cordova-www
 	cordova run android
 
-go-test: preclean npm-install
+go-test: preclean npm-install generate
 	gopherjs test $$(go list ./... | grep -v /vendor/)
 
 test: go-test
@@ -65,7 +65,7 @@ www/js/cardframe.js: webclient/js/cardframe.js
 	cp $< $@
 
 .PHONY: main.js
-main.js: preclean
+main.js: preclean generate
 	gopherjs build --tags=debug ./webclient/*.go
 # 	uglifyjs main.js -c -m -o $@
 
@@ -89,9 +89,10 @@ www: javascript css images $(HTML_FILES) $(I18N_FILES)
 	mkdir -p www/translations
 	cp $(HTML_FILES) www
 	cp $(I18N_FILES) www/translations
-	sed -i -e 's|__STATIC_SERVER__|$(FLASHBACK_STATIC_URI)|g' www/index.html
-	sed -i -e 's|__API_SERVER__|$(FLASHBACK_API_BASEURI)|g' www/index.html
-	sed -i -e 's|__COUCH_SERVER__|$(COUCH_SERVER)|g' www/index.html
+	sed -i -e 's|__API_SERVER__|$(FLASHBACK_SERVER)|g' www/index.html
 
 cordova-www: www
 	cat www/index.html | sed -e 's/<!-- Cordova Here -->/<script src="cordova.js"><\/script>/' > www/cordova.html
+
+generate:
+	go generate ./...

@@ -32,6 +32,9 @@ var jQuery = jquery.NewJQuery
 var jQMobile *js.Object
 var document *js.Object = js.Global.Get("document")
 
+// TODO: This should be configured by the server
+const appPrefix = "app"
+
 func main() {
 	RouterInit()
 
@@ -45,6 +48,7 @@ func main() {
 
 	// Wait for the above modules to initialize before we initialize jQuery Mobile
 	wg.Wait()
+
 	// This is what actually loads jQuery Mobile. We have to register our 'mobileinit'
 	// event handler above first, though.
 	js.Global.Call("loadjqueryMobile")
@@ -96,10 +100,10 @@ func RouterInit() {
 	// beforetransition
 	beforeTransition := jqeventrouter.NewEventMux()
 	beforeTransition.SetUriFunc(getJqmUri)
-	beforeTransition.HandleFunc("/login.html", loginhandler.BeforeTransition())
-	beforeTransition.HandleFunc("/logout.html", logouthandler.BeforeTransition())
-	beforeTransition.HandleFunc("/import.html", importhandler.BeforeTransition())
-	beforeTransition.HandleFunc("/study.html", studyhandler.BeforeTransition())
+	beforeTransition.HandleFunc(appPrefix+"/login.html", loginhandler.BeforeTransition())
+	beforeTransition.HandleFunc(appPrefix+"/logout.html", logouthandler.BeforeTransition())
+	beforeTransition.HandleFunc(appPrefix+"/import.html", importhandler.BeforeTransition())
+	beforeTransition.HandleFunc(appPrefix+"/study.html", studyhandler.BeforeTransition())
 	jqeventrouter.Listen("pagecontainerbeforetransition", beforeTransition)
 
 	// beforeshow

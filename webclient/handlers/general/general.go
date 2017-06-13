@@ -4,11 +4,12 @@ import (
 	"net/url"
 	"strings"
 
-	"github.com/FlashbackSRS/flashback/util"
 	"github.com/flimzy/jqeventrouter"
 	"github.com/flimzy/log"
 	"github.com/gopherjs/gopherjs/js"
 	"github.com/gopherjs/jquery"
+
+	"github.com/FlashbackSRS/flashback/util"
 )
 
 // CleanFacebookURI cleans up the URL aftr a redirect from a Facebook login
