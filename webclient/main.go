@@ -3,6 +3,7 @@
 package main
 
 import (
+	"net/url"
 	"strconv"
 	"sync"
 
@@ -12,6 +13,7 @@ import (
 	"github.com/gopherjs/gopherjs/js"
 	"github.com/gopherjs/jquery"
 
+	"github.com/FlashbackSRS/flashback/config"
 	_ "github.com/FlashbackSRS/flashback/fserve" // Load the file server for card assets
 	"github.com/FlashbackSRS/flashback/iframes"
 	"github.com/FlashbackSRS/flashback/util"
@@ -31,9 +33,6 @@ import (
 var jQuery = jquery.NewJQuery
 var jQMobile *js.Object
 var document *js.Object = js.Global.Get("document")
-
-// TODO: This should be configured by the server
-const appPrefix = "app"
 
 func main() {
 	RouterInit()
@@ -88,6 +87,16 @@ func resizeContent() {
 }
 
 func RouterInit() {
+	confJSON := document.Call("getElementById", "config").Get("innerText").String()
+	conf, err := config.NewFromJSON([]byte(confJSON))
+	if err != nil {
+		panic(err)
+	}
+	appURL, err := url.Parse(conf.GetString("flashback_app"))
+	if err != nil {
+		panic(err)
+	}
+	prefix := appURL.Path
 	// mobileinit
 	jQuery(document).On("mobileinit", func() {
 		MobileInit()
@@ -101,10 +110,10 @@ func RouterInit() {
 	// beforetransition
 	beforeTransition := jqeventrouter.NewEventMux()
 	beforeTransition.SetUriFunc(getJqmUri)
-	beforeTransition.HandleFunc(appPrefix+"/login.html", loginhandler.BeforeTransition())
-	beforeTransition.HandleFunc(appPrefix+"/logout.html", logouthandler.BeforeTransition())
-	beforeTransition.HandleFunc(appPrefix+"/import.html", importhandler.BeforeTransition())
-	beforeTransition.HandleFunc(appPrefix+"/study.html", studyhandler.BeforeTransition())
+	beforeTransition.HandleFunc(prefix+"/login.html", loginhandler.BeforeTransition(conf))
+	beforeTransition.HandleFunc(prefix+"/logout.html", logouthandler.BeforeTransition())
+	beforeTransition.HandleFunc(prefix+"/import.html", importhandler.BeforeTransition())
+	beforeTransition.HandleFunc(prefix+"/study.html", studyhandler.BeforeTransition())
 	jqeventrouter.Listen("pagecontainerbeforetransition", beforeTransition)
 
 	// beforeshow
