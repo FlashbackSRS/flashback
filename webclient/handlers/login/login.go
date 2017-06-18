@@ -30,28 +30,28 @@ func facebookURL(conf *config.Conf) string {
 }
 
 // BeforeTransition prepares the logout page before display.
-func BeforeTransition() jqeventrouter.HandlerFunc {
+func BeforeTransition(conf *config.Conf) jqeventrouter.HandlerFunc {
+	providers := map[string]string{
+		"facebook": facebookURL(conf),
+	}
+
 	return func(_ *jquery.Event, _ *js.Object, _ url.Values) bool {
 		console.Log("login BEFORE")
-		api := flashback.New()
 
-		go func() {
-			providers := api.GetLoginProviders()
-			container := jQuery(":mobile-pagecontainer")
-			for rel, href := range providers {
-				li := jQuery("li."+rel, container)
-				li.Show()
-				a := jQuery("a", li)
-				if cordova.IsMobile() {
-					console.Log("Setting on click event")
-					a.On("click", CordovaLogin)
-				} else {
-					a.SetAttr("href", href+"?return="+jsbuiltin.EncodeURIComponent(js.Global.Get("location").Get("href").String()))
-				}
+		container := jQuery(":mobile-pagecontainer")
+		for rel, href := range providers {
+			li := jQuery("li."+rel, container)
+			li.Show()
+			a := jQuery("a", li)
+			if cordova.IsMobile() {
+				console.Log("Setting on click event")
+				a.On("click", CordovaLogin)
+			} else {
+				a.SetAttr("href", href+"?return="+jsbuiltin.EncodeURIComponent(js.Global.Get("location").Get("href").String()))
 			}
-			jQuery(".show-until-load", container).Hide()
-			jQuery(".hide-until-load", container).Show()
-		}()
+		}
+		jQuery(".show-until-load", container).Hide()
+		jQuery(".hide-until-load", container).Show()
 
 		return true
 	}
