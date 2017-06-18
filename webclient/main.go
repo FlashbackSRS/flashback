@@ -50,7 +50,7 @@ func main() {
 	wg.Wait()
 
 	// This is what actually loads jQuery Mobile. We have to register our 'mobileinit'
-	// event handler above first, though.
+	// event handler above first, though, as part of RouterInit
 	js.Global.Call("loadjqueryMobile")
 }
 
@@ -67,6 +67,7 @@ func initCordova(wg *sync.WaitGroup) {
 	}
 	wg.Add(1)
 	document.Call("addEventListener", "deviceready", func() {
+		// TODO: Don't defer; and perhaps even pass wg.Done directly to the Call method?
 		defer wg.Done()
 	}, false)
 }
@@ -130,7 +131,7 @@ func MobileInit() {
 		// This should only be executed once, to initialize our "external"
 		// panel. This is the kind of thing that should go in document.ready,
 		// but I don't have any guarantee that document.ready will run after
-		// mobileinit
+		// mobileinit.
 		jQuery("body>[data-role='panel']").Underlying().Call("panel").Call("enhanceWithin")
 	})
 }
