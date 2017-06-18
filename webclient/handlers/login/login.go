@@ -6,6 +6,7 @@ import (
 	"net/url"
 
 	"github.com/flimzy/go-cordova"
+	"github.com/flimzy/jqeventrouter"
 	"github.com/flimzy/log"
 	"github.com/gopherjs/gopherjs/js"
 	"github.com/gopherjs/jquery"
@@ -18,29 +19,32 @@ import (
 
 var jQuery = jquery.NewJQuery
 
-func BeforeTransition(event *jquery.Event, ui *js.Object, p url.Values) bool {
-	console.Log("login BEFORE")
-	api := flashback.New()
+// BeforeTransition prepares the logout page before display.
+func BeforeTransition() jqeventrouter.HandlerFunc {
+	return func(_ *jquery.Event, _ *js.Object, _ url.Values) bool {
+		console.Log("login BEFORE")
+		api := flashback.New()
 
-	go func() {
-		providers := api.GetLoginProviders()
-		container := jQuery(":mobile-pagecontainer")
-		for rel, href := range providers {
-			li := jQuery("li."+rel, container)
-			li.Show()
-			a := jQuery("a", li)
-			if cordova.IsMobile() {
-				console.Log("Setting on click event")
-				a.On("click", CordovaLogin)
-			} else {
-				a.SetAttr("href", href+"?return="+jsbuiltin.EncodeURIComponent(js.Global.Get("location").Get("href").String()))
+		go func() {
+			providers := api.GetLoginProviders()
+			container := jQuery(":mobile-pagecontainer")
+			for rel, href := range providers {
+				li := jQuery("li."+rel, container)
+				li.Show()
+				a := jQuery("a", li)
+				if cordova.IsMobile() {
+					console.Log("Setting on click event")
+					a.On("click", CordovaLogin)
+				} else {
+					a.SetAttr("href", href+"?return="+jsbuiltin.EncodeURIComponent(js.Global.Get("location").Get("href").String()))
+				}
 			}
-		}
-		jQuery(".show-until-load", container).Hide()
-		jQuery(".hide-until-load", container).Show()
-	}()
+			jQuery(".show-until-load", container).Hide()
+			jQuery(".hide-until-load", container).Show()
+		}()
 
-	return true
+		return true
+	}
 }
 
 func CordovaLogin() bool {

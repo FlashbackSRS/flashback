@@ -6,6 +6,7 @@ import (
 	"net/url"
 	"time"
 
+	"github.com/flimzy/jqeventrouter"
 	"github.com/flimzy/log"
 	"github.com/gopherjs/gopherjs/js"
 	"github.com/gopherjs/jquery"
@@ -27,19 +28,21 @@ type cardState struct {
 var currentCard *cardState
 
 // BeforeTransition prepares the page to study
-func BeforeTransition(event *jquery.Event, ui *js.Object, _ url.Values) bool {
-	u, err := repo.CurrentUser()
-	if err != nil {
-		log.Printf("No user logged in: %s\n", err)
-		return false
-	}
-	go func() {
-		if err := ShowCard(u); err != nil {
-			log.Printf("Error showing card: %v", err)
+func BeforeTransition() jqeventrouter.HandlerFunc {
+	return func(_ *jquery.Event, _ *js.Object, _ url.Values) bool {
+		u, err := repo.CurrentUser()
+		if err != nil {
+			log.Printf("No user logged in: %s\n", err)
+			return false
 		}
-	}()
+		go func() {
+			if err := ShowCard(u); err != nil {
+				log.Printf("Error showing card: %v", err)
+			}
+		}()
 
-	return true
+		return true
+	}
 }
 
 func ShowCard(u *repo.User) error {

@@ -5,6 +5,7 @@ import (
 	"net/url"
 	"time"
 
+	"github.com/flimzy/jqeventrouter"
 	"github.com/flimzy/log"
 	"github.com/gopherjs/gopherjs/js"
 	"github.com/gopherjs/jquery"
@@ -13,20 +14,22 @@ import (
 var jQuery = jquery.NewJQuery
 
 // BeforeTransition prepares the logout page before display.
-func BeforeTransition(event *jquery.Event, ui *js.Object, p url.Values) bool {
-	log.Debugf("logout BEFORE\n")
+func BeforeTransition() jqeventrouter.HandlerFunc {
+	return func(_ *jquery.Event, _ *js.Object, _ url.Values) bool {
+		log.Debugf("logout BEFORE\n")
 
-	button := jQuery("#logout")
+		button := jQuery("#logout")
 
-	button.On("click", func() {
-		log.Debugf("Trying to log out now\n")
-		expireTime, _ := time.Parse(time.RFC3339, "1900-01-01T00:00:00+00:00")
-		emptyCookie := &http.Cookie{
-			Name:    "AuthSession",
-			Expires: expireTime,
-		}
-		js.Global.Get("document").Set("cookie", emptyCookie.String())
-		jQuery(":mobile-pagecontainer").Call("pagecontainer", "change", "/")
-	})
-	return true
+		button.On("click", func() {
+			log.Debugf("Trying to log out now\n")
+			expireTime, _ := time.Parse(time.RFC3339, "1900-01-01T00:00:00+00:00")
+			emptyCookie := &http.Cookie{
+				Name:    "AuthSession",
+				Expires: expireTime,
+			}
+			js.Global.Get("document").Set("cookie", emptyCookie.String())
+			jQuery(":mobile-pagecontainer").Call("pagecontainer", "change", "/")
+		})
+		return true
+	}
 }
