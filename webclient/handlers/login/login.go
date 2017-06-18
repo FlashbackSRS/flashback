@@ -3,6 +3,7 @@
 package loginhandler
 
 import (
+	"fmt"
 	"net/url"
 
 	"github.com/flimzy/go-cordova"
@@ -13,11 +14,20 @@ import (
 	"github.com/gopherjs/jsbuiltin"
 	"honnef.co/go/js/console"
 
-	"github.com/FlashbackSRS/flashback"
+	"github.com/FlashbackSRS/flashback/config"
 	"github.com/FlashbackSRS/flashback/repository"
 )
 
 var jQuery = jquery.NewJQuery
+
+const facebookAuthURL = "https://www.facebook.com/v2.9/dialog/oauth"
+
+func facebookURL(conf *config.Conf) string {
+	params := url.Values{}
+	params.Add("client_id", conf.GetString("facebook_client_id"))
+	params.Add("redirect_uri", conf.GetString("flashback_app"))
+	return fmt.Sprintf("%s?%s", facebookAuthURL, params.Encode())
+}
 
 // BeforeTransition prepares the logout page before display.
 func BeforeTransition() jqeventrouter.HandlerFunc {
