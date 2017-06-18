@@ -5,7 +5,6 @@ import (
 	"strings"
 
 	"github.com/flimzy/jqeventrouter"
-	"github.com/flimzy/log"
 	"github.com/gopherjs/gopherjs/js"
 	"github.com/gopherjs/jquery"
 
@@ -36,7 +35,6 @@ func CleanFacebookURI(h jqeventrouter.Handler) jqeventrouter.Handler {
 func JQMRouteOnce(h jqeventrouter.Handler) jqeventrouter.Handler {
 	return jqeventrouter.HandlerFunc(func(event *jquery.Event, ui *js.Object, p url.Values) bool {
 		if ui.Get("_jqmrouteonce").Bool() {
-			log.Debug("pagecontainerbeforechange already ran. Skipping.\n")
 			return true
 		}
 		ui.Set("_jqmrouteonce", true)
