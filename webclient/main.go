@@ -96,10 +96,10 @@ func RouterInit() {
 	// beforetransition
 	beforeTransition := jqeventrouter.NewEventMux()
 	beforeTransition.SetUriFunc(getJqmUri)
-	beforeTransition.HandleFunc("/login.html", loginhandler.BeforeTransition)
-	beforeTransition.HandleFunc("/logout.html", logouthandler.BeforeTransition)
-	beforeTransition.HandleFunc("/import.html", importhandler.BeforeTransition)
-	beforeTransition.HandleFunc("/study.html", studyhandler.BeforeTransition)
+	beforeTransition.HandleFunc("/login.html", loginhandler.BeforeTransition())
+	beforeTransition.HandleFunc("/logout.html", logouthandler.BeforeTransition())
+	beforeTransition.HandleFunc("/import.html", importhandler.BeforeTransition())
+	beforeTransition.HandleFunc("/study.html", studyhandler.BeforeTransition())
 	jqeventrouter.Listen("pagecontainerbeforetransition", beforeTransition)
 
 	// beforeshow

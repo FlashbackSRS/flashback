@@ -8,6 +8,7 @@ import (
 	"net/url"
 
 	"github.com/flimzy/goweb/file"
+	"github.com/flimzy/jqeventrouter"
 	"github.com/flimzy/log"
 	"github.com/gopherjs/gopherjs/js"
 	"github.com/gopherjs/jquery"
@@ -18,23 +19,25 @@ import (
 var jQuery = jquery.NewJQuery
 
 // BeforeTransition prepares import page
-func BeforeTransition(event *jquery.Event, ui *js.Object, p url.Values) bool {
-	go func() {
-		container := jQuery(":mobile-pagecontainer")
-		jQuery("#importnow", container).On("click", func() {
-			log.Debug("Attempting to import something...\n")
-			go func() {
-				if err := DoImport(); err != nil {
-					log.Printf("Error importing: %s\n", err)
-				}
-				log.Printf("DoImport() complete\n")
-			}()
-		})
-		jQuery(".show-until-load", container).Hide()
-		jQuery(".hide-until-load", container).Show()
-	}()
+func BeforeTransition() jqeventrouter.HandlerFunc {
+	return func(_ *jquery.Event, _ *js.Object, _ url.Values) bool {
+		go func() {
+			container := jQuery(":mobile-pagecontainer")
+			jQuery("#importnow", container).On("click", func() {
+				log.Debug("Attempting to import something...\n")
+				go func() {
+					if err := DoImport(); err != nil {
+						log.Printf("Error importing: %s\n", err)
+					}
+					log.Printf("DoImport() complete\n")
+				}()
+			})
+			jQuery(".show-until-load", container).Hide()
+			jQuery(".hide-until-load", container).Show()
+		}()
 
-	return true
+		return true
+	}
 }
 
 // DoImport does an import of a *.fbb package
