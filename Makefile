@@ -90,6 +90,7 @@ www: javascript css images $(HTML_FILES) $(I18N_FILES)
 	cp $(HTML_FILES) www
 	cp $(I18N_FILES) www/translations
 	sed -i -e 's|__API_SERVER__|$(FLASHBACK_SERVER)|g' www/index.html
+	sed -i -e 's|__FACEBOOK_ID__|$(FLASHBACK_FACEBOOK_ID)|g' www/index.html
 
 cordova-www: www
 	cat www/index.html | sed -e 's/<!-- Cordova Here -->/<script src="cordova.js"><\/script>/' > www/cordova.html

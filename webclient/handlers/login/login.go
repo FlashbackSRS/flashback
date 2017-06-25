@@ -11,7 +11,6 @@ import (
 	"github.com/flimzy/log"
 	"github.com/gopherjs/gopherjs/js"
 	"github.com/gopherjs/jquery"
-	"github.com/gopherjs/jsbuiltin"
 	"honnef.co/go/js/console"
 
 	"github.com/FlashbackSRS/flashback/config"
@@ -23,9 +22,17 @@ var jQuery = jquery.NewJQuery
 const facebookAuthURL = "https://www.facebook.com/v2.9/dialog/oauth"
 
 func facebookURL(conf *config.Conf) string {
+	redirParams := url.Values{}
+	redirParams.Add("provider", "facebook")
+	redir, err := url.Parse(conf.GetString("flashback_app"))
+	if err != nil {
+		panic("Invalid flashback_app URL: " + err.Error())
+	}
+	redir.RawQuery = redirParams.Encode()
+
 	params := url.Values{}
 	params.Add("client_id", conf.GetString("facebook_client_id"))
-	params.Add("redirect_uri", conf.GetString("flashback_app"))
+	params.Add("redirect_uri", redir.String())
 	return fmt.Sprintf("%s?%s", facebookAuthURL, params.Encode())
 }
 
@@ -47,7 +54,7 @@ func BeforeTransition(conf *config.Conf) jqeventrouter.HandlerFunc {
 				console.Log("Setting on click event")
 				a.On("click", CordovaLogin)
 			} else {
-				a.SetAttr("href", href+"?return="+jsbuiltin.EncodeURIComponent(js.Global.Get("location").Get("href").String()))
+				a.SetAttr("href", href)
 			}
 		}
 		jQuery(".show-until-load", container).Hide()

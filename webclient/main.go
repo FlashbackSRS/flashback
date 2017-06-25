@@ -3,8 +3,10 @@
 package main
 
 import (
+	"fmt"
 	"net/url"
 	"strconv"
+	"strings"
 	"sync"
 
 	"github.com/flimzy/go-cordova"
@@ -96,7 +98,8 @@ func RouterInit() {
 	if err != nil {
 		panic(err)
 	}
-	prefix := appURL.Path
+	prefix := strings.TrimSuffix(appURL.Path, "/")
+	fmt.Printf("prefix =%s\n", prefix)
 	// mobileinit
 	jQuery(document).On("mobileinit", func() {
 		MobileInit()
