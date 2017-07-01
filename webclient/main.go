@@ -108,13 +108,14 @@ func RouterInit() {
 
 	// beforechange -- Just check auth
 	beforeChange := jqeventrouter.NullHandler()
-	checkAuth := auth.CheckAuth()
+	checkAuth := auth.CheckAuth(conf)
 	jqeventrouter.Listen("pagecontainerbeforechange", general.JQMRouteOnce(general.CleanFacebookURI(checkAuth(beforeChange))))
 
 	// beforetransition
 	beforeTransition := jqeventrouter.NewEventMux()
 	beforeTransition.SetUriFunc(getJqmUri)
 	beforeTransition.HandleFunc(prefix+"/login.html", loginhandler.BeforeTransition(conf))
+	beforeTransition.HandleFunc(prefix+"/callback.html", loginhandler.BTCallback(conf))
 	beforeTransition.HandleFunc(prefix+"/logout.html", logouthandler.BeforeTransition())
 	beforeTransition.HandleFunc(prefix+"/import.html", importhandler.BeforeTransition())
 	beforeTransition.HandleFunc(prefix+"/study.html", studyhandler.BeforeTransition())
