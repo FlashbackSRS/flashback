@@ -2,11 +2,13 @@ package model
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 
 	"github.com/flimzy/kivik"
 	_ "github.com/flimzy/kivik/driver/couchdb" // CouchDB driver
 	"github.com/flimzy/kivik/driver/couchdb/chttp"
+	"github.com/pkg/errors"
 
 	"github.com/flimzy/flashback-server2/auth"
 )
@@ -68,11 +70,40 @@ func (r *Repo) Auth(ctx context.Context, provider, token string) error {
 		} `json:"userCtx"`
 	}
 	if _, err := r.chttp.DoJSON(ctx, http.MethodGet, "/_session", nil, &response); err != nil {
-		return err
+		return errors.Wrap(err, "failed to validate session")
 	}
 	r.user = response.Ctx.Name
-	if _, e := r.state.Put(ctx, currentUserDoc, map[string]string{"username": r.user}); e != nil {
-		return e
+	return r.storeUser(ctx)
+}
+
+type user struct {
+	ID       string `json:"_id"`
+	Rev      string `json:"_rev,omitempty"`
+	Username string `json:"username"`
+}
+
+func (r *Repo) fetchUser(ctx context.Context) (user, error) {
+	var u user
+	row, err := r.state.Get(ctx, currentUserDoc)
+	if err != nil {
+		return user{}, err
+	}
+	if e := row.ScanDoc(&u); e != nil {
+		return user{}, e
+	}
+	fmt.Printf("fetched user: %+v\n", u)
+	return u, nil
+}
+
+func (r *Repo) storeUser(ctx context.Context) error {
+	u, err := r.fetchUser(ctx)
+	if err != nil && kivik.StatusCode(err) != kivik.StatusNotFound {
+		return err
+	}
+	u.ID = currentUserDoc
+	u.Username = r.user
+	if _, e := r.state.Put(ctx, currentUserDoc, u); e != nil {
+		return errors.Wrap(e, "failed to store local state")
 	}
 	return nil
 }
