@@ -1,6 +1,8 @@
 package model
 
 import (
+	"fmt"
+	"sync/atomic"
 	"testing"
 
 	"github.com/flimzy/diff"
@@ -82,6 +84,24 @@ func TestCurrentUser(t *testing.T) {
 	}
 }
 
+var testDBCounter int32
+
+func testDB(t *testing.T) *kivik.DB {
+	c, err := localConnection()
+	if err != nil {
+		t.Fatal(err)
+	}
+	dbName := fmt.Sprintf("testdb-%x", atomic.AddInt32(&testDBCounter, 1))
+	if e := c.CreateDB(context.Background(), dbName); e != nil {
+		t.Fatal(e)
+	}
+	db, err := c.DB(context.Background(), dbName)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return db
+}
+
 func TestFetchUser(t *testing.T) {
 	type fuTest struct {
 		name     string
@@ -91,35 +111,12 @@ func TestFetchUser(t *testing.T) {
 	}
 	tests := []fuTest{
 		{
-			name: "NoUser",
-			db: func() *kivik.DB {
-				c, err := localConnection()
-				if err != nil {
-					t.Fatal(err)
-				}
-				if e := c.CreateDB(context.Background(), "a"); e != nil {
-					t.Fatal(e)
-				}
-				db, err := c.DB(context.Background(), "a")
-				if err != nil {
-					t.Fatal(err)
-				}
-				return db
-			}(),
+			name:   "NoUser",
+			db:     testDB(t),
 			status: kivik.StatusNotFound,
 		},
 		func() fuTest {
-			c, err := localConnection()
-			if err != nil {
-				t.Fatal(err)
-			}
-			if e := c.CreateDB(context.Background(), "b"); e != nil {
-				t.Fatal(e)
-			}
-			db, err := c.DB(context.Background(), "b")
-			if err != nil {
-				t.Fatal(err)
-			}
+			db := testDB(t)
 			rev, e := db.Put(context.Background(), currentUserDoc, map[string]string{"username": "foo"})
 			if e != nil {
 				t.Fatal(e)
@@ -161,18 +158,64 @@ func TestFetchUser(t *testing.T) {
 	}
 }
 
-// func TestStoreUser(t *testing.T) {
-// 	type suTest struct {
-// 		name    string
-// 		localDB *kivik.DB
-// 		err     string
-// 	}
-// 	tests := []suTest{}
-// 	for _, test := range tests {
-// 		func(test suTest) {
-// 			t.Run(test.name, func(t *testing.T) {
-//
-// 			})
-// 		}(test)
-// 	}
-// }
+func TestStoreUser(t *testing.T) {
+	type suTest struct {
+		name   string
+		db     *kivik.DB
+		status int
+	}
+	tests := []suTest{
+		{
+			name: "NewUser",
+			db:   testDB(t),
+		},
+		{
+			name: "ReplaceUser",
+			db: func() *kivik.DB {
+				db := testDB(t)
+				if _, e := db.Put(context.Background(), currentUserDoc, map[string]string{"username": "alex"}); e != nil {
+					t.Fatal(e)
+				}
+				return db
+			}(),
+		},
+		{
+			name: "SameUser",
+			db: func() *kivik.DB {
+				db := testDB(t)
+				if _, e := db.Put(context.Background(), currentUserDoc, map[string]string{"username": "foo"}); e != nil {
+					t.Fatal(e)
+				}
+				return db
+			}(),
+		},
+	}
+	for _, test := range tests {
+		func(test suTest) {
+			t.Run(test.name, func(t *testing.T) {
+				repo := &Repo{
+					state: test.db,
+					user:  "foo",
+				}
+				var status int
+				err := repo.storeUser(context.Background())
+				if err != nil {
+					status = kivik.StatusCode(err)
+				}
+				if status != test.status {
+					t.Errorf("Unexpected error: %s", err)
+				}
+				if err != nil {
+					return
+				}
+				u, e := repo.fetchUser(context.Background())
+				if e != nil {
+					t.Fatal(e)
+				}
+				if u.Username != "foo" {
+					t.Errorf("Unexpected result: %s", u.Username)
+				}
+			})
+		}(test)
+	}
+}

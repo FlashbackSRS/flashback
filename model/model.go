@@ -2,7 +2,6 @@ package model
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 
 	"github.com/flimzy/kivik"
@@ -91,7 +90,6 @@ func (r *Repo) fetchUser(ctx context.Context) (user, error) {
 	if e := row.ScanDoc(&u); e != nil {
 		return user{}, e
 	}
-	fmt.Printf("fetched user: %+v\n", u)
 	return u, nil
 }
 
