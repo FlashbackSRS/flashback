@@ -1,7 +1,6 @@
 package util
 
 import (
-	"encoding/base64"
 	"net/url"
 	"strings"
 
@@ -21,32 +20,6 @@ func JqmTargetUri(ui *js.Object) string {
 	pageURL.User = nil
 	pageURL.Scheme = ""
 	return pageURL.String()
-}
-
-// CurrentUser extracts a user name from the CouchDB cookie, which is set
-// during the authentication phase
-func CurrentUser() string {
-	value := GetCouchCookie(js.Global.Get("document").Get("cookie").String())
-	userid := ExtractUserID(value)
-	return userid
-}
-
-func GetCouchCookie(cookieHeader string) string {
-	cookies := strings.Split(cookieHeader, ";")
-	for _, cookie := range cookies {
-		nv := strings.Split(strings.TrimSpace(cookie), "=")
-		if nv[0] == kivik.SessionCookieName {
-			value, _ := url.QueryUnescape(nv[1])
-			return value
-		}
-	}
-	return ""
-}
-
-func ExtractUserID(cookieValue string) string {
-	decoded, _ := base64.StdEncoding.DecodeString(cookieValue)
-	values := strings.Split(string(decoded), ":")
-	return values[0]
 }
 
 func FlashbackHost() string {

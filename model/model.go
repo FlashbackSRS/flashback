@@ -2,6 +2,7 @@ package model
 
 import (
 	"context"
+	"log"
 	"net/http"
 
 	"github.com/flimzy/kivik"
@@ -120,5 +121,12 @@ func (r *Repo) Logout(ctx context.Context) error {
 
 // CurrentUser returns the currently registered user.
 func (r *Repo) CurrentUser() string {
+	if r.user == "" {
+		u, err := r.fetchUser(context.TODO())
+		if err != nil && kivik.StatusCode(err) != kivik.StatusNotFound {
+			log.Printf("Error fetching current user: %s", err)
+		}
+		r.user = u.Username
+	}
 	return r.user
 }

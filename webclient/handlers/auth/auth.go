@@ -8,15 +8,14 @@ import (
 	"github.com/gopherjs/gopherjs/js"
 	"github.com/gopherjs/jquery"
 
-	"github.com/FlashbackSRS/flashback/config"
-	"github.com/FlashbackSRS/flashback/util"
+	"github.com/FlashbackSRS/flashback/model"
 )
 
 // CheckAuth checks if a uwer has authenticated.
-func CheckAuth(c *config.Conf) func(jqeventrouter.Handler) jqeventrouter.Handler {
+func CheckAuth(repo *model.Repo) func(jqeventrouter.Handler) jqeventrouter.Handler {
 	return func(h jqeventrouter.Handler) jqeventrouter.Handler {
 		return jqeventrouter.HandlerFunc(func(event *jquery.Event, ui *js.Object, _ url.Values) bool {
-			if util.CurrentUser() == "" {
+			if repo.CurrentUser() == "" {
 				redir := "login.html"
 				parsed, _ := url.Parse(js.Global.Get("location").String())
 				if p := parsed.Query().Get("provider"); p != "" {
