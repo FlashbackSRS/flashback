@@ -3,7 +3,7 @@
 package main
 
 import (
-	"fmt"
+	"context"
 	"net/url"
 	"strconv"
 	"strings"
@@ -18,6 +18,8 @@ import (
 	"github.com/FlashbackSRS/flashback/config"
 	_ "github.com/FlashbackSRS/flashback/fserve" // Load the file server for card assets
 	"github.com/FlashbackSRS/flashback/iframes"
+	"github.com/FlashbackSRS/flashback/model"
+	"github.com/FlashbackSRS/flashback/oauth2"
 	"github.com/FlashbackSRS/flashback/util"
 
 	_ "github.com/FlashbackSRS/flashback/controllers/anki" // Anki model controllers
@@ -28,7 +30,7 @@ import (
 	"github.com/FlashbackSRS/flashback/webclient/handlers/login"
 	"github.com/FlashbackSRS/flashback/webclient/handlers/logout"
 	"github.com/FlashbackSRS/flashback/webclient/handlers/study"
-	"github.com/FlashbackSRS/flashback/webclient/handlers/sync"
+	synchandler "github.com/FlashbackSRS/flashback/webclient/handlers/sync"
 )
 
 // Some spiffy shortcuts
@@ -99,7 +101,12 @@ func RouterInit() {
 		panic(err)
 	}
 	prefix := strings.TrimSuffix(appURL.Path, "/")
-	fmt.Printf("prefix =%s\n", prefix)
+
+	repo, err := model.New(context.TODO(), conf.GetString("flashback_api"))
+	if err != nil {
+		panic(err)
+	}
+
 	// mobileinit
 	jQuery(document).On("mobileinit", func() {
 		MobileInit()
@@ -108,17 +115,22 @@ func RouterInit() {
 
 	// beforechange -- Just check auth
 	beforeChange := jqeventrouter.NullHandler()
-	checkAuth := auth.CheckAuth(conf)
+	checkAuth := auth.CheckAuth(repo)
 	jqeventrouter.Listen("pagecontainerbeforechange", general.JQMRouteOnce(general.CleanFacebookURI(checkAuth(beforeChange))))
 
 	// beforetransition
 	beforeTransition := jqeventrouter.NewEventMux()
 	beforeTransition.SetUriFunc(getJqmUri)
-	beforeTransition.HandleFunc(prefix+"/login.html", loginhandler.BeforeTransition(conf))
-	beforeTransition.HandleFunc(prefix+"/callback.html", loginhandler.BTCallback(conf))
-	beforeTransition.HandleFunc(prefix+"/logout.html", logouthandler.BeforeTransition())
-	beforeTransition.HandleFunc(prefix+"/import.html", importhandler.BeforeTransition())
-	beforeTransition.HandleFunc(prefix+"/study.html", studyhandler.BeforeTransition())
+
+	providers := map[string]string{
+		"facebook": oauth2.FacebookURL(conf.GetString("facebook_client_id"), conf.GetString("flashback_app")),
+	}
+
+	beforeTransition.HandleFunc(prefix+"/login.html", loginhandler.BeforeTransition(providers))
+	beforeTransition.HandleFunc(prefix+"/callback.html", loginhandler.BTCallback(repo))
+	beforeTransition.HandleFunc(prefix+"/logout.html", logouthandler.BeforeTransition(repo))
+	beforeTransition.HandleFunc(prefix+"/import.html", importhandler.BeforeTransition(repo))
+	beforeTransition.HandleFunc(prefix+"/study.html", studyhandler.BeforeTransition(repo))
 	jqeventrouter.Listen("pagecontainerbeforetransition", beforeTransition)
 
 	// beforeshow

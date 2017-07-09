@@ -13,13 +13,14 @@ import (
 	"github.com/gopherjs/gopherjs/js"
 	"github.com/gopherjs/jquery"
 
+	"github.com/FlashbackSRS/flashback/model"
 	"github.com/FlashbackSRS/flashback/repository"
 )
 
 var jQuery = jquery.NewJQuery
 
 // BeforeTransition prepares import page
-func BeforeTransition() jqeventrouter.HandlerFunc {
+func BeforeTransition(repo *model.Repo) jqeventrouter.HandlerFunc {
 	return func(_ *jquery.Event, _ *js.Object, _ url.Values) bool {
 		go func() {
 			container := jQuery(":mobile-pagecontainer")

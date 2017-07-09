@@ -13,6 +13,7 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/FlashbackSRS/flashback/iframes"
+	"github.com/FlashbackSRS/flashback/model"
 	"github.com/FlashbackSRS/flashback/repository"
 	"github.com/FlashbackSRS/flashback/webclient/views/studyview"
 )
@@ -28,20 +29,21 @@ type cardState struct {
 var currentCard *cardState
 
 // BeforeTransition prepares the page to study
-func BeforeTransition() jqeventrouter.HandlerFunc {
+func BeforeTransition(repo *model.Repo) jqeventrouter.HandlerFunc {
 	return func(_ *jquery.Event, _ *js.Object, _ url.Values) bool {
-		u, err := repo.CurrentUser()
-		if err != nil {
-			log.Printf("No user logged in: %s\n", err)
-			return false
-		}
-		go func() {
-			if err := ShowCard(u); err != nil {
-				log.Printf("Error showing card: %v", err)
-			}
-		}()
-
-		return true
+		panic("Fix study")
+		// u, err := repo.CurrentUser()
+		// if err != nil {
+		// 	log.Printf("No user logged in: %s\n", err)
+		// 	return false
+		// }
+		// go func() {
+		// 	if err := ShowCard(u); err != nil {
+		// 		log.Printf("Error showing card: %v", err)
+		// 	}
+		// }()
+		//
+		// return true
 	}
 }
 
