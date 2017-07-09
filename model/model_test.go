@@ -158,7 +158,7 @@ func TestFetchUser(t *testing.T) {
 	}
 }
 
-func TestStoreUser(t *testing.T) {
+func TestSetUser(t *testing.T) {
 	type suTest struct {
 		name   string
 		db     *kivik.DB
@@ -195,10 +195,9 @@ func TestStoreUser(t *testing.T) {
 			t.Run(test.name, func(t *testing.T) {
 				repo := &Repo{
 					state: test.db,
-					user:  "foo",
 				}
 				var status int
-				err := repo.storeUser(context.Background())
+				err := repo.setUser(context.Background(), "foo")
 				if err != nil {
 					status = kivik.StatusCode(err)
 				}

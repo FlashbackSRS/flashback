@@ -72,8 +72,7 @@ func (r *Repo) Auth(ctx context.Context, provider, token string) error {
 	if _, err := r.chttp.DoJSON(ctx, http.MethodGet, "/_session", nil, &response); err != nil {
 		return errors.Wrap(err, "failed to validate session")
 	}
-	r.user = response.Ctx.Name
-	return r.storeUser(ctx)
+	return r.setUser(ctx, response.Ctx.Name)
 }
 
 type user struct {
@@ -94,16 +93,17 @@ func (r *Repo) fetchUser(ctx context.Context) (user, error) {
 	return u, nil
 }
 
-func (r *Repo) storeUser(ctx context.Context) error {
+func (r *Repo) setUser(ctx context.Context, username string) error {
 	u, err := r.fetchUser(ctx)
 	if err != nil && kivik.StatusCode(err) != kivik.StatusNotFound {
 		return err
 	}
 	u.ID = currentUserDoc
-	u.Username = r.user
+	u.Username = username
 	if _, e := r.state.Put(ctx, currentUserDoc, u); e != nil {
 		return errors.Wrap(e, "failed to store local state")
 	}
+	r.user = username
 	return nil
 }
 
