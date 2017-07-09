@@ -103,7 +103,7 @@ func RouterInit() {
 	// mobileinit
 	jQuery(document).On("mobileinit", func() {
 		MobileInit()
-		l10n_handler.MobileInit()
+		l10n_handler.Init()
 	})
 
 	// beforechange -- Just check auth
