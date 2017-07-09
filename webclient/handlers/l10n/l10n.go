@@ -97,10 +97,10 @@ func T(id string, args ...interface{}) string {
 func preferredLanguages() []language.Tag {
 	var langs []language.Tag
 	//	langs = append(langs, language.MustParse("es_MX"))
-	nav := js.Global.Get("navigator")
 	if cordova.IsMobile() {
 		var wg sync.WaitGroup
 		wg.Add(1)
+		nav := js.Global.Get("navigator")
 		nav.Get("globalization").Call("getPreferredLanguage",
 			func(l string) {
 				defer wg.Done()
