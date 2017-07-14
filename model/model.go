@@ -2,7 +2,6 @@ package model
 
 import (
 	"context"
-	"log"
 	"net/http"
 
 	"github.com/flimzy/kivik"
@@ -62,7 +61,7 @@ func New(ctx context.Context, remoteURL string) (*Repo, error) {
 func (r *Repo) Auth(ctx context.Context, provider, token string) error {
 	auth := auth.NewOAuth2(provider, token)
 	if err := r.chttp.Auth(ctx, auth); err != nil {
-		return err
+		return errors.Wrap(err, "OAuth2 auth failed")
 	}
 	var response struct {
 		Ctx struct {
@@ -71,6 +70,9 @@ func (r *Repo) Auth(ctx context.Context, provider, token string) error {
 	}
 	if _, err := r.chttp.DoJSON(ctx, http.MethodGet, "/_session", nil, &response); err != nil {
 		return errors.Wrap(err, "failed to validate session")
+	}
+	if response.Ctx.Name == "" {
+		return errors.New("no user set in session")
 	}
 	return r.setUser(ctx, response.Ctx.Name)
 }
@@ -121,12 +123,5 @@ func (r *Repo) Logout(ctx context.Context) error {
 
 // CurrentUser returns the currently registered user.
 func (r *Repo) CurrentUser() string {
-	if r.user == "" {
-		u, err := r.fetchUser(context.TODO())
-		if err != nil && kivik.StatusCode(err) != kivik.StatusNotFound {
-			log.Printf("Error fetching current user: %s", err)
-		}
-		r.user = u.Username
-	}
 	return r.user
 }

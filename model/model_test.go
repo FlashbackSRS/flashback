@@ -52,7 +52,7 @@ func TestAuth(t *testing.T) {
 		if e := repo.Auth(context.Background(), "fail", "foo"); e != nil {
 			msg = e.Error()
 		}
-		if msg != "Unauthorized" {
+		if msg != "OAuth2 auth failed: Unauthorized" {
 			t.Errorf("Unexpected error: %s", msg)
 		}
 	})
