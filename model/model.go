@@ -125,3 +125,11 @@ func (r *Repo) Logout(ctx context.Context) error {
 func (r *Repo) CurrentUser() string {
 	return r.user
 }
+
+func (r *Repo) userDB(ctx context.Context) (*kivik.DB, error) {
+	user := r.CurrentUser()
+	if user == "" {
+		return nil, errors.New("not logged in")
+	}
+	return r.local.DB(ctx, user)
+}

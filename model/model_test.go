@@ -218,3 +218,47 @@ func TestSetUser(t *testing.T) {
 		}(test)
 	}
 }
+
+func TestUserDB(t *testing.T) {
+	type udTest struct {
+		name       string
+		repo       *Repo
+		userDBName string
+		err        string
+	}
+	tests := []udTest{
+		{
+			name: "Not logged in",
+			repo: &Repo{},
+			err:  "not logged in",
+		},
+		{
+			name: "Connect failure",
+			repo: func() *Repo {
+				local, err := localConnection()
+				if err != nil {
+					t.Fatal(err)
+				}
+				return &Repo{
+					user:  "bob",
+					local: local}
+			}(),
+			err: "database does not exist",
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			_, err := test.repo.userDB(context.Background())
+			var msg string
+			if err != nil {
+				msg = err.Error()
+			}
+			if msg != test.err {
+				t.Errorf("Unexpected error: %s\n", msg)
+			}
+			if err != nil {
+				return
+			}
+		})
+	}
+}
