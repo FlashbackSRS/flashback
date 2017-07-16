@@ -1,6 +1,7 @@
 package model
 
 import (
+	"context"
 	"fmt"
 	"sync/atomic"
 	"testing"
@@ -8,7 +9,7 @@ import (
 	"github.com/flimzy/diff"
 	"github.com/flimzy/kivik"
 
-	"golang.org/x/net/context"
+	fb "github.com/FlashbackSRS/flashback-model"
 )
 
 func TestNew(t *testing.T) {
@@ -248,7 +249,7 @@ func TestUserDB(t *testing.T) {
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			_, err := test.repo.userDB(context.Background())
+			udb, err := test.repo.userDB(context.Background())
 			var msg string
 			if err != nil {
 				msg = err.Error()
@@ -258,6 +259,93 @@ func TestUserDB(t *testing.T) {
 			}
 			if err != nil {
 				return
+			}
+			stats, err := udb.Stats(context.Background())
+			if err != nil {
+				t.Fatal(err)
+			}
+			if stats.Name != test.userDBName {
+				t.Errorf("Unexpected db name: %s", stats.Name)
+			}
+		})
+	}
+}
+
+func TestBundleDB(t *testing.T) {
+	type bdTest struct {
+		name         string
+		repo         *Repo
+		bundle       *fb.Bundle
+		bundleDBName string
+		err          string
+	}
+	id, _ := fb.NewDbID("bundle", []byte{1, 2, 3, 4})
+	testBundle := &fb.Bundle{ID: id}
+	tests := []bdTest{
+		{
+			name:   "Not logged in",
+			repo:   &Repo{},
+			bundle: testBundle,
+			err:    "not logged in",
+		},
+		{
+			name:   "Invalid bundle",
+			repo:   &Repo{},
+			bundle: &fb.Bundle{},
+			err:    "invalid bundle",
+		},
+		{
+			name: "database not exist",
+			repo: func() *Repo {
+				local, err := localConnection()
+				if err != nil {
+					t.Fatal(err)
+				}
+				return &Repo{
+					user:  "bob",
+					local: local}
+			}(),
+			bundle: testBundle,
+			err:    "database does not exist",
+		},
+		{
+			name: "success",
+			repo: func() *Repo {
+				local, err := localConnection()
+				if err != nil {
+					t.Fatal(err)
+				}
+				dbName := testBundle.ID.String()
+				if err := local.CreateDB(context.Background(), dbName); err != nil {
+					t.Fatal(err)
+				}
+				return &Repo{
+					user:  "bob",
+					local: local}
+			}(),
+			bundle:       testBundle,
+			bundleDBName: "bundle-aebagba",
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			bdb, err := test.repo.bundleDB(context.Background(), test.bundle)
+			var msg string
+			if err != nil {
+				msg = err.Error()
+			}
+			if msg != test.err {
+				t.Errorf("Unexpected error: %s\n", msg)
+			}
+			if err != nil {
+				return
+			}
+			stats, err := bdb.Stats(context.Background())
+			if err != nil {
+				t.Fatal(err)
+			}
+			if stats.Name != test.bundleDBName {
+				t.Errorf("Unexpected db name: %s", stats.Name)
 			}
 		})
 	}

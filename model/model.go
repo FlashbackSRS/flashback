@@ -9,6 +9,7 @@ import (
 	"github.com/flimzy/kivik/driver/couchdb/chttp"
 	"github.com/pkg/errors"
 
+	fb "github.com/FlashbackSRS/flashback-model"
 	"github.com/flimzy/flashback-server2/auth"
 )
 
@@ -132,4 +133,14 @@ func (r *Repo) userDB(ctx context.Context) (*kivik.DB, error) {
 		return nil, errors.New("not logged in")
 	}
 	return r.local.DB(ctx, user)
+}
+
+func (r *Repo) bundleDB(ctx context.Context, bundle *fb.Bundle) (*kivik.DB, error) {
+	if bundle == nil || !bundle.ID.Valid() {
+		return nil, errors.New("invalid bundle")
+	}
+	if r.CurrentUser() == "" {
+		return nil, errors.New("not logged in")
+	}
+	return r.local.DB(ctx, bundle.ID.String())
 }
