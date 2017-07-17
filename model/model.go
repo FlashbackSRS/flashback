@@ -122,15 +122,21 @@ func (r *Repo) Logout(ctx context.Context) error {
 	return nil
 }
 
+// ErrNotLoggedIn is returned by CurrentUser if no user is logged in.
+var ErrNotLoggedIn = errors.New("not logged in")
+
 // CurrentUser returns the currently registered user.
-func (r *Repo) CurrentUser() string {
-	return r.user
+func (r *Repo) CurrentUser() (string, error) {
+	if r.user == "" {
+		return "", ErrNotLoggedIn
+	}
+	return r.user, nil
 }
 
 func (r *Repo) userDB(ctx context.Context) (*kivik.DB, error) {
-	user := r.CurrentUser()
-	if user == "" {
-		return nil, errors.New("not logged in")
+	user, err := r.CurrentUser()
+	if err != nil {
+		return nil, err
 	}
 	return r.local.DB(ctx, user)
 }
@@ -139,8 +145,8 @@ func (r *Repo) bundleDB(ctx context.Context, bundle *fb.Bundle) (*kivik.DB, erro
 	if bundle == nil || !bundle.ID.Valid() {
 		return nil, errors.New("invalid bundle")
 	}
-	if r.CurrentUser() == "" {
-		return nil, errors.New("not logged in")
+	if _, err := r.CurrentUser(); err != nil {
+		return nil, err
 	}
 	return r.local.DB(ctx, bundle.ID.String())
 }

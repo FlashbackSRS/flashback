@@ -80,7 +80,7 @@ func TestCurrentUser(t *testing.T) {
 	repo := &Repo{
 		user: "bob",
 	}
-	if u := repo.CurrentUser(); u != "bob" {
+	if u, _ := repo.CurrentUser(); u != "bob" {
 		t.Errorf("Got unexpected user: %s", u)
 	}
 }
