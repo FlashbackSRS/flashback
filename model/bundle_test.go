@@ -2,6 +2,7 @@ package model
 
 import (
 	"context"
+	"fmt"
 	"strings"
 	"testing"
 	"time"
@@ -124,8 +125,16 @@ func TestSaveBundle(t *testing.T) {
 	}
 }
 
-func checkBundle(t *testing.T, db *kivik.DB, bundle map[string]interface{}) {
-	bundleID := bundle["_id"].(string)
+func checkBundle(t *testing.T, db *kivik.DB, bundle interface{}) {
+	var bundleID string
+	switch b := bundle.(type) {
+	case map[string]interface{}:
+		bundleID = b["_id"].(string)
+	case *fb.Bundle:
+		bundleID = b.ID.String()
+	default:
+		panic(fmt.Sprintf("Unknown type: %t", bundle))
+	}
 	row, err := db.Get(context.Background(), bundleID)
 	if err != nil {
 		t.Fatal(err)
