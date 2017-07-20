@@ -227,12 +227,12 @@ func TestImport(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			checkBundle(t, udb, test.expected.Bundle)
-			bdb, err := test.repo.bundleDB(context.Background(), test.expected.Bundle)
+			checkDoc(t, udb, test.expectedBundle)
+			bdb, err := test.repo.bundleDB(context.Background(), test.expectedBundle)
 			if err != nil {
 				t.Fatal(err)
 			}
-			checkBundle(t, bdb, test.expected.Bundle)
+			checkDoc(t, bdb, test.expectedBundle)
 			// row, err := udb.Get(context.Background(), test.expected.Bundle.ID.String())
 			// if err != nil {
 			// 	t.Fatalf("failed to refectch bundle from userdb: %s", err)

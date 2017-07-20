@@ -2,7 +2,7 @@ package model
 
 import (
 	"context"
-	"fmt"
+	"encoding/json"
 	"strings"
 	"testing"
 	"time"
@@ -101,25 +101,36 @@ func TestSaveBundle(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			checkBundle(t, udb, test.expected)
-			checkBundle(t, bdb, test.expected)
+			checkDoc(t, udb, test.expected)
+			checkDoc(t, bdb, test.expected)
 		})
 	}
 }
 
-func checkBundle(t *testing.T, db *kivik.DB, bundle interface{}) {
-	var bundleID string
-	switch b := bundle.(type) {
+func checkDoc(t *testing.T, db *kivik.DB, doc interface{}) {
+	var docID string
+	switch b := doc.(type) {
 	case map[string]interface{}:
-		bundleID = b["_id"].(string)
+		docID = b["_id"].(string)
 	case *fb.Bundle:
-		bundleID = b.ID.String()
+		docID = b.ID.String()
 	default:
-		panic(fmt.Sprintf("Unknown type: %t", bundle))
+		x, err := json.Marshal(doc)
+		if err != nil {
+			panic(err)
+		}
+		var result struct {
+			ID string `json:"_id"`
+		}
+		if e := json.Unmarshal(x, &result); e != nil {
+			panic(e)
+		}
+		docID = result.ID
 	}
-	row, err := db.Get(context.Background(), bundleID)
+	row, err := db.Get(context.Background(), docID)
 	if err != nil {
-		t.Fatal(err)
+		t.Errorf("failed to fetch %s: %s", docID, err)
+		return
 	}
 	var result map[string]interface{}
 	if err := row.ScanDoc(&result); err != nil {
@@ -127,7 +138,7 @@ func checkBundle(t *testing.T, db *kivik.DB, bundle interface{}) {
 	}
 	parts := strings.Split(result["_rev"].(string), "-")
 	result["_rev"] = parts[0]
-	if d := diff.AsJSON(bundle, result); d != "" {
+	if d := diff.AsJSON(doc, result); d != "" {
 		t.Error(d)
 	}
 }
