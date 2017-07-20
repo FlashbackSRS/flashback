@@ -51,24 +51,6 @@ func TestSaveBundle(t *testing.T) {
 			err:    "userDB: database does not exist",
 		},
 		{
-			name: "bundle db does not exist",
-			repo: func() *Repo {
-				local, err := localConnection()
-				if err != nil {
-					t.Fatal(err)
-				}
-				if err := local.CreateDB(context.Background(), "bob"); err != nil {
-					t.Fatal(err)
-				}
-				return &Repo{
-					local: local,
-					user:  "bob",
-				}
-			}(),
-			bundle: &fb.Bundle{ID: id},
-			err:    "bundleDB: database does not exist",
-		},
-		{
 			name: "success",
 			repo: func() *Repo {
 				local, err := localConnection()

@@ -148,5 +148,8 @@ func (r *Repo) bundleDB(ctx context.Context, bundle *fb.Bundle) (*kivik.DB, erro
 	if _, err := r.CurrentUser(); err != nil {
 		return nil, err
 	}
+	if err := r.local.CreateDB(ctx, bundle.ID.String()); err != nil && kivik.StatusCode(err) != kivik.StatusPreconditionFailed {
+		return nil, err
+	}
 	return r.local.DB(ctx, bundle.ID.String())
 }

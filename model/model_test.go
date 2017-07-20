@@ -305,8 +305,8 @@ func TestBundleDB(t *testing.T) {
 					user:  "bob",
 					local: local}
 			}(),
-			bundle: testBundle,
-			err:    "database does not exist",
+			bundle:       testBundle,
+			bundleDBName: "bundle-aebagba",
 		},
 		{
 			name: "success",

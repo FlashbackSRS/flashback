@@ -78,48 +78,24 @@ func TestImport(t *testing.T) {
 	owner, _ := fb.NewDbID("user", []byte{1, 2, 3, 4, 5})
 	tests := []iTest{
 		{
-			name: "Invalid JSON",
-			repo: &Repo{user: "bob"},
-			file: strings.NewReader("bogus data"),
-			err:  "Unable to decode JSON: invalid character 'b' looking for beginning of value",
-		},
-		{
 			name: "Not logged in",
 			repo: &Repo{},
 			file: strings.NewReader("{}"),
 			err:  "not logged in",
 		},
 		{
-			name: "Missing bundle db",
-			repo: func() *Repo {
-				local, err := localConnection()
-				if err != nil {
-					t.Fatal(err)
-				}
-				if err := local.CreateDB(context.Background(), "bob"); err != nil {
-					t.Fatal(err)
-				}
-				return &Repo{
-					user:  "bob",
-					local: local,
-				}
-			}(),
-			file: func() io.Reader {
-				pkg := fb.Package{
-					Bundle: &fb.Bundle{
-						ID: id,
-						Owner: &fb.User{
-							ID: owner,
-						},
-					},
-				}
-				buf := &bytes.Buffer{}
-				if err := json.NewEncoder(buf).Encode(pkg); err != nil {
-					t.Fatal(err)
-				}
-				return buf
-			}(),
-			err: "bundleDB: database does not exist",
+			name: "Invalid JSON",
+			repo: &Repo{user: "bob",
+				local: func() *kivik.Client {
+					c := testClient(t)
+					if err := c.CreateDB(context.Background(), "bob"); err != nil {
+						t.Fatal(err)
+					}
+					return c
+				}(),
+			},
+			file: strings.NewReader("bogus data"),
+			err:  "Unable to decode JSON: invalid character 'b' looking for beginning of value",
 		},
 		{
 			name: "Invalid package",
