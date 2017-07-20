@@ -87,11 +87,16 @@ func TestCurrentUser(t *testing.T) {
 
 var testDBCounter int32
 
-func testDB(t *testing.T) *kivik.DB {
+func testClient(t *testing.T) *kivik.Client {
 	c, err := localConnection()
 	if err != nil {
 		t.Fatal(err)
 	}
+	return c
+}
+
+func testDB(t *testing.T) *kivik.DB {
+	c := testClient(t)
 	dbName := fmt.Sprintf("testdb-%x", atomic.AddInt32(&testDBCounter, 1))
 	if e := c.CreateDB(context.Background(), dbName); e != nil {
 		t.Fatal(e)

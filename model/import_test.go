@@ -15,6 +15,14 @@ import (
 	"github.com/flimzy/kivik"
 )
 
+func ParseTime(ts string) time.Time {
+	t, err := time.Parse(time.RFC3339, ts)
+	if err != nil {
+		panic(err)
+	}
+	return t
+}
+
 type mockFile struct {
 	body []byte
 	err  error
@@ -49,11 +57,36 @@ func TestImportFile(t *testing.T) {
 			file: &mockFile{body: []byte("bogus data")},
 			err:  "gzip: invalid header",
 		},
+		{
+			name: "Invalid Package JSON",
+			repo: func() *Repo {
+				id, _ := fb.NewDbID("bundle", []byte{1, 2, 3, 4})
+				local, err := localConnection()
+				if err != nil {
+					t.Fatal(err)
+				}
+				if err := local.CreateDB(context.Background(), "bob"); err != nil {
+					t.Fatal(err)
+				}
+				if err := local.CreateDB(context.Background(), id.String()); err != nil {
+					t.Fatal(err)
+				}
+				return &Repo{
+					user:  "bob",
+					local: local,
+				}
+			}(),
+			file: &mockFile{body: []byte{
+				0x1f, 0x8b, 0x08, 0x08, 0xe2, 0x20, 0x71, 0x59,
+				0x00, 0x03, 0x78, 0x00, 0x33, 0xe4, 0x02, 0x00,
+				0x53, 0xfc, 0x51, 0x67, 0x02, 0x00, 0x00, 0x00}},
+			err: "Unable to decode JSON: json: cannot unmarshal number into Go value of type fb.Package",
+		},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			var msg string
-			if err := test.repo.ImportFile(test.file); err != nil {
+			if err := test.repo.ImportFile(context.Background(), test.file); err != nil {
 				msg = err.Error()
 			}
 			if msg != test.err {
@@ -66,13 +99,30 @@ func TestImportFile(t *testing.T) {
 	}
 }
 
+func MustParseDbID(id string) fb.DbID {
+	dbid, err := fb.ParseDbID(id)
+	if err != nil {
+		panic(err)
+	}
+	return dbid
+}
+
+func MustParseDocID(id string) fb.DocID {
+	docid, err := fb.ParseDocID(id)
+	if err != nil {
+		panic(err)
+	}
+	return docid
+}
+
 func TestImport(t *testing.T) {
 	type iTest struct {
-		name     string
-		repo     *Repo
-		file     io.Reader
-		expected *fb.Package
-		err      string
+		name           string
+		repo           *Repo
+		file           io.Reader
+		expectedBundle *fb.Bundle
+		expectedDocs   []interface{}
+		err            string
 	}
 	id, _ := fb.NewDbID("bundle", []byte{1, 2, 3, 4})
 	owner, _ := fb.NewDbID("user", []byte{1, 2, 3, 4, 5})
@@ -185,27 +235,170 @@ func TestImport(t *testing.T) {
 				}
 			}(),
 			file: func() io.Reader {
-				pkg := fb.Package{
-					Bundle: &fb.Bundle{
-						ID: id,
-						Owner: &fb.User{
-							ID: owner,
+				return strings.NewReader(`
+				{
+				    "version": 0,
+				    "bundle": {
+				        "type": "bundle",
+				        "_id": "bundle-aebagba",
+				        "created": "2016-07-31T15:08:24.730156517Z",
+				        "modified": "2016-07-31T15:08:24.730156517Z",
+				        "owner": "aebagbaf"
+				    },
+				    "cards": [
+				        {
+				            "type": "card",
+				            "_id": "card-krsxg5baij2w4zdmmu.VGVzdCBOb3Rl.0",
+				            "created": "2016-07-31T15:08:24.730156517Z",
+				            "modified": "2016-07-31T15:08:24.730156517Z",
+				            "model": "theme-VGVzdCBUaGVtZQ/0"
+				        }
+				    ],
+				    "notes": [
+				        {
+				            "type": "note",
+				            "_id": "note-VGVzdCBOb3Rl",
+				            "created": "2016-07-31T15:08:24.730156517Z",
+				            "modified": "2016-07-31T15:08:24.730156517Z",
+				            "imported": "2016-08-02T15:08:24.730156517Z",
+				            "theme": "theme-VGVzdCBUaGVtZQ",
+				            "model": 1,
+				            "fieldValues": [
+				                {
+				                    "text": "cat"
+				                }
+				            ]
+				        }
+				    ],
+				    "decks": [
+				        {
+				            "type": "deck",
+				            "_id": "deck-VGVzdCBEZWNr",
+				            "created": "2016-07-31T15:08:24.730156517Z",
+				            "modified": "2016-07-31T15:08:24.730156517Z",
+				            "imported": "2016-08-02T15:08:24.730156517Z",
+				            "name": "Test Deck",
+				            "description": "Deck for testing",
+				            "cards": ["krsxg5baij2w4zdmmu.VGVzdCBOb3Rl.0"]
+				        }
+				    ],
+				    "themes": [
+				        {
+				            "type": "theme",
+				            "_id": "theme-VGVzdCBUaGVtZQ",
+				            "created": "2016-07-31T15:08:24.730156517Z",
+				            "modified": "2016-07-31T15:08:24.730156517Z",
+				            "imported": "2016-08-02T15:08:24.730156517Z",
+				            "name": "Test Theme",
+				            "description": "Theme for testing",
+				            "models": [
+				                {
+				                    "id": 0,
+				                    "modelType": "anki-basic",
+				                    "name": "Model A",
+				                    "templates": [],
+				                    "fields": [
+				                        {
+				                            "fieldType": 0,
+				                            "name": "Word"
+				                        }
+				                    ],
+				                    "files": [
+				                        "m1.html"
+				                    ]
+				                }
+				            ],
+				            "_attachments": {
+				                "$main.css": {
+				                    "content_type": "text/css",
+				                    "data": "LyogYW4gZW1wdHkgQ1NTIGZpbGUgKi8="
+				                },
+				                "m1.html": {
+				                    "content_type": "text/html",
+				                    "data": "PGh0bWw+PC9odG1sPg=="
+				                }
+				            },
+				            "files": [
+				                "$main.css"
+				            ],
+				            "modelSequence": 2
+				        }
+				    ],
+				    "reviews": [
+				        {
+				            "cardID": "VGVzdCBOb3Rl.0",
+				            "timestamp": null
+				        }
+				    ]
+				}
+				`)
+			}(),
+			expectedBundle: &fb.Bundle{
+				ID:  id,
+				Rev: func() *string { x := "1"; return &x }(),
+				Owner: &fb.User{
+					ID: owner,
+				},
+				Created:  ParseTime("2016-07-31T15:08:24.730156517Z"),
+				Modified: ParseTime("2016-07-31T15:08:24.730156517Z"),
+			},
+			expectedDocs: []interface{}{
+				map[string]interface{}{
+					"_id":      "card-krsxg5baij2w4zdmmu.VGVzdCBOb3Rl.0",
+					"_rev":     "1",
+					"type":     "card",
+					"created":  "2016-07-31T15:08:24.730156517Z",
+					"modified": "2016-07-31T15:08:24.730156517Z",
+					"model":    "theme-VGVzdCBUaGVtZQ/0",
+				},
+				map[string]interface{}{
+					"_id":         "deck-VGVzdCBEZWNr",
+					"_rev":        "1",
+					"type":        "deck",
+					"name":        "Test Deck",
+					"description": "Deck for testing",
+					"cards":       []string{"krsxg5baij2w4zdmmu.VGVzdCBOb3Rl.0"},
+					"created":     "2016-07-31T15:08:24.730156517Z",
+					"imported":    "2016-08-02T15:08:24.730156517Z",
+					"modified":    "2016-07-31T15:08:24.730156517Z",
+				},
+				map[string]interface{}{
+					"_id":           "theme-VGVzdCBUaGVtZQ",
+					"_rev":          "1",
+					"type":          "theme",
+					"name":          "Test Theme",
+					"description":   "Theme for testing",
+					"modelSequence": 2,
+					"created":       "2016-07-31T15:08:24.730156517Z",
+					"imported":      "2016-08-02T15:08:24.730156517Z",
+					"modified":      "2016-07-31T15:08:24.730156517Z",
+					"models": []map[string]interface{}{
+						{
+							"id":        0,
+							"modelType": "anki-basic",
+							"name":      "Model A",
+							"templates": []string{},
+							"fields": []map[string]interface{}{
+								{
+									"fieldType": 0,
+									"name":      "Word",
+								},
+							},
+							"files": []string{"m1.html"},
 						},
 					},
-				}
-				buf := &bytes.Buffer{}
-				if err := json.NewEncoder(buf).Encode(pkg); err != nil {
-					t.Fatal(err)
-				}
-				return buf
-			}(),
-			expected: &fb.Package{
-				Bundle: &fb.Bundle{
-					ID:  id,
-					Rev: func() *string { x := "1"; return &x }(),
-					Owner: &fb.User{
-						ID: owner,
-					},
+					"files": []string{"$main.css"},
+				},
+				map[string]interface{}{
+					"_id":         "note-VGVzdCBOb3Rl",
+					"_rev":        "1",
+					"type":        "note",
+					"theme":       "theme-VGVzdCBUaGVtZQ",
+					"model":       1,
+					"fieldValues": []map[string]string{{"text": "cat"}},
+					"created":     "2016-07-31T15:08:24.730156517Z",
+					"imported":    "2016-08-02T15:08:24.730156517Z",
+					"modified":    "2016-07-31T15:08:24.730156517Z",
 				},
 			},
 		},
@@ -233,19 +426,9 @@ func TestImport(t *testing.T) {
 				t.Fatal(err)
 			}
 			checkDoc(t, bdb, test.expectedBundle)
-			// row, err := udb.Get(context.Background(), test.expected.Bundle.ID.String())
-			// if err != nil {
-			// 	t.Fatalf("failed to refectch bundle from userdb: %s", err)
-			// }
-			// bundle := &fb.Bundle{}
-			// if e := row.ScanDoc(&bundle); e != nil {
-			// 	t.Fatal(e)
-			// }
-			// revParts := strings.Split(*bundle.Rev, "-")
-			// bundle.Rev = &revParts[0]
-			// if d := diff.AsJSON(test.expected.Bundle, bundle); d != "" {
-			// 	t.Error(d)
-			// }
+			for _, doc := range test.expectedDocs {
+				checkDoc(t, udb, doc)
+			}
 		})
 	}
 }
