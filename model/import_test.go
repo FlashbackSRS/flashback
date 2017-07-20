@@ -8,8 +8,11 @@ import (
 	"io"
 	"strings"
 	"testing"
+	"time"
 
 	fb "github.com/FlashbackSRS/flashback-model"
+	"github.com/flimzy/diff"
+	"github.com/flimzy/kivik"
 )
 
 type mockFile struct {
@@ -308,3 +311,117 @@ func BenchmarkSaveCard(b *testing.B) {
 	}
 }
 */
+
+type failBulkDocs struct {
+	kivik.DB
+}
+
+func (f *failBulkDocs) BulkDocs(_ context.Context, _ interface{}) (*kivik.BulkResults, error) {
+	return nil, errors.New("bulkdocs failed")
+}
+
+func TestBulkInsert(t *testing.T) {
+	type biTest struct {
+		name     string
+		db       bulkDocer
+		docs     []FlashbackDoc
+		expected []map[string]interface{}
+		err      string
+	}
+	now := time.Now()
+	tests := []biTest{
+		{
+			name: "BulkDocs fails",
+			db:   &failBulkDocs{},
+			err:  "bulkdocs failed",
+		},
+		{
+			name: "no documents",
+		},
+		{
+			name: "new docs",
+			docs: []FlashbackDoc{
+				&testDoc{ID: "abc", Value: "foo"},
+				&testDoc{ID: "def", Value: "bar"},
+			},
+			expected: []map[string]interface{}{
+				{"_id": "abc", "_rev": "1", "value": "foo"},
+				{"_id": "def", "_rev": "1", "value": "bar"},
+			},
+		},
+		{
+			name: "new and conflict",
+			db: func() *kivik.DB {
+				db := testDB(t)
+				if _, err := db.Put(context.Background(), "abc", map[string]interface{}{"_id": "abc", "value": "foo"}); err != nil {
+					t.Fatal(err)
+				}
+				return db
+			}(),
+			docs: []FlashbackDoc{
+				&testDoc{ID: "abc", Value: "foo"},
+				&testDoc{ID: "def", Value: "bar"},
+			},
+			err: "1 error occurred:\n\n* failed to save doc abc: document update conflict",
+			expected: []map[string]interface{}{
+				{"_id": "abc", "_rev": "1", "value": "foo"},
+				{"_id": "def", "_rev": "1", "value": "bar"},
+			},
+		},
+		{
+			name: "new and merge",
+			db: func() *kivik.DB {
+				db := testDB(t)
+				ctime := time.Now().Add(-time.Hour)
+				doc := testDoc{
+					ID:    "abc",
+					ITime: &ctime,
+					MTime: &ctime,
+					Value: "foo",
+				}
+				if _, err := db.Put(context.Background(), "abc", doc); err != nil {
+					t.Fatal(err)
+				}
+				return db
+			}(),
+			docs: []FlashbackDoc{
+				&testDoc{ID: "abc", Value: "foo", ITime: &now, doMerge: true},
+				&testDoc{ID: "def", Value: "bar", ITime: &now},
+			},
+			expected: []map[string]interface{}{
+				{"_id": "abc", "_rev": "2", "value": "new value", "imported_time": now},
+				{"_id": "def", "_rev": "1", "value": "bar", "imported_time": now},
+			},
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			db := test.db
+			if db == nil {
+				db = testDB(t)
+			}
+			var msg string
+			if err := bulkInsert(context.Background(), db, test.docs...); err != nil {
+				msg = err.Error()
+			}
+			if msg != test.err {
+				t.Errorf("Unexpected error: %s", msg)
+			}
+			for i, expected := range test.expected {
+				row, err := db.Get(context.Background(), expected["_id"].(string))
+				if err != nil {
+					t.Fatal(err)
+				}
+				var result map[string]interface{}
+				if e := row.ScanDoc(&result); e != nil {
+					t.Fatal(e)
+				}
+				revParts := strings.Split(result["_rev"].(string), "-")
+				result["_rev"] = revParts[0]
+				if d := diff.AsJSON(expected, result); d != "" {
+					t.Errorf("Doc %d: %s", i, d)
+				}
+			}
+		})
+	}
+}

@@ -7,6 +7,8 @@ import (
 	"encoding/json"
 	"io"
 
+	"github.com/flimzy/kivik"
+	multierror "github.com/hashicorp/go-multierror"
 	"github.com/pkg/errors"
 
 	fb "github.com/FlashbackSRS/flashback-model"
@@ -97,17 +99,28 @@ func (r *Repo) Import(ctx context.Context, f io.Reader) error {
 	return nil
 }
 
-//
-// func bulkInsert(ctx context.Context, db *DB, docs ...interface{}) error {
-// 	results, err := db.BulkDocs(ctx, docs)
-// 	if err != nil {
-// 		return err
-// 	}
-// 	var errs *multierror.Error
-// 	for results.Next() {
-// 		if err := results.UpdateErr(); err != nil {
-// 			errs = multierror.Append(errs, errors.Wrapf(err, "failed to save doc %s", results.ID()))
-// 		}
-// 	}
-// 	return errs.ErrorOrNil()
-// }
+type bulkDocer interface {
+	BulkDocs(context.Context, interface{}) (*kivik.BulkResults, error)
+	saveDB
+}
+
+func bulkInsert(ctx context.Context, db bulkDocer, docs ...FlashbackDoc) error {
+	results, err := db.BulkDocs(ctx, docs)
+	if err != nil {
+		return err
+	}
+	var errs *multierror.Error
+	for i := 0; results.Next(); i++ {
+		if err := results.UpdateErr(); err != nil {
+			if kivik.StatusCode(err) == kivik.StatusConflict {
+				if e := mergeDoc(ctx, db, docs[i]); e != nil {
+					err = e
+				} else {
+					continue
+				}
+			}
+			errs = multierror.Append(errs, errors.Wrapf(err, "failed to save doc %s", results.ID()))
+		}
+	}
+	return errs.ErrorOrNil()
+}
