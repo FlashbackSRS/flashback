@@ -3,17 +3,55 @@ package model
 import (
 	"context"
 	"fmt"
+	"sync"
+	"sync/atomic"
 
 	"github.com/flimzy/kivik"
+	"github.com/flimzy/log"
+	multierror "github.com/hashicorp/go-multierror"
 )
 
 // Sync performs a bi-directional sync.
 func (r *Repo) Sync(ctx context.Context) error {
-	_, err := r.userDB(ctx)
+	ldb, err := r.userDB(ctx)
 	if err != nil {
 		return err
 	}
-	return nil
+	rdb, err := r.remoteUserDB(ctx)
+	if err != nil {
+		return err
+	}
+
+	var docsWritten, docsRead int32
+	errCh := make(chan error, 10)
+	var wg sync.WaitGroup
+
+	wg.Add(1)
+	go func() {
+		// local to remote
+		if err := replicate(ctx, r.local, rdb, ldb, &docsWritten); err != nil {
+			errCh <- err
+		}
+		wg.Done()
+	}()
+
+	wg.Add(1)
+	go func() {
+		// remote to local
+		if err := replicate(ctx, r.local, ldb, rdb, &docsRead); err != nil {
+			errCh <- err
+		}
+		wg.Done()
+	}()
+
+	wg.Wait()
+	close(errCh)
+	log.Debugf("Synced %d docs from server, %d to server\n", docsRead, docsWritten)
+	var errs error
+	for err := range errCh {
+		errs = multierror.Append(errs, err)
+	}
+	return errs
 }
 
 func dbDSN(db *kivik.DB) string {
@@ -21,18 +59,20 @@ func dbDSN(db *kivik.DB) string {
 }
 
 type clientReplicator interface {
-	Replicate(context.Context, string, string, map[string]interface{}) (*kivik.Replication, error)
+	Replicate(context.Context, string, string, ...kivik.Options) (*kivik.Replication, error)
 }
 
-func replicate(ctx context.Context, client clientReplicator, target, source *kivik.DB) (int32, error) {
+func replicate(ctx context.Context, client clientReplicator, target, source *kivik.DB, count *int32) error {
 	replication, err := client.Replicate(ctx, "", "", map[string]interface{}{
 		"target": target,
 		"source": source,
 	})
 	if err != nil {
-		return 0, err
+		return err
 	}
-	return processReplication(ctx, replication)
+	c, err := processReplication(ctx, replication)
+	atomic.AddInt32(count, c)
+	return err
 }
 
 type replication interface {

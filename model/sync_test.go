@@ -11,7 +11,7 @@ import (
 func TestDbDSN(t *testing.T) {
 	db := testDB(t)
 	result := dbDSN(db)
-	expected := "foo/" + db.Name()
+	expected := "local/" + db.Name()
 	if result != expected {
 		t.Errorf("Unexpected result: %s\n", result)
 	}
@@ -28,6 +28,53 @@ func TestSync(t *testing.T) {
 			name: "not logged in",
 			repo: &Repo{},
 			err:  "not logged in",
+		},
+		{
+			name: "remote db doesn't exist",
+			repo: func() *Repo {
+				local, err := localConnection()
+				if err != nil {
+					t.Fatal(err)
+				}
+				if e := local.CreateDB(context.Background(), "bob"); e != nil {
+					t.Fatal(e)
+				}
+				remote, err := remoteConnection("")
+				if err != nil {
+					t.Fatal(err)
+				}
+				return &Repo{
+					user:   "bob",
+					local:  local,
+					remote: remote,
+				}
+			}(),
+			err: "database does not exist",
+		},
+		{
+			name: "logged in",
+			repo: func() *Repo {
+				local, err := localConnection()
+				if err != nil {
+					t.Fatal(err)
+				}
+				if e := local.CreateDB(context.Background(), "bob"); e != nil {
+					t.Fatal(e)
+				}
+				remote, err := remoteConnection("")
+				if err != nil {
+					t.Fatal(err)
+				}
+				if e := remote.CreateDB(context.Background(), "bob"); e != nil {
+					t.Fatal(e)
+				}
+				return &Repo{
+					user:   "bob",
+					local:  local,
+					remote: remote,
+				}
+			}(),
+			err: "2 errors occurred:\n\n* kivik: driver does not support replication\n* kivik: driver does not support replication",
 		},
 	}
 	for _, test := range tests {
@@ -48,7 +95,7 @@ type fakeReplicator struct {
 	err error
 }
 
-func (r *fakeReplicator) Replicate(_ context.Context, _, _ string, _ map[string]interface{}) (*kivik.Replication, error) {
+func (r *fakeReplicator) Replicate(_ context.Context, _, _ string, _ ...kivik.Options) (*kivik.Replication, error) {
 	return nil, r.err
 }
 
@@ -72,9 +119,9 @@ func TestReplicate(t *testing.T) {
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
+			var count int32
 			var msg string
-			_, err := replicate(context.Background(), test.client, test.target, test.source)
-			if err != nil {
+			if err := replicate(context.Background(), test.client, test.target, test.source, &count); err != nil {
 				msg = err.Error()
 			}
 			if msg != test.err {
