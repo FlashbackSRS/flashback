@@ -141,6 +141,14 @@ func (r *Repo) userDB(ctx context.Context) (*kivik.DB, error) {
 	return r.local.DB(ctx, user)
 }
 
+func (r *Repo) remoteUserDB(ctx context.Context) (*kivik.DB, error) {
+	user, err := r.CurrentUser()
+	if err != nil {
+		return nil, err
+	}
+	return r.remote.DB(ctx, user)
+}
+
 func (r *Repo) bundleDB(ctx context.Context, bundle *fb.Bundle) (*kivik.DB, error) {
 	if bundle == nil || !bundle.ID.Valid() {
 		return nil, errors.New("invalid bundle")
