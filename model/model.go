@@ -5,7 +5,6 @@ import (
 	"net/http"
 
 	"github.com/flimzy/kivik"
-	_ "github.com/flimzy/kivik/driver/couchdb" // CouchDB driver
 	"github.com/flimzy/kivik/driver/couchdb/chttp"
 	"github.com/pkg/errors"
 
@@ -31,7 +30,7 @@ type Repo struct {
 
 // New returns a new Repo instance, pointing to the specified remote server.
 func New(ctx context.Context, remoteURL string) (*Repo, error) {
-	remoteClient, err := kivik.New(ctx, "couch", remoteURL)
+	remoteClient, err := remoteConnection(remoteURL)
 	if err != nil {
 		return nil, err
 	}

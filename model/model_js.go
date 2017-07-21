@@ -12,3 +12,7 @@ import (
 func localConnection() (*kivik.Client, error) {
 	return kivik.New(context.Background(), "pouch", "")
 }
+
+func remoteConnection(dsn string) (*kivik.Client, error) {
+	return kivik.New(context.Background(), "pouch", dsn)
+}

@@ -10,5 +10,9 @@ import (
 )
 
 func localConnection() (*kivik.Client, error) {
-	return kivik.New(context.Background(), "memory", "foo")
+	return kivik.New(context.Background(), "memory", "local")
+}
+
+func remoteConnection(_ string) (*kivik.Client, error) {
+	return kivik.New(context.Background(), "memory", "remote")
 }
