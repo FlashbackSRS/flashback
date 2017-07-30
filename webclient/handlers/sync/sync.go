@@ -12,7 +12,6 @@ import (
 	"github.com/gopherjs/jquery"
 
 	"github.com/FlashbackSRS/flashback/model"
-	"github.com/FlashbackSRS/flashback/repository"
 )
 
 var jQuery = jquery.NewJQuery
@@ -60,44 +59,6 @@ func SyncButton(repo *model.Repo) {
 			log.Debugf("Error syncing: %s\n", err)
 		}
 	}()
-}
-
-func AuxSync(local, remote *repo.DB) (int32, int32, error) {
-	/*
-		log.Debugf("Reading auxilary tables to sync...\n")
-		doc := make(map[string][]model.Stub)
-		err := local.Find(map[string]interface{}{
-			"selector": map[string]string{"type": "stub"},
-		}, &doc)
-		if err != nil {
-			return 0, 0, err
-		}
-		if len(doc["docs"]) == 0 {
-			return 0, 0, nil
-		}
-		var written, read int32
-		host := util.CouchHost()
-		for _, stub := range doc["docs"] {
-			log.Debugf("stub = %v\n", stub)
-			local := model.NewDB(stub.ID)
-			remote := model.NewDB(host + "/" + stub.ID)
-			if w, err := Sync(local, remote); err != nil {
-				log.Debugf("Error syncing '%s' up: %s\n", stub.ID, err)
-				return written, read, err
-			} else {
-				atomic.AddInt32(&written, w)
-			}
-
-			if r, err := Sync(remote, local); err != nil {
-				log.Debugf("Error syncing '%s' down: %s\n", stub.ID, err)
-			} else {
-				atomic.AddInt32(&read, r)
-			}
-		}
-		log.Debugf("Auxilary sync complete\n")
-		return written, read, nil
-	*/
-	return 0, 0, nil
 }
 
 /*
