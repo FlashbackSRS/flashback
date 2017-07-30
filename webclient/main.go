@@ -135,7 +135,8 @@ func RouterInit() {
 
 	// beforeshow
 	beforeShow := jqeventrouter.NullHandler()
-	jqeventrouter.Listen("pagecontainerbeforeshow", l10n_handler.LocalizePage(synchandler.SetupSyncButton(beforeShow)))
+	setupSyncButton := synchandler.SetupSyncButton(repo)
+	jqeventrouter.Listen("pagecontainerbeforeshow", l10n_handler.LocalizePage(setupSyncButton(beforeShow)))
 }
 
 func getJqmUri(_ *jquery.Event, ui *js.Object) string {
