@@ -127,3 +127,47 @@ func (r *Repo) syncBundles(ctx context.Context, reads, writes *int32) error {
 	}
 	return nil
 }
+
+/*
+func SyncReviews(local, remote *repo.DB) (int32, error) {
+	u, err := repo.CurrentUser()
+	if err != nil {
+		return 0, err
+	}
+	host := util.CouchHost()
+	ldb, err := util.ReviewsSyncDbs()
+	if err != nil {
+		return 0, err
+	}
+	if ldb == nil {
+		return 0, nil
+	}
+	before, err := ldb.Info()
+	if err != nil {
+		return 0, err
+	}
+	if before.DocCount == 0 {
+		// Nothing at all to sync
+		return 0, nil
+	}
+	rdb, err := repo.NewDB(host + "/" + u.MasterReviewsDBName())
+	if err != nil {
+		return 0, err
+	}
+	revsSynced, err := Sync(ldb, rdb)
+	if err != nil {
+		return 0, err
+	}
+	after, err := ldb.Info()
+	if err != nil {
+		return revsSynced, err
+	}
+	if before.DocCount != after.DocCount || before.UpdateSeq != after.UpdateSeq {
+		log.Debugf("ReviewsDb content changed during sync. Refusing to delete.\n")
+		return revsSynced, nil
+	}
+	log.Debugf("Ready to zap %s\n", after.DBName)
+	err = util.ZapReviewsDb(ldb)
+	return revsSynced, err
+}
+*/
