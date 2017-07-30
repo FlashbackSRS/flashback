@@ -65,7 +65,7 @@ func TestImportFile(t *testing.T) {
 				if err != nil {
 					t.Fatal(err)
 				}
-				if err := local.CreateDB(context.Background(), "bob"); err != nil {
+				if err := local.CreateDB(context.Background(), "user-bob"); err != nil {
 					t.Fatal(err)
 				}
 				if err := local.CreateDB(context.Background(), id.String()); err != nil {
@@ -138,7 +138,7 @@ func TestImport(t *testing.T) {
 			repo: &Repo{user: "bob",
 				local: func() *kivik.Client {
 					c := testClient(t)
-					if err := c.CreateDB(context.Background(), "bob"); err != nil {
+					if err := c.CreateDB(context.Background(), "user-bob"); err != nil {
 						t.Fatal(err)
 					}
 					return c
@@ -154,7 +154,7 @@ func TestImport(t *testing.T) {
 				if err != nil {
 					t.Fatal(err)
 				}
-				if err := local.CreateDB(context.Background(), "bob"); err != nil {
+				if err := local.CreateDB(context.Background(), "user-bob"); err != nil {
 					t.Fatal(err)
 				}
 				return &Repo{
@@ -195,7 +195,7 @@ func TestImport(t *testing.T) {
 				if err != nil {
 					t.Fatal(err)
 				}
-				if err := local.CreateDB(context.Background(), "bob"); err != nil {
+				if err := local.CreateDB(context.Background(), "user-bob"); err != nil {
 					t.Fatal(err)
 				}
 				if err := local.CreateDB(context.Background(), id.String()); err != nil {
@@ -223,7 +223,7 @@ func TestImport(t *testing.T) {
 				if err != nil {
 					t.Fatal(err)
 				}
-				if err := local.CreateDB(context.Background(), "bob"); err != nil {
+				if err := local.CreateDB(context.Background(), "user-bob"); err != nil {
 					t.Fatal(err)
 				}
 				if err := local.CreateDB(context.Background(), id.String()); err != nil {

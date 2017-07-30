@@ -2,71 +2,64 @@ package model
 
 import (
 	"context"
-	"fmt"
-	"sync"
+	"strings"
 	"sync/atomic"
 
 	"github.com/flimzy/kivik"
 	"github.com/flimzy/log"
-	multierror "github.com/hashicorp/go-multierror"
+	"github.com/pkg/errors"
+
+	fb "github.com/FlashbackSRS/flashback-model"
 )
+
+func (r *Repo) remoteDSN(name string) string {
+	dsn := r.remote.DSN()
+	if strings.HasSuffix(dsn, "/") {
+		return dsn + name
+	}
+	return dsn + "/" + name
+}
 
 // Sync performs a bi-directional sync.
 func (r *Repo) Sync(ctx context.Context) error {
-	ldb, err := r.userDB(ctx)
+	u, err := r.CurrentUser()
 	if err != nil {
 		return err
 	}
-	rdb, err := r.remoteUserDB(ctx)
-	if err != nil {
-		return err
-	}
+	udbName := "user-" + u
+	rdb := r.remoteDSN(udbName)
 
 	var docsWritten, docsRead int32
-	errCh := make(chan error, 10)
-	var wg sync.WaitGroup
 
-	wg.Add(1)
-	go func() {
-		// local to remote
-		if err := replicate(ctx, r.local, rdb, ldb, &docsWritten); err != nil {
-			errCh <- err
-		}
-		wg.Done()
-	}()
-
-	wg.Add(1)
-	go func() {
-		// remote to local
-		if err := replicate(ctx, r.local, ldb, rdb, &docsRead); err != nil {
-			errCh <- err
-		}
-		wg.Done()
-	}()
-
-	wg.Wait()
-	close(errCh)
-	log.Debugf("Synced %d docs from server, %d to server\n", docsRead, docsWritten)
-	var errs error
-	for err := range errCh {
-		errs = multierror.Append(errs, err)
+	// local to remote
+	if err := replicate(ctx, r.local, rdb, udbName, &docsWritten); err != nil {
+		return errors.Wrap(err, "sync local to remote")
 	}
-	return errs
-}
 
-func dbDSN(db *kivik.DB) string {
-	return fmt.Sprintf("%s/%s", db.Client().DSN(), db.Name())
+	// remote to local
+	if err := replicate(ctx, r.local, udbName, rdb, &docsRead); err != nil {
+		return errors.Wrap(err, "sync remote to local")
+	}
+
+	log.Debugf("Synced %d docs from server, %d to server\n", docsRead, docsWritten)
+	return nil
 }
 
 type clientReplicator interface {
 	Replicate(context.Context, string, string, ...kivik.Options) (*kivik.Replication, error)
 }
 
-func replicate(ctx context.Context, client clientReplicator, target, source *kivik.DB, count *int32) error {
-	replication, err := client.Replicate(ctx, "", "", map[string]interface{}{
-		"target": target,
-		"source": source,
-	})
+func dbDSN(db *kivik.DB) string {
+	dsn := db.Client().DSN()
+	dbName := db.Name()
+	if dsn != "" && !strings.HasSuffix(dsn, "/") {
+		return dsn + "/" + dbName
+	}
+	return dsn + dbName
+}
+
+func replicate(ctx context.Context, client clientReplicator, target, source string, count *int32) error {
+	replication, err := client.Replicate(ctx, target, source)
 	if err != nil {
 		return err
 	}

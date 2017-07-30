@@ -30,42 +30,20 @@ func TestSync(t *testing.T) {
 			err:  "not logged in",
 		},
 		{
-			name: "remote db doesn't exist",
-			repo: func() *Repo {
-				local, err := localConnection()
-				if err != nil {
-					t.Fatal(err)
-				}
-				if e := local.CreateDB(context.Background(), "bob"); e != nil {
-					t.Fatal(e)
-				}
-				remote, err := remoteConnection("")
-				if err != nil {
-					t.Fatal(err)
-				}
-				return &Repo{
-					user:   "bob",
-					local:  local,
-					remote: remote,
-				}
-			}(),
-			err: "database does not exist",
-		},
-		{
 			name: "logged in",
 			repo: func() *Repo {
 				local, err := localConnection()
 				if err != nil {
 					t.Fatal(err)
 				}
-				if e := local.CreateDB(context.Background(), "bob"); e != nil {
+				if e := local.CreateDB(context.Background(), "user-bob"); e != nil {
 					t.Fatal(e)
 				}
 				remote, err := remoteConnection("")
 				if err != nil {
 					t.Fatal(err)
 				}
-				if e := remote.CreateDB(context.Background(), "bob"); e != nil {
+				if e := remote.CreateDB(context.Background(), "user-bob"); e != nil {
 					t.Fatal(e)
 				}
 				return &Repo{
@@ -74,7 +52,7 @@ func TestSync(t *testing.T) {
 					remote: remote,
 				}
 			}(),
-			err: "2 errors occurred:\n\n* kivik: driver does not support replication\n* kivik: driver does not support replication",
+			err: "sync local to remote: kivik: driver does not support replication",
 		},
 	}
 	for _, test := range tests {
@@ -103,7 +81,7 @@ func TestReplicate(t *testing.T) {
 	type rTest struct {
 		name           string
 		client         clientReplicator
-		target, source *kivik.DB
+		target, source string
 		err            string
 	}
 	tests := []rTest{

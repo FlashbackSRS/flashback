@@ -57,7 +57,7 @@ func TestSaveBundle(t *testing.T) {
 				if err != nil {
 					t.Fatal(err)
 				}
-				if err := local.CreateDB(context.Background(), "bob"); err != nil {
+				if err := local.CreateDB(context.Background(), "user-bob"); err != nil {
 					t.Fatal(err)
 				}
 				if err := local.CreateDB(context.Background(), id.String()); err != nil {

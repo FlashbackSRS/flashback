@@ -137,23 +137,15 @@ func (r *Repo) userDB(ctx context.Context) (*kivik.DB, error) {
 	if err != nil {
 		return nil, err
 	}
-	return r.local.DB(ctx, user)
-}
-
-func (r *Repo) remoteUserDB(ctx context.Context) (*kivik.DB, error) {
-	user, err := r.CurrentUser()
-	if err != nil {
-		return nil, err
-	}
-	return r.remote.DB(ctx, user)
+	return r.local.DB(ctx, "user-"+user)
 }
 
 func (r *Repo) bundleDB(ctx context.Context, bundle *fb.Bundle) (*kivik.DB, error) {
-	if bundle == nil || !bundle.ID.Valid() {
-		return nil, errors.New("invalid bundle")
-	}
 	if _, err := r.CurrentUser(); err != nil {
 		return nil, err
+	}
+	if bundle == nil || !bundle.ID.Valid() {
+		return nil, errors.New("invalid bundle")
 	}
 	if err := r.local.CreateDB(ctx, bundle.ID.String()); err != nil && kivik.StatusCode(err) != kivik.StatusPreconditionFailed {
 		return nil, err
