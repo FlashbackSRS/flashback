@@ -87,3 +87,43 @@ func processReplication(ctx context.Context, rep replication) (int32, error) {
 	}
 	return int32(rep.DocsWritten()), rep.Err()
 }
+
+func (r *Repo) syncBundles(ctx context.Context, reads, writes *int32) error {
+	udb, err := r.userDB(ctx)
+	if err != nil {
+		return err
+	}
+	log.Debugf("Reading bundles from user database...\n")
+	rows, err := udb.Find(context.TODO(), map[string]interface{}{
+		"selector": map[string]string{"type": "bundle"},
+		"fields":   []string{"_id"},
+	})
+	if err != nil {
+		return errors.Wrap(err, "failed to sync bundles")
+	}
+
+	var bundles []*fb.Bundle
+	for rows.Next() {
+		var bundle *fb.Bundle
+		if err := rows.ScanDoc(&bundle); err != nil {
+			return errors.Wrapf(err, "failed to scan bundle %s", rows.ID())
+		}
+		bundles = append(bundles, bundle)
+	}
+	log.Debugf("bundles = %v\n", bundles)
+	for _, bundle := range bundles {
+		log.Debugf("Bundle %s", bundle)
+		ldb := bundle.ID.String()
+		rdb := r.remoteDSN(ldb)
+		if err := r.remote.CreateDB(ctx, rdb); err != nil {
+			return err
+		}
+		if err := replicate(ctx, r.local, rdb, ldb, writes); err != nil {
+			return errors.Wrap(err, "bundle push")
+		}
+		if err := replicate(ctx, r.local, ldb, rdb, reads); err != nil {
+			return errors.Wrap(err, "bundle pull")
+		}
+	}
+	return nil
+}

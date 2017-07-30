@@ -163,3 +163,40 @@ func TestProcessReplication(t *testing.T) {
 		})
 	}
 }
+
+func TestSyncBundles(t *testing.T) {
+	type sbTest struct {
+		name          string
+		repo          *Repo
+		reads, writes int32
+		err           string
+	}
+	tests := []sbTest{
+		{
+			name: "not logged in",
+			repo: &Repo{},
+			err:  "not logged in",
+		},
+		// TODO: Test actual replications
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			ctx := context.Background()
+			var reads, writes int32
+			err := test.repo.syncBundles(ctx, &reads, &writes)
+			var msg string
+			if err != nil {
+				msg = err.Error()
+			}
+			if test.err != msg {
+				t.Errorf("Unexpected error: %s", msg)
+			}
+			if err != nil {
+				return
+			}
+			if test.reads != reads || test.writes != writes {
+				t.Errorf("Unexpected sync count.\nExpected reads %d, writes %d\n  Actual reads %d, writes %d", test.reads, test.writes, reads, writes)
+			}
+		})
+	}
+}
