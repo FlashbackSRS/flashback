@@ -234,3 +234,57 @@ func TestSaveDoc(t *testing.T) {
 		})
 	}
 }
+
+type mockGetter struct {
+	row kivikRow
+	err error
+}
+
+var _ getter = &mockGetter{}
+
+func (db *mockGetter) Get(ctx context.Context, docID string, options ...kivik.Options) (kivikRow, error) {
+	return db.row, db.err
+}
+
+type mockRow string
+
+var _ kivikRow = mockRow("")
+
+func (r mockRow) ScanDoc(i interface{}) error {
+	return json.Unmarshal([]byte(r), &i)
+}
+
+func TestGetDoc(t *testing.T) {
+	type gdTest struct {
+		name     string
+		db       getter
+		id       string
+		dst      interface{}
+		expected interface{}
+		err      string
+	}
+	tests := []gdTest{
+		{
+			name: "get fails",
+			db:   &mockGetter{err: errors.New("get failed")},
+			err:  "get failed",
+		},
+		{
+			name: "Scan doc fails",
+			db:   &mockGetter{row: mockRow("invalid JSON")},
+			err:  "invalid character 'i' looking for beginning of value",
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			err := getDoc(context.Background(), test.db, test.id, test.dst)
+			checkErr(t, test.err, err)
+			if err != nil {
+				return
+			}
+			if d := diff.AsJSON(test.expected, test.dst); d != "" {
+				t.Error(d)
+			}
+		})
+	}
+}

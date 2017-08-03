@@ -76,3 +76,19 @@ func saveDoc(ctx context.Context, db saveDB, doc FlashbackDoc) error {
 	doc.SetRev(rev)
 	return nil
 }
+
+type getter interface {
+	Get(ctx context.Context, docID string, options ...kivik.Options) (kivikRow, error)
+}
+
+type kivikRow interface {
+	ScanDoc(dest interface{}) error
+}
+
+func getDoc(ctx context.Context, db getter, id string, dst interface{}) error {
+	row, err := db.Get(ctx, id)
+	if err != nil {
+		return err
+	}
+	return row.ScanDoc(dst)
+}
