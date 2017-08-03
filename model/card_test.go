@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"io"
 	"testing"
 	"time"
@@ -13,6 +12,13 @@ import (
 	"github.com/flimzy/diff"
 	"github.com/flimzy/kivik"
 )
+
+func init() {
+	now = func() time.Time {
+		t, _ := time.Parse(time.RFC3339, "2017-01-01T12:00:00Z")
+		return t
+	}
+}
 
 func TestNewQuerier(t *testing.T) {
 	db := &kivik.DB{}
@@ -161,7 +167,15 @@ func TestGetCardsFromView(t *testing.T) {
 		{
 			name: "ignore card seen today",
 			db: &mockQuerier{rows: &mockRows{rows: []string{
-				fmt.Sprintf(`{"type": "card", "_id": "card-krsxg5baij2w4zdmmu.VGVzdCBOb3Rl.1", "_rev": "1-6e1b6fb5352429cf3013eab5d692aac8", "created": "2016-07-31T15:08:24.730156517Z", "modified": "2016-07-31T15:08:24.730156517Z", "model": "theme-VGVzdCBUaGVtZQ/0", "interval": "5d", "lastReview": "%s"}`, time.Now().Format(time.RFC3339)),
+				`{"type": "card", "_id": "card-krsxg5baij2w4zdmmu.VGVzdCBOb3Rl.1", "_rev": "1-6e1b6fb5352429cf3013eab5d692aac8", "created": "2016-07-31T15:08:24.730156517Z", "modified": "2016-07-31T15:08:24.730156517Z", "model": "theme-VGVzdCBUaGVtZQ/0", "interval": "5d", "lastReview": "2017-01-01T11:50:00Z"}`,
+			}}},
+			limit:    5,
+			expected: []int{},
+		},
+		{
+			name: "skip same-day forward fuzzing",
+			db: &mockQuerier{rows: &mockRows{rows: []string{
+				`{"type": "card", "_id": "card-krsxg5baij2w4zdmmu.VGVzdCBOb3Rl.1", "_rev": "1-6e1b6fb5352429cf3013eab5d692aac8", "created": "2016-07-31T15:08:24.730156517Z", "modified": "2016-07-31T15:08:24.730156517Z", "model": "theme-VGVzdCBUaGVtZQ/0", "interval": "30m", "due": "2017-01-01 12:01:00"}`,
 			}}},
 			limit:    5,
 			expected: []int{},

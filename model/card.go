@@ -9,6 +9,8 @@ import (
 	"github.com/flimzy/kivik"
 )
 
+var now = time.Now
+
 type querierWrapper struct {
 	*kivik.DB
 }
@@ -62,12 +64,18 @@ func getCardsFromView(ctx context.Context, db querier, view string, limit, offse
 		if err := rows.ScanDoc(card); err != nil {
 			return nil, err
 		}
-		if card.BuriedUntil != nil && card.BuriedUntil.After(fb.Now()) {
+		if card.BuriedUntil != nil && card.BuriedUntil.After(fb.Due(now())) {
 			continue
 		}
-		// Skip cards we already saw today, with an interval >= 1d; they would make no progress.
-		if card.Interval != nil && card.LastReview != nil && card.Interval.Days() >= 1 && !time.Time(fb.Today()).After(*card.LastReview) {
-			continue
+		if card.Interval != nil {
+			// Skip cards we already saw today, with an interval >= 1d; they would make no progress.
+			if card.LastReview != nil && card.Interval.Days() >= 1 && !time.Time(fb.On(now())).After(*card.LastReview) {
+				continue
+			}
+			// Skip sub-day intervals that aren't due yet. We only allow forward-fuzzing for intervals > 1day
+			if card.Due != nil && card.Interval.Days() == 0 && card.Due.After(fb.Due(now())) {
+				continue
+			}
 		}
 		cards = append(cards, card)
 		if len(cards) == limit {
