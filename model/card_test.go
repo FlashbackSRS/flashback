@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"math/rand"
 	"testing"
 	"time"
 
@@ -250,6 +251,65 @@ func TestCardPriority(t *testing.T) {
 			prio := cardPriority(test.due, test.interval, nowTime)
 			if !floatCompare(float64(prio), test.expected) {
 				t.Errorf("Unexpected result %f", prio)
+			}
+		})
+	}
+}
+
+func init() {
+	rnd = rand.New(rand.NewSource(1))
+}
+
+func TestSelectWeightedCard(t *testing.T) {
+	type swcTest struct {
+		name     string
+		cards    []*fb.Card
+		expected int
+	}
+	tests := []swcTest{
+		{
+			name:     "no cards",
+			expected: -1,
+		},
+		{
+			name: "one card",
+			cards: []*fb.Card{
+				&fb.Card{Rev: func() *string { x := "a"; return &x }()},
+			},
+			expected: 0,
+		},
+		{
+			name: "two equal card",
+			cards: []*fb.Card{
+				&fb.Card{Rev: func() *string { x := "a"; return &x }()},
+				&fb.Card{Rev: func() *string { x := "b"; return &x }()},
+			},
+			expected: 1,
+		},
+		{
+			name: "three cards, different prios",
+			cards: []*fb.Card{
+				&fb.Card{Rev: func() *string { x := "a"; return &x }()},
+				&fb.Card{Rev: func() *string { x := "b"; return &x }()},
+				&fb.Card{
+					Due:      func() *fb.Due { x := parseDue(t, "2015-01-01"); return &x }(),
+					Interval: func() *fb.Interval { x := fb.Interval(20 * fb.Day); return &x }(),
+					Rev:      func() *string { x := "c"; return &x }()},
+			},
+			expected: 2,
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			result := selectWeightedCard(test.cards)
+			if test.expected == -1 {
+				if result != nil {
+					t.Errorf("Expected no result.")
+				}
+				return
+			}
+			if test.cards[test.expected] != result {
+				t.Errorf("Unexpected result: %v", result)
 			}
 		})
 	}

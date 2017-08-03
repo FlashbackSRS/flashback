@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"math"
+	"math/rand"
 	"time"
 
 	fb "github.com/FlashbackSRS/flashback-model"
@@ -104,4 +105,39 @@ func cardPriority(due fb.Due, interval fb.Interval, now time.Time) float64 {
 	utc := now.UTC().Add(time.Duration(offset) * time.Second)
 
 	return float64(math.Pow(1+float64(utc.Sub(time.Time(due)))/float64(time.Duration(interval)), 3))
+}
+
+var rnd = rand.New(rand.NewSource(time.Now().UnixNano()))
+
+func selectWeightedCard(cards []*fb.Card) *fb.Card {
+	switch len(cards) {
+	case 0:
+		return nil
+	case 1:
+		return cards[0]
+	}
+	var weights float64
+	priorities := make([]float64, len(cards))
+	for i, card := range cards {
+		var due fb.Due
+		if card.Due != nil {
+			due = *card.Due
+		}
+		var interval fb.Interval
+		if card.Interval != nil {
+			interval = *card.Interval
+		}
+		priority := cardPriority(due, interval, now())
+		priorities[i] = priority
+		weights += priority
+	}
+	r := rnd.Float64() * weights
+	for i, priority := range priorities {
+		r -= priority
+		if r < 0 {
+			return cards[i]
+		}
+	}
+	// should never happen
+	return nil
 }
