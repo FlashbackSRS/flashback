@@ -3,6 +3,7 @@ package model
 import (
 	"context"
 	"errors"
+	"time"
 
 	fb "github.com/FlashbackSRS/flashback-model"
 	"github.com/flimzy/kivik"
@@ -62,6 +63,10 @@ func getCardsFromView(ctx context.Context, db querier, view string, limit, offse
 			return nil, err
 		}
 		if card.BuriedUntil != nil && card.BuriedUntil.After(fb.Now()) {
+			continue
+		}
+		// Skip cards we already saw today, with an interval >= 1d; they would make no progress.
+		if card.Interval != nil && card.LastReview != nil && card.Interval.Days() >= 1 && !time.Time(fb.Today()).After(*card.LastReview) {
 			continue
 		}
 		cards = append(cards, card)
