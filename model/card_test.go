@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"testing"
 	"time"
@@ -190,6 +191,65 @@ func TestGetCardsFromView(t *testing.T) {
 			}
 			if d := diff.AsJSON(test.expected, cards); d != "" {
 				t.Error(d)
+			}
+		})
+	}
+}
+
+func TestCardPriority(t *testing.T) {
+	type cpTest struct {
+		due      fb.Due
+		interval fb.Interval
+		now      time.Time
+		expected float64
+	}
+	tests := []cpTest{
+		{
+			due:      parseDue(t, "2017-01-01 00:00:00"),
+			interval: fb.Day,
+			expected: 1,
+		},
+		{
+			due:      parseDue(t, "2017-01-01 12:00:00"),
+			interval: fb.Day,
+			expected: 0.125,
+		},
+		{
+			due:      parseDue(t, "2016-12-31 12:00:00"),
+			interval: fb.Day,
+			expected: 3.375,
+		},
+		{
+			due:      parseDue(t, "2017-02-01 00:00:00"),
+			interval: 60 * fb.Day,
+			expected: 0.112912,
+		},
+		{
+			due:      parseDue(t, "2017-01-02 00:00:00"),
+			interval: fb.Day,
+			expected: 0,
+		},
+		{
+			due:      parseDue(t, "2016-01-02 00:00:00"),
+			interval: 7 * fb.Day,
+			expected: 150084.109375,
+		},
+		{
+			due:      parseDue(t, "2017-01-24 11:16:59"),
+			interval: 10 * fb.Minute,
+			expected: 132.520996,
+			now:      parseTime(t, "2017-01-24T11:57:58+01:00"),
+		},
+	}
+	for _, test := range tests {
+		t.Run(fmt.Sprintf("%v / %v", test.due, test.interval), func(t *testing.T) {
+			nowTime := test.now
+			if nowTime.IsZero() {
+				nowTime = parseTime(t, "2017-01-01T00:00:00Z")
+			}
+			prio := cardPriority(test.due, test.interval, nowTime)
+			if !floatCompare(float64(prio), test.expected) {
+				t.Errorf("Unexpected result %f", prio)
 			}
 		})
 	}

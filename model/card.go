@@ -3,11 +3,15 @@ package model
 import (
 	"context"
 	"errors"
+	"math"
 	"time"
 
 	fb "github.com/FlashbackSRS/flashback-model"
 	"github.com/flimzy/kivik"
 )
+
+// The priority for new cards.
+const newPriority = 0.5
 
 var now = time.Now
 
@@ -87,4 +91,17 @@ func getCardsFromView(ctx context.Context, db querier, view string, limit, offse
 		return append(cards, more...), err
 	}
 	return cards, nil
+}
+
+// cardPriority returns a number 0 or greater, as a priority to be used in
+// determining card study order.
+func cardPriority(due fb.Due, interval fb.Interval, now time.Time) float64 {
+	if due.IsZero() || interval == 0 {
+		return newPriority
+	}
+	// Remove the timezone
+	_, offset := now.Zone()
+	utc := now.UTC().Add(time.Duration(offset) * time.Second)
+
+	return float64(math.Pow(1+float64(utc.Sub(time.Time(due)))/float64(time.Duration(interval)), 3))
 }
