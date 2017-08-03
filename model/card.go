@@ -2,6 +2,7 @@ package model
 
 import (
 	"context"
+	"errors"
 
 	fb "github.com/FlashbackSRS/flashback-model"
 	"github.com/flimzy/kivik"
@@ -32,9 +33,20 @@ type kivikRows interface {
 	TotalRows() int64
 }
 
-func getCardsFromView(ctx context.Context, db querier, view string, limit int) ([]*fb.Card, error) {
+// limitPadding is a number added to the limit parameter passed to the
+// getCardsFromView function. This is added, because there's no automated way
+// to eliminate buried cards from the view, so they must be filtered in the
+// client, but this could lead to queries with no results, so we pad the number
+// of results to help reduce this chance.
+const limitPadding = 100
+
+func getCardsFromView(ctx context.Context, db querier, view string, limit, offset int) ([]*fb.Card, error) {
+	if limit <= 0 {
+		return nil, errors.New("invalid limit")
+	}
 	rows, err := db.Query(context.TODO(), "cards", view, map[string]interface{}{
-		"limit":        int(float64(limit) * 1.5),
+		"limit":        limit + limitPadding,
+		"offset":       offset,
 		"include_docs": true,
 	})
 	if err != nil {
@@ -42,7 +54,9 @@ func getCardsFromView(ctx context.Context, db querier, view string, limit int) (
 	}
 	defer func() { _ = rows.Close() }()
 	cards := make([]*fb.Card, 0, limit)
+	var count int
 	for rows.Next() {
+		count++
 		card := &fb.Card{}
 		if err := rows.ScanDoc(card); err != nil {
 			return nil, err
@@ -51,6 +65,13 @@ func getCardsFromView(ctx context.Context, db querier, view string, limit int) (
 			continue
 		}
 		cards = append(cards, card)
+		if len(cards) == limit {
+			return cards, nil
+		}
+	}
+	if rows.TotalRows() > int64(limit+offset) {
+		more, err := getCardsFromView(ctx, db, view, limit-len(cards), offset+count)
+		return append(cards, more...), err
 	}
 	return cards, nil
 }
