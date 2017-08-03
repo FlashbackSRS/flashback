@@ -47,6 +47,9 @@ func getCardsFromView(ctx context.Context, db querier, view string, limit int) (
 		if err := rows.ScanDoc(card); err != nil {
 			return nil, err
 		}
+		if card.BuriedUntil != nil && card.BuriedUntil.After(fb.Now()) {
+			continue
+		}
 		cards = append(cards, card)
 	}
 	return cards, nil

@@ -92,23 +92,15 @@ func TestGetCards(t *testing.T) {
 			expected: []*fb.Card{},
 		},
 		{
-			name: "three cards",
+			name: "successful fetch",
 			db: &mockQuerier{rows: &mockRows{
 				total: 1,
-				rows: []string{`{"type": "card", "_id": "card-krsxg5baij2w4zdmmu.VGVzdCBOb3Rl.0", "_rev": "1-6e1b6fb5352429cf3013eab5d692aac8", "created": "2016-07-31T15:08:24.730156517Z", "modified": "2016-07-15T15:07:24.730156517Z", "model": "theme-VGVzdCBUaGVtZQ/0"}`,
+				rows: []string{`{"type": "card", "_id": "card-krsxg5baij2w4zdmmu.VGVzdCBOb3Rl.0", "_rev": "1-6e1b6fb5352429cf3013eab5d692aac8", "created": "2016-07-31T15:08:24.730156517Z", "modified": "2016-07-15T15:07:24.730156517Z", "model": "theme-VGVzdCBUaGVtZQ/0", "buriedUntil": "2099-01-01"}`,
 					`{"type": "card", "_id": "card-krsxg5baij2w4zdmmu.VGVzdCBOb3Rl.1", "_rev": "1-6e1b6fb5352429cf3013eab5d692aac8", "created": "2016-07-31T15:08:24.730156517Z", "modified": "2016-07-31T15:08:24.730156517Z", "model": "theme-VGVzdCBUaGVtZQ/0"}`,
 					`{"type": "card", "_id": "card-krsxg5baij2w4zdmmu.VGVzdCBOb3Rl.2", "_rev": "1-6e1b6fb5352429cf3013eab5d692aac8", "created": "2016-07-31T15:08:24.730156517Z", "modified": "2016-07-31T15:08:24.730156517Z", "model": "theme-VGVzdCBUaGVtZQ/0"}`,
 				},
 			}},
 			expected: []map[string]interface{}{
-				{
-					"type":     "card",
-					"_id":      "card-krsxg5baij2w4zdmmu.VGVzdCBOb3Rl.0",
-					"_rev":     "1-6e1b6fb5352429cf3013eab5d692aac8",
-					"created":  "2016-07-31T15:08:24.730156517Z",
-					"modified": "2016-07-15T15:07:24.730156517Z",
-					"model":    "theme-VGVzdCBUaGVtZQ/0",
-				},
 				{
 					"type":     "card",
 					"_id":      "card-krsxg5baij2w4zdmmu.VGVzdCBOb3Rl.1",
