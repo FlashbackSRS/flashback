@@ -14,6 +14,16 @@ import (
 // The priority for new cards.
 const newPriority = 0.5
 
+// batch sizes are the number of cards we fetch at once, using simple schedule
+// prioritization. This number should be large enough that the intelligent
+// scheduling has room to function, but small enough that performance isn't
+// a big problem due to fetching and prioritizing many cards we don't actually
+// use.
+const (
+	newBatchSize = 10
+	oldBatchSize = 90
+)
+
 var now = time.Now
 
 type querierWrapper struct {
@@ -140,4 +150,25 @@ func selectWeightedCard(cards []*fb.Card) *fb.Card {
 	}
 	// should never happen
 	return nil
+}
+
+// GetCardToStudy returns a card to display to the user to study.
+func (r *Repo) GetCardToStudy(ctx context.Context) (*fb.Card, error) {
+	udb, err := r.userDB(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return getCardToStudy(ctx, newQuerier(udb))
+}
+
+func getCardToStudy(ctx context.Context, db querier) (*fb.Card, error) {
+	newCards, err := getCardsFromView(ctx, db, "NewCardsMap", newBatchSize, 0)
+	if err != nil {
+		return nil, err
+	}
+	oldCards, err := getCardsFromView(ctx, db, "OldCardsMap", oldBatchSize, 0)
+	if err != nil {
+		return nil, err
+	}
+	return selectWeightedCard(append(newCards, oldCards...)), nil
 }

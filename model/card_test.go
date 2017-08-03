@@ -42,7 +42,7 @@ func TestQuerierQuery(t *testing.T) {
 }
 
 type mockQuerier struct {
-	rows *mockRows
+	rows map[string]*mockRows
 	err  error
 }
 
@@ -54,7 +54,10 @@ func (db *mockQuerier) Query(ctx context.Context, ddoc, view string, options ...
 	}
 	limit, _ := options[0]["limit"].(int)
 	offset, _ := options[0]["offset"].(int)
-	rows := db.rows
+	rows, ok := db.rows[view]
+	if !ok {
+		return &mockRows{}, nil
+	}
 	rows.limit = limit + offset
 	rows.i = offset
 	return rows, nil
@@ -124,22 +127,26 @@ func TestGetCardsFromView(t *testing.T) {
 		},
 		{
 			name: "invalid JSON",
-			db: &mockQuerier{rows: &mockRows{
-				rows: []string{"foo"},
+			db: &mockQuerier{rows: map[string]*mockRows{
+				"test": &mockRows{rows: []string{"foo"}},
 			}},
 			limit: 1,
+			view:  "test",
 			err:   "invalid character 'o' in literal false (expecting 'a')",
 		},
 		{
 			name:     "no results",
-			db:       &mockQuerier{rows: &mockRows{}},
+			db:       &mockQuerier{rows: map[string]*mockRows{}},
 			limit:    1,
 			expected: []*fb.Card{},
 		},
 		{
-			name:     "successful fetch",
-			db:       &mockQuerier{rows: &mockRows{rows: storedCards}},
+			name: "successful fetch",
+			db: &mockQuerier{rows: map[string]*mockRows{
+				"test": &mockRows{rows: storedCards},
+			}},
 			limit:    10,
+			view:     "test",
 			expected: expectedCards,
 		},
 		{
@@ -149,37 +156,49 @@ func TestGetCardsFromView(t *testing.T) {
 			err:   "invalid limit",
 		},
 		{
-			name:     "limit reached",
-			db:       &mockQuerier{rows: &mockRows{rows: storedCards}},
+			name: "limit reached",
+			db: &mockQuerier{rows: map[string]*mockRows{
+				"test": &mockRows{rows: storedCards},
+			}},
 			limit:    1,
+			view:     "test",
 			expected: expectedCards[0:1],
 		},
 		{
 			name: "aggregate necessary",
-			db: &mockQuerier{rows: &mockRows{rows: func() []string {
-				rows := make([]string, 150)
-				for i := 0; i < 150; i++ {
-					rows[i] = storedCards[0]
-				}
-				return append(rows, storedCards...)
-			}()}},
+			db: &mockQuerier{rows: map[string]*mockRows{
+				"test": &mockRows{rows: func() []string {
+					rows := make([]string, 150)
+					for i := 0; i < 150; i++ {
+						rows[i] = storedCards[0]
+					}
+					return append(rows, storedCards...)
+				}()},
+			}},
 			limit:    5,
+			view:     "test",
 			expected: expectedCards,
 		},
 		{
 			name: "ignore card seen today",
-			db: &mockQuerier{rows: &mockRows{rows: []string{
-				`{"type": "card", "_id": "card-krsxg5baij2w4zdmmu.VGVzdCBOb3Rl.1", "_rev": "1-6e1b6fb5352429cf3013eab5d692aac8", "created": "2016-07-31T15:08:24.730156517Z", "modified": "2016-07-31T15:08:24.730156517Z", "model": "theme-VGVzdCBUaGVtZQ/0", "interval": "5d", "lastReview": "2017-01-01T11:50:00Z"}`,
-			}}},
+			db: &mockQuerier{rows: map[string]*mockRows{
+				"test": &mockRows{rows: []string{
+					`{"type": "card", "_id": "card-krsxg5baij2w4zdmmu.VGVzdCBOb3Rl.1", "_rev": "1-6e1b6fb5352429cf3013eab5d692aac8", "created": "2016-07-31T15:08:24.730156517Z", "modified": "2016-07-31T15:08:24.730156517Z", "model": "theme-VGVzdCBUaGVtZQ/0", "interval": "5d", "lastReview": "2017-01-01T11:50:00Z"}`,
+				}},
+			}},
 			limit:    5,
+			view:     "test",
 			expected: []int{},
 		},
 		{
 			name: "skip same-day forward fuzzing",
-			db: &mockQuerier{rows: &mockRows{rows: []string{
-				`{"type": "card", "_id": "card-krsxg5baij2w4zdmmu.VGVzdCBOb3Rl.1", "_rev": "1-6e1b6fb5352429cf3013eab5d692aac8", "created": "2016-07-31T15:08:24.730156517Z", "modified": "2016-07-31T15:08:24.730156517Z", "model": "theme-VGVzdCBUaGVtZQ/0", "interval": "30m", "due": "2017-01-01 12:01:00"}`,
-			}}},
+			db: &mockQuerier{rows: map[string]*mockRows{
+				"test": &mockRows{rows: []string{
+					`{"type": "card", "_id": "card-krsxg5baij2w4zdmmu.VGVzdCBOb3Rl.1", "_rev": "1-6e1b6fb5352429cf3013eab5d692aac8", "created": "2016-07-31T15:08:24.730156517Z", "modified": "2016-07-31T15:08:24.730156517Z", "model": "theme-VGVzdCBUaGVtZQ/0", "interval": "30m", "due": "2017-01-01 12:01:00"}`,
+				}},
+			}},
 			limit:    5,
+			view:     "test",
 			expected: []int{},
 		},
 	}
@@ -310,6 +329,86 @@ func TestSelectWeightedCard(t *testing.T) {
 			}
 			if test.cards[test.expected] != result {
 				t.Errorf("Unexpected result: %v", result)
+			}
+		})
+	}
+}
+
+func TestRepoGetCardToStudy(t *testing.T) {
+	type rgctsTest struct {
+		name string
+		repo *Repo
+		err  string
+	}
+	tests := []rgctsTest{
+		{
+			name: "not logged in",
+			repo: &Repo{},
+			err:  "not logged in",
+		},
+		{
+			name: "logged in",
+			repo: &Repo{user: "bob", local: func() *kivik.Client {
+				c := testClient(t)
+				if e := c.CreateDB(context.Background(), "user-bob"); e != nil {
+					t.Fatal(e)
+				}
+				return c
+			}()},
+			err: "kivik: not yet implemented in memory driver",
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			_, err := test.repo.GetCardToStudy(context.Background())
+			checkErr(t, test.err, err)
+		})
+	}
+}
+
+func TestGetCardToStudy(t *testing.T) {
+	type gctsTest struct {
+		name     string
+		db       querier
+		expected interface{}
+		err      string
+	}
+	tests := []gctsTest{
+		{
+			name: "no cards",
+			db:   &mockQuerier{rows: map[string]*mockRows{}},
+		},
+		{
+			name: "new query failure",
+			db: &mockQuerier{rows: map[string]*mockRows{
+				"NewCardsMap": &mockRows{rows: []string{"invalid json"}},
+			}},
+			err: `invalid character 'i' looking for beginning of value`,
+		},
+		{
+			name: "old query failure",
+			db: &mockQuerier{rows: map[string]*mockRows{
+				"OldCardsMap": &mockRows{rows: []string{"invalid json"}},
+			}},
+			err: `invalid character 'i' looking for beginning of value`,
+		},
+		{
+			name: "one new card",
+			db: &mockQuerier{rows: map[string]*mockRows{
+				"NewCardsMap": &mockRows{rows: storedCards[1:2]},
+			}},
+			expected: expectedCards[0],
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			result, err := getCardToStudy(context.Background(), test.db)
+			checkErr(t, test.err, err)
+			if err != nil {
+				return
+			}
+			if d := diff.AsJSON(test.expected, result); d != "" {
+				t.Error(d)
 			}
 		})
 	}
