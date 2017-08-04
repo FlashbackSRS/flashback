@@ -22,25 +22,6 @@ func init() {
 	}
 }
 
-func TestNewQuerier(t *testing.T) {
-	db := &kivik.DB{}
-	q := newQuerier(db)
-	if qw, ok := q.(*querierWrapper); ok {
-		if qw.DB != db {
-			t.Errorf("Unexpected result")
-		}
-	} else {
-		t.Errorf("Unexpected type")
-	}
-}
-
-func TestQuerierQuery(t *testing.T) {
-	db := testDB(t)
-	q := newQuerier(db)
-	_, err := q.Query(context.Background(), "", "")
-	checkErr(t, "kivik: not yet implemented in memory driver", err)
-}
-
 type mockQuerier struct {
 	rows map[string]*mockRows
 	err  error

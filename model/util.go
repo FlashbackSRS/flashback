@@ -21,12 +21,7 @@ type FlashbackDoc interface {
 	json.Unmarshaler
 }
 
-type saveDB interface {
-	Put(context.Context, string, interface{}) (string, error)
-	Get(context.Context, string, ...kivik.Options) (*kivik.Row, error)
-}
-
-func mergeDoc(ctx context.Context, db saveDB, doc FlashbackDoc) error {
+func mergeDoc(ctx context.Context, db getPutter, doc FlashbackDoc) error {
 	// Don't attempt to merge a non-import
 	if doc.ImportedTime() == nil {
 		return errors.Status(kivik.StatusConflict, "document update conflict")
@@ -64,7 +59,7 @@ func mergeDoc(ctx context.Context, db saveDB, doc FlashbackDoc) error {
 	return nil
 }
 
-func saveDoc(ctx context.Context, db saveDB, doc FlashbackDoc) error {
+func saveDoc(ctx context.Context, db getPutter, doc FlashbackDoc) error {
 	var rev string
 	var err error
 	if rev, err = db.Put(context.TODO(), doc.DocID(), doc); err != nil {
@@ -75,14 +70,6 @@ func saveDoc(ctx context.Context, db saveDB, doc FlashbackDoc) error {
 	}
 	doc.SetRev(rev)
 	return nil
-}
-
-type getter interface {
-	Get(ctx context.Context, docID string, options ...kivik.Options) (kivikRow, error)
-}
-
-type kivikRow interface {
-	ScanDoc(dest interface{}) error
 }
 
 func getDoc(ctx context.Context, db getter, id string, dst interface{}) error {

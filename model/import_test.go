@@ -479,10 +479,14 @@ func (f *failBulkDocs) BulkDocs(_ context.Context, _ interface{}) (*kivik.BulkRe
 	return nil, errors.New("bulkdocs failed")
 }
 
+func (f *failBulkDocs) Get(_ context.Context, _ string, _ ...kivik.Options) (kivikRow, error) {
+	return nil, nil
+}
+
 func TestBulkInsert(t *testing.T) {
 	type biTest struct {
 		name     string
-		db       bulkDocer
+		db       getPutBulkDocer
 		docs     []FlashbackDoc
 		expected []map[string]interface{}
 		err      string
@@ -510,12 +514,12 @@ func TestBulkInsert(t *testing.T) {
 		},
 		{
 			name: "new and conflict",
-			db: func() *kivik.DB {
+			db: func() getPutBulkDocer {
 				db := testDB(t)
 				if _, err := db.Put(context.Background(), "abc", map[string]interface{}{"_id": "abc", "value": "foo"}); err != nil {
 					t.Fatal(err)
 				}
-				return db
+				return wrapDB(db)
 			}(),
 			docs: []FlashbackDoc{
 				&testDoc{ID: "abc", Value: "foo"},
@@ -529,7 +533,7 @@ func TestBulkInsert(t *testing.T) {
 		},
 		{
 			name: "new and merge",
-			db: func() *kivik.DB {
+			db: func() getPutBulkDocer {
 				db := testDB(t)
 				ctime := time.Now().Add(-time.Hour)
 				doc := testDoc{
@@ -541,7 +545,7 @@ func TestBulkInsert(t *testing.T) {
 				if _, err := db.Put(context.Background(), "abc", doc); err != nil {
 					t.Fatal(err)
 				}
-				return db
+				return wrapDB(db)
 			}(),
 			docs: []FlashbackDoc{
 				&testDoc{ID: "abc", Value: "foo", ITime: &now, doMerge: true},
@@ -557,7 +561,7 @@ func TestBulkInsert(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			db := test.db
 			if db == nil {
-				db = testDB(t)
+				db = wrapDB(testDB(t))
 			}
 			var msg string
 			if err := bulkInsert(context.Background(), db, test.docs...); err != nil {

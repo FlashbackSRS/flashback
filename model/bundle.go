@@ -24,11 +24,11 @@ func (r *Repo) SaveBundle(ctx context.Context, bundle *fb.Bundle) error {
 	if err != nil {
 		return errors.Wrap(err, "bundleDB")
 	}
-	if err := saveDoc(ctx, bdb, bundle); err != nil {
+	if err := saveDoc(ctx, wrapDB(bdb), bundle); err != nil {
 		return errors.Wrap(err, "bundle db write")
 	}
 	bundle.Rev = nil
-	if err := saveDoc(ctx, udb, bundle); err != nil {
+	if err := saveDoc(ctx, wrapDB(udb), bundle); err != nil {
 		return errors.Wrap(err, "user db write")
 	}
 	return nil

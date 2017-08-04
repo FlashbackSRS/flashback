@@ -68,15 +68,10 @@ func (r *Repo) Import(ctx context.Context, f io.Reader) error {
 		docs = append(docs, card)
 	}
 
-	return bulkInsert(ctx, udb, docs...)
+	return bulkInsert(ctx, wrapDB(udb), docs...)
 }
 
-type bulkDocer interface {
-	BulkDocs(context.Context, interface{}) (*kivik.BulkResults, error)
-	saveDB
-}
-
-func bulkInsert(ctx context.Context, db bulkDocer, docs ...FlashbackDoc) error {
+func bulkInsert(ctx context.Context, db getPutBulkDocer, docs ...FlashbackDoc) error {
 	results, err := db.BulkDocs(ctx, docs)
 	if err != nil {
 		return err

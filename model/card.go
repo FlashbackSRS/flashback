@@ -26,31 +26,6 @@ const (
 
 var now = time.Now
 
-type querierWrapper struct {
-	*kivik.DB
-}
-
-var _ querier = &querierWrapper{}
-
-func (db *querierWrapper) Query(ctx context.Context, ddoc, view string, options ...kivik.Options) (kivikRows, error) {
-	return db.DB.Query(ctx, ddoc, view, options...)
-}
-
-func newQuerier(db *kivik.DB) querier {
-	return &querierWrapper{db}
-}
-
-type querier interface {
-	Query(ctx context.Context, ddoc, view string, options ...kivik.Options) (kivikRows, error)
-}
-
-type kivikRows interface {
-	Close() error
-	Next() bool
-	ScanDoc(dest interface{}) error
-	TotalRows() int64
-}
-
 // limitPadding is a number added to the limit parameter passed to the
 // getCardsFromView function. This is added, because there's no automated way
 // to eliminate buried cards from the view, so they must be filtered in the
@@ -158,7 +133,11 @@ func (r *Repo) GetCardToStudy(ctx context.Context) (*fb.Card, error) {
 	if err != nil {
 		return nil, err
 	}
-	return getCardToStudy(ctx, newQuerier(udb))
+	card, err := getCardToStudy(ctx, wrapDB(udb))
+	if err != nil {
+		return nil, err
+	}
+	return &fbCard{Card: card}, nil
 }
 
 func getCardToStudy(ctx context.Context, db querier) (*fb.Card, error) {

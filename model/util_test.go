@@ -56,9 +56,9 @@ type mockDB struct {
 	getErr error
 }
 
-var _ saveDB = &mockDB{}
+var _ getPutter = &mockDB{}
 
-func (db *mockDB) Get(_ context.Context, _ string, _ ...kivik.Options) (*kivik.Row, error) {
+func (db *mockDB) Get(_ context.Context, _ string, _ ...kivik.Options) (kivikRow, error) {
 	return nil, db.getErr
 }
 
@@ -74,7 +74,7 @@ func (db *mockDB) Put(_ context.Context, _ string, _ interface{}) (string, error
 func TestSaveDoc(t *testing.T) {
 	type sdTest struct {
 		name     string
-		db       saveDB
+		db       getPutter
 		doc      FlashbackDoc
 		expected map[string]interface{}
 		err      string
@@ -84,7 +84,7 @@ func TestSaveDoc(t *testing.T) {
 	tests := []sdTest{
 		{
 			name:     "New doc",
-			db:       testDB(t),
+			db:       wrapDB(testDB(t)),
 			doc:      &testDoc{ID: "foo"},
 			expected: map[string]interface{}{"_id": "foo", "_rev": "1"},
 		},
@@ -105,7 +105,7 @@ func TestSaveDoc(t *testing.T) {
 		},
 		{
 			name: "Conflict with non-imported doc",
-			db: func() *kivik.DB {
+			db: func() kivikDB {
 				db := testDB(t)
 				doc := map[string]string{
 					"_id": "foo",
@@ -113,14 +113,14 @@ func TestSaveDoc(t *testing.T) {
 				if _, err := db.Put(context.Background(), "foo", doc); err != nil {
 					t.Fatal(err)
 				}
-				return db
+				return wrapDB(db)
 			}(),
 			doc: &testDoc{ID: "foo", ITime: &now},
 			err: "document update conflict",
 		},
 		{
 			name: "Modified Doc Exists",
-			db: func() *kivik.DB {
+			db: func() kivikDB {
 				db := testDB(t)
 				doc := map[string]interface{}{
 					"_id":           "foo",
@@ -130,14 +130,14 @@ func TestSaveDoc(t *testing.T) {
 				if _, err := db.Put(context.Background(), "foo", doc); err != nil {
 					t.Fatal(err)
 				}
-				return db
+				return wrapDB(db)
 			}(),
 			doc: &testDoc{ID: "foo", ITime: &now, MTime: &now},
 			err: "document update conflict",
 		},
 		{
 			name: "Merge fails",
-			db: func() *kivik.DB {
+			db: func() getPutter {
 				db := testDB(t)
 				doc := map[string]interface{}{
 					"_id":           "foo",
@@ -147,14 +147,14 @@ func TestSaveDoc(t *testing.T) {
 				if _, err := db.Put(context.Background(), "foo", doc); err != nil {
 					t.Fatal(err)
 				}
-				return db
+				return wrapDB(db)
 			}(),
 			doc: &testDoc{ID: "foo", ITime: &now, MTime: &now, mergeErr: errors.New("merge error")},
 			err: "failed to merge into existing document: merge error",
 		},
 		{
 			name: "Merge no change",
-			db: func() *kivik.DB {
+			db: func() getPutter {
 				db := testDB(t)
 				doc := map[string]interface{}{
 					"_id":           "foo",
@@ -164,14 +164,14 @@ func TestSaveDoc(t *testing.T) {
 				if _, err := db.Put(context.Background(), "foo", doc); err != nil {
 					t.Fatal(err)
 				}
-				return db
+				return wrapDB(db)
 			}(),
 			doc:      &testDoc{ID: "foo", Rev: "1", ITime: &now, MTime: &now},
 			expected: map[string]interface{}{"_id": "foo", "_rev": "1", "imported_time": now, "modified_time": now},
 		},
 		{
 			name: "Merge changed",
-			db: func() *kivik.DB {
+			db: func() getPutter {
 				db := testDB(t)
 				doc := map[string]interface{}{
 					"_id":           "foo",
@@ -181,14 +181,14 @@ func TestSaveDoc(t *testing.T) {
 				if _, err := db.Put(context.Background(), "foo", doc); err != nil {
 					t.Fatal(err)
 				}
-				return db
+				return wrapDB(db)
 			}(),
 			doc:      &testDoc{ID: "foo", ITime: &now, MTime: &now, doMerge: true},
 			expected: map[string]interface{}{"_id": "foo", "_rev": "2", "imported_time": now, "modified_time": now, "value": "new value"},
 		},
 		{
 			name: "No change",
-			db: func() *kivik.DB {
+			db: func() kivikDB {
 				db := testDB(t)
 				doc := map[string]interface{}{
 					"_id":           "foo",
@@ -198,7 +198,7 @@ func TestSaveDoc(t *testing.T) {
 				if _, err := db.Put(context.Background(), "foo", doc); err != nil {
 					t.Fatal(err)
 				}
-				return db
+				return wrapDB(db)
 			}(),
 			doc:      &testDoc{ID: "foo", ITime: &then, MTime: &then},
 			expected: map[string]interface{}{"_id": "foo", "_rev": "1", "imported_time": then, "modified_time": then},
