@@ -172,7 +172,7 @@ func TestImport(t *testing.T) {
 					},
 					Cards: []*fb.Card{
 						func() *fb.Card {
-							c, err := fb.NewCard("theme-VGVzdCBUaGVtZQ", 0, "bundle-abcde.mViuXQThMLoh1G1Nlc4d_E8kR8o.0")
+							c, err := fb.NewCard("theme-VGVzdCBUaGVtZQ", 0, "card-abcde.mViuXQThMLoh1G1Nlc4d_E8kR8o.0")
 							if err != nil {
 								t.Fatal(err)
 							}
@@ -186,7 +186,7 @@ func TestImport(t *testing.T) {
 				}
 				return buf
 			}(),
-			err: "card 'bundle-abcde.mViuXQThMLoh1G1Nlc4d_E8kR8o.0' found in package, but not in a deck",
+			err: "card 'abcde.mViuXQThMLoh1G1Nlc4d_E8kR8o.0' found in package, but not in a deck",
 		},
 		{
 			name: "Missing bundle",
