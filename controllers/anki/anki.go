@@ -14,6 +14,7 @@ import (
 
 	"github.com/FlashbackSRS/flashback/diff"
 	repo "github.com/FlashbackSRS/flashback/repository"
+	"github.com/FlashbackSRS/flashback/model"
 	"github.com/FlashbackSRS/flashback/webclient/views/studyview"
 )
 
@@ -174,18 +175,18 @@ func (m *AnkiBasic) Action(card *repo.PouchCard, face *int, startTime time.Time,
 	return false, nil
 }
 
-func quality(button studyview.Button) repo.AnswerQuality {
+func quality(button studyview.Button) model.AnswerQuality {
 	switch button {
 	case studyview.ButtonLeft:
-		return repo.AnswerBlackout
+		return model.AnswerBlackout
 	case studyview.ButtonCenterLeft:
-		return repo.AnswerCorrectDifficult
+		return model.AnswerCorrectDifficult
 	case studyview.ButtonCenterRight:
-		return repo.AnswerCorrect
+		return model.AnswerCorrect
 	case studyview.ButtonRight:
-		return repo.AnswerPerfect
+		return model.AnswerPerfect
 	}
-	return repo.AnswerBlackout
+	return model.AnswerBlackout
 }
 
 // FuncMap returns a function map for Cloze templates.
