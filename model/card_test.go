@@ -316,11 +316,30 @@ func TestSelectWeightedCard(t *testing.T) {
 	}
 }
 
+type gctsClient struct {
+	kivikClient
+	db kivikDB
+}
+
+func (c *gctsClient) DB(_ context.Context, _ string, _ ...kivik.Options) (kivikDB, error) {
+	return c.db, nil
+}
+
+type gctsDB struct {
+	kivikDB
+	q *mockQuerier
+}
+
+func (db *gctsDB) Query(ctx context.Context, ddoc, view string, options ...kivik.Options) (kivikRows, error) {
+	return db.q.Query(ctx, ddoc, view, options...)
+}
+
 func TestRepoGetCardToStudy(t *testing.T) {
 	type rgctsTest struct {
-		name string
-		repo *Repo
-		err  string
+		name     string
+		repo     *Repo
+		expected interface{}
+		err      string
 	}
 	tests := []rgctsTest{
 		{
@@ -339,11 +358,26 @@ func TestRepoGetCardToStudy(t *testing.T) {
 			}()},
 			err: "kivik: not yet implemented in memory driver",
 		},
+		{
+			name: "success",
+			repo: &Repo{user: "bob", local: &gctsClient{db: &gctsDB{
+				q: &mockQuerier{rows: map[string]*mockRows{
+					"NewCardsMap": &mockRows{rows: storedCards[1:2]},
+				}},
+			}}},
+			expected: expectedCards[0],
+		},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			_, err := test.repo.GetCardToStudy(context.Background())
+			result, err := test.repo.GetCardToStudy(context.Background())
 			checkErr(t, test.err, err)
+			if err != nil {
+				return
+			}
+			if d := diff.AsJSON(result, test.expected); d != "" {
+				t.Error(d)
+			}
 		})
 	}
 }
