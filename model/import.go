@@ -68,7 +68,7 @@ func (r *Repo) Import(ctx context.Context, f io.Reader) error {
 		docs = append(docs, card)
 	}
 
-	return bulkInsert(ctx, wrapDB(udb), docs...)
+	return bulkInsert(ctx, udb, docs...)
 }
 
 func bulkInsert(ctx context.Context, db getPutBulkDocer, docs ...FlashbackDoc) error {

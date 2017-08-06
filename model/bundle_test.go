@@ -9,7 +9,6 @@ import (
 
 	fb "github.com/FlashbackSRS/flashback-model"
 	"github.com/flimzy/diff"
-	"github.com/flimzy/kivik"
 )
 
 func TestSaveBundle(t *testing.T) {
@@ -107,7 +106,7 @@ func TestSaveBundle(t *testing.T) {
 	}
 }
 
-func checkDoc(t *testing.T, db *kivik.DB, doc interface{}) {
+func checkDoc(t *testing.T, db getter, doc interface{}) {
 	var docID string
 	switch b := doc.(type) {
 	case map[string]interface{}:

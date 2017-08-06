@@ -9,10 +9,18 @@ import (
 	_ "github.com/flimzy/kivik/driver/pouchdb" // PouchDB driver
 )
 
-func localConnection() (*kivik.Client, error) {
-	return kivik.New(context.Background(), "pouch", "")
+func localConnection() (kivikClient, error) {
+	c, err := kivik.New(context.Background(), "pouch", "")
+	if err != nil {
+		return nil, err
+	}
+	return wrapClient(c), nil
 }
 
-func remoteConnection(dsn string) (*kivik.Client, error) {
-	return kivik.New(context.Background(), "pouch", dsn)
+func remoteConnection(dsn string) (kivikClient, error) {
+	c, err := kivik.New(context.Background(), "pouch", dsn)
+	if err != nil {
+		return nil, err
+	}
+	return wrapClient(c), nil
 }

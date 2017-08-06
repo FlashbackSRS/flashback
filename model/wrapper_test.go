@@ -17,14 +17,12 @@ func TestWrapDB(t *testing.T) {
 
 func TestWrappedGet(t *testing.T) {
 	db := testDB(t)
-	wdb := wrapDB(db)
-	_, err := wdb.Get(context.Background(), "foo")
+	_, err := db.Get(context.Background(), "foo")
 	checkErr(t, "missing", err)
 }
 
 func TestWrappedQuery(t *testing.T) {
 	db := testDB(t)
-	q := wrapDB(db)
-	_, err := q.Query(context.Background(), "", "")
+	_, err := db.Query(context.Background(), "", "")
 	checkErr(t, "kivik: not yet implemented in memory driver", err)
 }

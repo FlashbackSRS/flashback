@@ -84,7 +84,7 @@ func TestSaveDoc(t *testing.T) {
 	tests := []sdTest{
 		{
 			name:     "New doc",
-			db:       wrapDB(testDB(t)),
+			db:       testDB(t),
 			doc:      &testDoc{ID: "foo"},
 			expected: map[string]interface{}{"_id": "foo", "_rev": "1"},
 		},
@@ -113,7 +113,7 @@ func TestSaveDoc(t *testing.T) {
 				if _, err := db.Put(context.Background(), "foo", doc); err != nil {
 					t.Fatal(err)
 				}
-				return wrapDB(db)
+				return db
 			}(),
 			doc: &testDoc{ID: "foo", ITime: &now},
 			err: "document update conflict",
@@ -130,7 +130,7 @@ func TestSaveDoc(t *testing.T) {
 				if _, err := db.Put(context.Background(), "foo", doc); err != nil {
 					t.Fatal(err)
 				}
-				return wrapDB(db)
+				return db
 			}(),
 			doc: &testDoc{ID: "foo", ITime: &now, MTime: &now},
 			err: "document update conflict",
@@ -147,7 +147,7 @@ func TestSaveDoc(t *testing.T) {
 				if _, err := db.Put(context.Background(), "foo", doc); err != nil {
 					t.Fatal(err)
 				}
-				return wrapDB(db)
+				return db
 			}(),
 			doc: &testDoc{ID: "foo", ITime: &now, MTime: &now, mergeErr: errors.New("merge error")},
 			err: "failed to merge into existing document: merge error",
@@ -164,7 +164,7 @@ func TestSaveDoc(t *testing.T) {
 				if _, err := db.Put(context.Background(), "foo", doc); err != nil {
 					t.Fatal(err)
 				}
-				return wrapDB(db)
+				return db
 			}(),
 			doc:      &testDoc{ID: "foo", Rev: "1", ITime: &now, MTime: &now},
 			expected: map[string]interface{}{"_id": "foo", "_rev": "1", "imported_time": now, "modified_time": now},
@@ -181,7 +181,7 @@ func TestSaveDoc(t *testing.T) {
 				if _, err := db.Put(context.Background(), "foo", doc); err != nil {
 					t.Fatal(err)
 				}
-				return wrapDB(db)
+				return db
 			}(),
 			doc:      &testDoc{ID: "foo", ITime: &now, MTime: &now, doMerge: true},
 			expected: map[string]interface{}{"_id": "foo", "_rev": "2", "imported_time": now, "modified_time": now, "value": "new value"},
@@ -198,7 +198,7 @@ func TestSaveDoc(t *testing.T) {
 				if _, err := db.Put(context.Background(), "foo", doc); err != nil {
 					t.Fatal(err)
 				}
-				return wrapDB(db)
+				return db
 			}(),
 			doc:      &testDoc{ID: "foo", ITime: &then, MTime: &then},
 			expected: map[string]interface{}{"_id": "foo", "_rev": "1", "imported_time": then, "modified_time": then},

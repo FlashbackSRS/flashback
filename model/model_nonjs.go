@@ -9,10 +9,18 @@ import (
 	_ "github.com/flimzy/kivik/driver/memory" // Memory driver
 )
 
-func localConnection() (*kivik.Client, error) {
-	return kivik.New(context.Background(), "memory", "local")
+func localConnection() (kivikClient, error) {
+	c, err := kivik.New(context.Background(), "memory", "local")
+	if err != nil {
+		return nil, err
+	}
+	return wrapClient(c), nil
 }
 
-func remoteConnection(_ string) (*kivik.Client, error) {
-	return kivik.New(context.Background(), "memory", "remote")
+func remoteConnection(_ string) (kivikClient, error) {
+	c, err := kivik.New(context.Background(), "memory", "remote")
+	if err != nil {
+		return nil, err
+	}
+	return wrapClient(c), nil
 }

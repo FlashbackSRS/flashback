@@ -133,7 +133,7 @@ func (r *Repo) GetCardToStudy(ctx context.Context) (*fb.Card, error) {
 	if err != nil {
 		return nil, err
 	}
-	card, err := getCardToStudy(ctx, wrapDB(udb))
+	card, err := getCardToStudy(ctx, udb)
 	if err != nil {
 		return nil, err
 	}

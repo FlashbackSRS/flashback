@@ -54,6 +54,7 @@ var _ kivikRows = &mockRows{}
 func (r *mockRows) Close() error     { return nil }
 func (r *mockRows) Next() bool       { return r.i < r.limit && r.i < len(r.rows) }
 func (r *mockRows) TotalRows() int64 { return int64(len(r.rows)) }
+func (r *mockRows) ID() string       { panic("ID() not implemented") }
 func (r *mockRows) ScanDoc(d interface{}) error {
 	if r.i > r.limit || r.i >= len(r.rows) {
 		return io.EOF
@@ -329,7 +330,7 @@ func TestRepoGetCardToStudy(t *testing.T) {
 		},
 		{
 			name: "logged in",
-			repo: &Repo{user: "bob", local: func() *kivik.Client {
+			repo: &Repo{user: "bob", local: func() kivikClient {
 				c := testClient(t)
 				if e := c.CreateDB(context.Background(), "user-bob"); e != nil {
 					t.Fatal(e)

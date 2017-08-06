@@ -22,9 +22,9 @@ const currentUserDoc = "_local/currentUser"
 // Repo represents an instance of the Couch/Pouch model.
 type Repo struct {
 	chttp  *chttp.Client
-	remote *kivik.Client
-	local  *kivik.Client
-	state  *kivik.DB
+	remote kivikClient
+	local  kivikClient
+	state  kivikDB
 	user   string
 }
 
@@ -132,15 +132,19 @@ func (r *Repo) CurrentUser() (string, error) {
 	return r.user, nil
 }
 
-func (r *Repo) userDB(ctx context.Context) (*kivik.DB, error) {
+func (r *Repo) newDB(ctx context.Context, dbName string) (kivikDB, error) {
+	return r.local.DB(ctx, dbName)
+}
+
+func (r *Repo) userDB(ctx context.Context) (kivikDB, error) {
 	user, err := r.CurrentUser()
 	if err != nil {
 		return nil, err
 	}
-	return r.local.DB(ctx, "user-"+user)
+	return r.newDB(ctx, "user-"+user)
 }
 
-func (r *Repo) bundleDB(ctx context.Context, bundle *fb.Bundle) (*kivik.DB, error) {
+func (r *Repo) bundleDB(ctx context.Context, bundle *fb.Bundle) (kivikDB, error) {
 	if _, err := r.CurrentUser(); err != nil {
 		return nil, err
 	}
@@ -150,5 +154,5 @@ func (r *Repo) bundleDB(ctx context.Context, bundle *fb.Bundle) (*kivik.DB, erro
 	if err := r.local.CreateDB(ctx, bundle.ID.String()); err != nil && kivik.StatusCode(err) != kivik.StatusPreconditionFailed {
 		return nil, err
 	}
-	return r.local.DB(ctx, bundle.ID.String())
+	return r.newDB(ctx, bundle.ID.String())
 }

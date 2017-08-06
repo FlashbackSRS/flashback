@@ -49,7 +49,7 @@ type clientReplicator interface {
 	Replicate(context.Context, string, string, ...kivik.Options) (*kivik.Replication, error)
 }
 
-func dbDSN(db *kivik.DB) string {
+func dbDSN(db clientNamer) string {
 	dsn := db.Client().DSN()
 	dbName := db.Name()
 	if dsn != "" && !strings.HasSuffix(dsn, "/") {

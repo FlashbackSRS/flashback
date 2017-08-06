@@ -136,7 +136,7 @@ func TestImport(t *testing.T) {
 		{
 			name: "Invalid JSON",
 			repo: &Repo{user: "bob",
-				local: func() *kivik.Client {
+				local: func() kivikClient {
 					c := testClient(t)
 					if err := c.CreateDB(context.Background(), "user-bob"); err != nil {
 						t.Fatal(err)
@@ -519,7 +519,7 @@ func TestBulkInsert(t *testing.T) {
 				if _, err := db.Put(context.Background(), "abc", map[string]interface{}{"_id": "abc", "value": "foo"}); err != nil {
 					t.Fatal(err)
 				}
-				return wrapDB(db)
+				return db
 			}(),
 			docs: []FlashbackDoc{
 				&testDoc{ID: "abc", Value: "foo"},
@@ -545,7 +545,7 @@ func TestBulkInsert(t *testing.T) {
 				if _, err := db.Put(context.Background(), "abc", doc); err != nil {
 					t.Fatal(err)
 				}
-				return wrapDB(db)
+				return db
 			}(),
 			docs: []FlashbackDoc{
 				&testDoc{ID: "abc", Value: "foo", ITime: &now, doMerge: true},
@@ -561,7 +561,7 @@ func TestBulkInsert(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			db := test.db
 			if db == nil {
-				db = wrapDB(testDB(t))
+				db = testDB(t)
 			}
 			var msg string
 			if err := bulkInsert(context.Background(), db, test.docs...); err != nil {

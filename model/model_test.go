@@ -87,7 +87,7 @@ func TestCurrentUser(t *testing.T) {
 
 var testDBCounter int32
 
-func testClient(t *testing.T) *kivik.Client {
+func testClient(t *testing.T) kivikClient {
 	c, err := localConnection()
 	if err != nil {
 		t.Fatal(err)
@@ -95,7 +95,7 @@ func testClient(t *testing.T) *kivik.Client {
 	return c
 }
 
-func testDB(t *testing.T) *kivik.DB {
+func testDB(t *testing.T) kivikDB {
 	c := testClient(t)
 	dbName := fmt.Sprintf("testdb-%x", atomic.AddInt32(&testDBCounter, 1))
 	if e := c.CreateDB(context.Background(), dbName); e != nil {
@@ -111,7 +111,7 @@ func testDB(t *testing.T) *kivik.DB {
 func TestFetchUser(t *testing.T) {
 	type fuTest struct {
 		name     string
-		db       *kivik.DB
+		db       kivikDB
 		expected user
 		status   int
 	}
@@ -167,7 +167,7 @@ func TestFetchUser(t *testing.T) {
 func TestSetUser(t *testing.T) {
 	type suTest struct {
 		name   string
-		db     *kivik.DB
+		db     kivikDB
 		status int
 	}
 	tests := []suTest{
@@ -177,7 +177,7 @@ func TestSetUser(t *testing.T) {
 		},
 		{
 			name: "ReplaceUser",
-			db: func() *kivik.DB {
+			db: func() kivikDB {
 				db := testDB(t)
 				if _, e := db.Put(context.Background(), currentUserDoc, map[string]string{"username": "alex"}); e != nil {
 					t.Fatal(e)
@@ -187,7 +187,7 @@ func TestSetUser(t *testing.T) {
 		},
 		{
 			name: "SameUser",
-			db: func() *kivik.DB {
+			db: func() kivikDB {
 				db := testDB(t)
 				if _, e := db.Put(context.Background(), currentUserDoc, map[string]string{"username": "foo"}); e != nil {
 					t.Fatal(e)
