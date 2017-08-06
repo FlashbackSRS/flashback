@@ -1,11 +1,295 @@
 package model
 
 import (
+	"bytes"
+	"encoding/json"
 	"testing"
 
 	fb "github.com/FlashbackSRS/flashback-model"
+	"github.com/FlashbackSRS/flashback/controllers"
+	// _ "github.com/FlashbackSRS/flashback/controllers/anki"
 	"github.com/flimzy/diff"
 )
+
+type basicCM struct {
+	controllers.ModelController
+}
+
+func (cm *basicCM) Type() string { return "basic" }
+
+var _ controllers.ModelController = &basicCM{}
+
+func init() {
+	controllers.RegisterModelController(&basicCM{})
+}
+
+var theme1 = func() *fb.Theme {
+	body := []byte(`
+    {
+        "type": "theme",
+        "_id": "theme-VGVzdCBUaGVtZQ",
+        "created": "2016-07-31T15:08:24.730156517Z",
+        "modified": "2016-07-31T15:08:24.730156517Z",
+        "imported": "2016-08-02T15:08:24.730156517Z",
+        "name": "Test Theme",
+        "description": "Theme for testing",
+        "models": [
+            {
+                "id": 0,
+                "modelType": "basic",
+                "name": "Model A",
+                "templates": ["Card 1"],
+                "fields": [
+                    {
+                        "fieldType": 0,
+                        "name": "Word"
+                    },
+                    {
+                        "fieldType": 0,
+                        "name": "Definition"
+                    }
+                ],
+                "files": [
+                    "$template.0.html",
+                    "m1.html"
+                ]
+            },
+            {
+                "id": 1,
+                "modelType": "basic",
+                "name": "Model 2",
+                "templates": [],
+                "fields": [
+                    {
+                        "fieldType": 0,
+                        "name": "Word"
+                    },
+                    {
+                        "fieldType": 2,
+                        "name": "Audio"
+                    }
+                ],
+                "files": [
+                    "m1.txt"
+                ]
+            },
+            {
+                "id": 2,
+                "modelType": "unknownType",
+                "name": "Model 2",
+                "templates": [],
+                "fields": [
+                    {
+                        "fieldType": 0,
+                        "name": "Word"
+                    },
+                    {
+                        "fieldType": 2,
+                        "name": "Audio"
+                    }
+                ],
+                "files": [
+                    "$template.2.html",
+                    "m1.txt"
+                ]
+            },
+            {
+                "id": 3,
+                "modelType": "basic",
+                "name": "Model 2",
+                "templates": [],
+                "fields": [
+                    {
+                        "fieldType": 0,
+                        "name": "Word"
+                    },
+                    {
+                        "fieldType": 2,
+                        "name": "Audio"
+                    }
+                ],
+                "files": [
+                    "$template.3.html",
+                    "m1.txt"
+                ]
+            }
+        ],
+        "_attachments": {
+            "$template.0.html": {
+                "content_type": "text/html",
+                "data": "Qm9yaW5nIHRlbXBsYXRlCg=="
+            },
+            "$template.2.html": {
+                "content_type": "text/html",
+                "data": "Qm9yaW5nIHRlbXBsYXRlCg=="
+            },
+            "$template.3.html": {
+                "content_type": "text/html",
+                "data": "e3sK"
+            },
+            "m1.html": {
+                "content_type": "text/html",
+                "data": "PGh0bWw+PC9odG1sPg=="
+            },
+            "m1.txt": {
+                "content_type": "text/plain",
+                "data": "VGVzdCB0ZXh0IGZpbGU="
+            },
+            "$main.css": {
+                "content_type": "text/css",
+                "data": "LyogYW4gZW1wdHkgQ1NTIGZpbGUgKi8="
+            }
+        },
+        "files": [
+            "$main.css"
+        ],
+        "modelSequence": 2
+    }
+    `)
+	theme := &fb.Theme{}
+	if err := json.Unmarshal(body, &theme); err != nil {
+		panic(err)
+	}
+	return theme
+}()
+
+var theme2 = func() *fb.Theme {
+	body := []byte(`
+    {
+        "type": "theme",
+        "_id": "theme-VGVzdCBUaGVtZQ",
+        "created": "2016-07-31T15:08:24.730156517Z",
+        "modified": "2016-07-31T15:08:24.730156517Z",
+        "imported": "2016-08-02T15:08:24.730156517Z",
+        "name": "Test Theme",
+        "description": "Theme for testing",
+        "models": [
+            {
+                "id": 0,
+                "modelType": "basic",
+                "name": "Model A",
+                "templates": ["Card 1"],
+                "fields": [
+                    {
+                        "fieldType": 0,
+                        "name": "Word"
+                    },
+                    {
+                        "fieldType": 0,
+                        "name": "Definition"
+                    }
+                ],
+                "files": [
+                    "$template.0.html"
+                ]
+            }
+        ],
+        "_attachments": {
+            "$template.0.html": {
+                "content_type": "text/html",
+                "data": "Qm9yaW5nIHRlbXBsYXRlCg=="
+            },
+            "$main.css": {
+                "content_type": "text/css",
+                "data": "e3sK"
+            }
+        },
+        "files": [
+            "$main.css"
+        ],
+        "modelSequence": 2
+    }
+    `)
+	theme := &fb.Theme{}
+	if err := json.Unmarshal(body, &theme); err != nil {
+		panic(err)
+	}
+	return theme
+}()
+
+func TestModelTemplate(t *testing.T) {
+	type mtTest struct {
+		name     string
+		theme    *fb.Theme
+		modelID  int
+		expected string
+		err      string
+	}
+	tests := []mtTest{
+		{
+			name:    "main template missing",
+			theme:   theme1,
+			modelID: 1,
+			err:     "Main template not found in model",
+		},
+		{
+			name:    "unknown model type",
+			theme:   theme1,
+			modelID: 2,
+			err:     "ModelController for 'unknownType' not found",
+		},
+		{
+			name:    "invalid template",
+			theme:   theme1,
+			modelID: 3,
+			err:     "Error parsing template file `template.html`: template: template:2: unexpected unclosed action in command",
+		},
+		{
+			name:    "invalid css",
+			theme:   theme2,
+			modelID: 0,
+			err:     "failed to parse $main.css: template: template:2: unexpected unclosed action in command",
+		},
+		{
+			name:    "single anki template",
+			theme:   theme1,
+			modelID: 0,
+			expected: `<!DOCTYPE html>
+<html>
+<head>
+	<title>FB Card</title>
+	<base href="">
+	<meta charset="UTF-8">
+	<link rel="stylesheet" type="text/css" href="css/cardframe.css">
+<script type="text/javascript">
+'use strict';
+var FB = {
+	face: "",
+	card: "",
+	note: ""
+};
+</script>
+<script type="text/javascript" src="js/cardframe.js"></script>
+<script type="text/javascript"></script>
+<style> </style>
+</style>
+</head>
+<body>Boring template
+</body>
+</html>
+`,
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			model := &fbModel{
+				Model: test.theme.Models[test.modelID],
+			}
+			result, err := model.Template()
+			checkErr(t, test.err, err)
+			if err != nil {
+				return
+			}
+			buf := &bytes.Buffer{}
+			if e := result.Execute(buf, nil); e != nil {
+				panic(e)
+			}
+			if d := diff.Text(test.expected, buf.String()); d != "" {
+				t.Error(d)
+			}
+		})
+	}
+}
 
 func TestExtractTemplateFiles(t *testing.T) {
 	type etfTest struct {
