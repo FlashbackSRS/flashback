@@ -5,11 +5,53 @@ import (
 	"errors"
 	"math"
 	"math/rand"
+	"sync"
 	"time"
 
 	fb "github.com/FlashbackSRS/flashback-model"
-	"github.com/flimzy/kivik"
+	"github.com/FlashbackSRS/flashback/webclient/views/studyview"
 )
+
+// Card represents a generic card-like object.
+type Card interface {
+	DocID() string
+	Buttons(face int) (studyview.ButtonMap, error)
+	Body(face int) (body string, err error)
+	Action(face *int, startTime time.Time, query interface{}) (done bool, err error)
+	BuryRelated() error
+}
+
+// fbCard is a wrapper around *fb.Card, which provides convenience functions
+// like .Note(), .Model(), and .Body()
+type fbCard struct {
+	*fb.Card
+	note *fbNote
+}
+
+var _ Card = &fbCard{}
+
+func (c *fbCard) Buttons(face int) (studyview.ButtonMap, error) {
+	return studyview.ButtonMap{}, nil
+}
+
+func (c *fbCard) Body(face int) (body string, err error) {
+	// _, err = c.repo.newDB(context.TODO(), c.BundleID())
+	// if err != nil {
+	// 	return "", err
+	// }
+
+	return "", nil
+}
+
+func (c *fbCard) Action(face *int, startTime time.Time, query interface{}) (done bool, err error) {
+	return false, nil
+}
+
+func (c *fbCard) BuryRelated() error {
+	return nil
+}
+
+var now = time.Now
 
 // The priority for new cards.
 const newPriority = 0.5
@@ -23,8 +65,6 @@ const (
 	newBatchSize = 10
 	oldBatchSize = 90
 )
-
-var now = time.Now
 
 // limitPadding is a number added to the limit parameter passed to the
 // getCardsFromView function. This is added, because there's no automated way
@@ -120,7 +160,7 @@ func selectWeightedCard(cards []*fb.Card) *fb.Card {
 }
 
 // GetCardToStudy returns a card to display to the user to study.
-func (r *Repo) GetCardToStudy(ctx context.Context) (*fb.Card, error) {
+func (r *Repo) GetCardToStudy(ctx context.Context) (Card, error) {
 	udb, err := r.userDB(ctx)
 	if err != nil {
 		return nil, err
@@ -129,7 +169,33 @@ func (r *Repo) GetCardToStudy(ctx context.Context) (*fb.Card, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &fbCard{Card: card}, nil
+	c := &fbCard{Card: card}
+	return c, nil
+}
+
+func (c *fbCard) fetch(ctx context.Context, client kivikClient) error {
+	db, err := client.DB(ctx, c.BundleID())
+	if err != nil {
+		return err
+	}
+	note := &fb.Note{}
+	theme := &fb.Theme{}
+	var noteErr, themeErr error
+	var wg sync.WaitGroup
+	wg.Add(2)
+	go func() {
+		defer wg.Done()
+		noteErr = getDoc(ctx, db, c.NoteID(), &note)
+	}()
+	go func() {
+		defer wg.Done()
+		themeErr = getDoc(ctx, db, c.ThemeID(), &theme)
+	}()
+	wg.Wait()
+	if err := firstErr(noteErr, themeErr); err != nil {
+		return err
+	}
+	return nil
 }
 
 func getCardToStudy(ctx context.Context, db querier) (*fb.Card, error) {

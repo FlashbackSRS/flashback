@@ -2,18 +2,14 @@
 package anki
 
 import (
-	"fmt"
 	"html/template"
-	"strings"
 	"time"
 
-	"github.com/davecgh/go-spew/spew"
 	"github.com/flimzy/log"
-	"github.com/gopherjs/gopherjs/js"
 	"github.com/pkg/errors"
 
-	"github.com/FlashbackSRS/flashback/diff"
-	repo "github.com/FlashbackSRS/flashback/repository"
+	fb "github.com/FlashbackSRS/flashback-model"
+	"github.com/FlashbackSRS/flashback/controllers"
 	"github.com/FlashbackSRS/flashback/model"
 	"github.com/FlashbackSRS/flashback/webclient/views/studyview"
 )
@@ -27,19 +23,19 @@ const (
 // AnkiBasic is the controller for the Anki Basic model
 type AnkiBasic struct{}
 
-var _ repo.ModelController = &AnkiBasic{}
+var _ controllers.ModelController = &AnkiBasic{}
 
 type AnkiCloze struct {
 	*AnkiBasic
 }
 
-var _ repo.ModelController = &AnkiCloze{}
-var _ repo.FuncMapper = &AnkiCloze{}
+var _ controllers.ModelController = &AnkiCloze{}
+var _ controllers.FuncMapper = &AnkiCloze{}
 
 func init() {
 	log.Debug("Registering anki models\n")
-	repo.RegisterModelController(&AnkiBasic{})
-	repo.RegisterModelController(&AnkiCloze{})
+	controllers.RegisterModelController(&AnkiBasic{})
+	controllers.RegisterModelController(&AnkiCloze{})
 }
 
 // Type returns the string "anki-basic", to identify this model handler's type.
@@ -104,75 +100,79 @@ type answer struct {
 }
 
 // Action responds to a card action, such as a button press
-func (m *AnkiBasic) Action(card *repo.PouchCard, face *int, startTime time.Time, query *js.Object) (bool, error) {
-	log.Debugf("Submit recieved for face %d: %v\n", *face, query)
-	button := studyview.Button(query.Get("submit").String())
-	log.Debugf("Button %s pressed\n", button)
-	switch *face {
-	case QuestionFace:
-		// Any input is fine; the only options are the right button, or 'ENTER' in a text field.
-	case AnswerFace:
-		if _, valid := buttonMaps[*face][button]; !valid {
-			return false, errors.Errorf("Unexpected button press %s", button)
+func (m *AnkiBasic) Action(card *fb.Card, face *int, startTime time.Time, query interface{}) (bool, error) {
+	panic("fixme")
+	/*
+		q := query.(*js.Object)
+		log.Debugf("Submit recieved for face %d: %v\n", *face, query)
+		button := studyview.Button(q.Get("submit").String())
+		log.Debugf("Button %s pressed\n", button)
+		switch *face {
+		case QuestionFace:
+			// Any input is fine; the only options are the right button, or 'ENTER' in a text field.
+		case AnswerFace:
+			if _, valid := buttonMaps[*face][button]; !valid {
+				return false, errors.Errorf("Unexpected button press %s", button)
+			}
+		default:
+			return false, errors.Errorf("Unexpected face %d", *face)
 		}
-	default:
-		return false, errors.Errorf("Unexpected face %d", *face)
-	}
-	switch *face {
-	case QuestionFace:
-		*face++
-		typedAnswers := make(map[string]string)
-		for _, k := range js.Keys(query) {
-			if strings.HasPrefix(k, "type:") {
-				typedAnswers[k] = query.Get(k).String()
-			}
-		}
-		if len(typedAnswers) > 0 {
-			results := make(map[string]answer)
-			m, err := card.Model()
-			if err != nil {
-				return false, errors.Wrap(err, "failed to get model")
-			}
-			n, err := card.Note()
-			if err != nil {
-				return false, errors.Wrap(err, "failed to get note")
-			}
-			for i, field := range m.Fields {
-				fmt.Printf("field.Name = %s\n", field.Name)
-				if typedAnswer, ok := typedAnswers["type:"+field.Name]; ok {
-					fmt.Printf("Found one\n")
-					correctAnswer, err := n.FieldValues[i].Text()
-					if err != nil {
-						panic("no text for typed answer !!")
-					}
-					correct, d := diff.Diff(correctAnswer, typedAnswer)
-					results[field.Name] = answer{
-						Text:    d,
-						Correct: correct,
-					}
+		switch *face {
+		case QuestionFace:
+			*face++
+			typedAnswers := make(map[string]string)
+			for _, k := range js.Keys(query) {
+				if strings.HasPrefix(k, "type:") {
+					typedAnswers[k] = query.Get(k).String()
 				}
 			}
-			spew.Dump(results)
-			card.Context = map[string]interface{}{
-				"typedAnswers": results,
+			if len(typedAnswers) > 0 {
+				results := make(map[string]answer)
+				m, err := card.Model()
+				if err != nil {
+					return false, errors.Wrap(err, "failed to get model")
+				}
+				n, err := card.Note()
+				if err != nil {
+					return false, errors.Wrap(err, "failed to get note")
+				}
+				for i, field := range m.Fields {
+					fmt.Printf("field.Name = %s\n", field.Name)
+					if typedAnswer, ok := typedAnswers["type:"+field.Name]; ok {
+						fmt.Printf("Found one\n")
+						correctAnswer, err := n.FieldValues[i].Text()
+						if err != nil {
+							panic("no text for typed answer !!")
+						}
+						correct, d := diff.Diff(correctAnswer, typedAnswer)
+						results[field.Name] = answer{
+							Text:    d,
+							Correct: correct,
+						}
+					}
+				}
+				spew.Dump(results)
+				card.Context = map[string]interface{}{
+					"typedAnswers": results,
+				}
+				if err := card.Save(); err != nil {
+					return true, errors.Wrap(err, "save typedAnswers to card state")
+				}
 			}
+			return false, nil
+		case AnswerFace:
+			log.Debugf("Old schedule: Due %s, Interval: %s, Ease: %f, ReviewCount: %d\n", card.Due, card.Interval, card.EaseFactor, card.ReviewCount)
+			repo.Schedule(card, time.Now().Sub(startTime), quality(button))
+			log.Debugf("New schedule: Due %s, Interval: %s, Ease: %f, ReviewCount: %d\n", card.Due, card.Interval, card.EaseFactor, card.ReviewCount)
+			card.Context = nil // Clear any saved answers
 			if err := card.Save(); err != nil {
-				return true, errors.Wrap(err, "save typedAnswers to card state")
+				return true, errors.Wrap(err, "save card state")
 			}
+			return true, nil
 		}
+		log.Printf("Unexpected face/button combo: %d / %+v\n", *face, button)
 		return false, nil
-	case AnswerFace:
-		log.Debugf("Old schedule: Due %s, Interval: %s, Ease: %f, ReviewCount: %d\n", card.Due, card.Interval, card.EaseFactor, card.ReviewCount)
-		repo.Schedule(card, time.Now().Sub(startTime), quality(button))
-		log.Debugf("New schedule: Due %s, Interval: %s, Ease: %f, ReviewCount: %d\n", card.Due, card.Interval, card.EaseFactor, card.ReviewCount)
-		card.Context = nil // Clear any saved answers
-		if err := card.Save(); err != nil {
-			return true, errors.Wrap(err, "save card state")
-		}
-		return true, nil
-	}
-	log.Printf("Unexpected face/button combo: %d / %+v\n", *face, button)
-	return false, nil
+	*/
 }
 
 func quality(button studyview.Button) model.AnswerQuality {
@@ -190,7 +190,7 @@ func quality(button studyview.Button) model.AnswerQuality {
 }
 
 // FuncMap returns a function map for Cloze templates.
-func (m *AnkiCloze) FuncMap(card *repo.PouchCard, face int) template.FuncMap {
+func (m *AnkiCloze) FuncMap(card *fb.Card, face int) template.FuncMap {
 	var templateID uint32
 	if card != nil {
 		// Need to do this check, because card may be nil during template parsing

@@ -20,6 +20,7 @@ import (
 	"golang.org/x/net/html"
 
 	"github.com/FlashbackSRS/flashback-model"
+	"github.com/FlashbackSRS/flashback/controllers"
 	"github.com/FlashbackSRS/flashback/repository/done"
 	"github.com/FlashbackSRS/flashback/util"
 	"github.com/FlashbackSRS/flashback/webclient/views/studyview"
@@ -54,7 +55,7 @@ type jsCard struct {
 func (c *PouchCard) MarshalJSON() ([]byte, error) {
 	card := &jsCard{
 		ID:      c.DocID(),
-		ModelID: int(c.ModelID()),
+		ModelID: c.ThemeModelID(),
 		Context: c.Context,
 	}
 	return json.Marshal(card)
@@ -351,7 +352,9 @@ func (u *User) GetNextCard() (Card, error) {
 		r -= c.priority
 		if r < 0 {
 			log.Debugf("Selected card %d: %s\n", i, c.ID)
-			return u.GetCard(c.ID)
+			panic("fix me")
+			return nil, nil
+			// return u.GetCard(c.ID)
 		}
 	}
 	return nil, errors.New("failed to fetch card")
@@ -389,12 +392,12 @@ func (c *PouchCard) Buttons(face int) (studyview.ButtonMap, error) {
 }
 
 // Action handles the action on the card, such as a button press.
-func (c *PouchCard) Action(face *int, startTime time.Time, query *js.Object) (done bool, err error) {
+func (c *PouchCard) Action(face *int, startTime time.Time, query interface{}) (done bool, err error) {
 	cont, err := c.getModelController()
 	if err != nil {
 		return false, err
 	}
-	return cont.Action(c, face, startTime, query)
+	return cont.Action(c.Card, face, startTime, query)
 }
 
 // Model returns the model for the card
@@ -468,7 +471,7 @@ func (c *PouchCard) Body(face int) (body string, err error) {
 	return nbString, nil
 }
 
-func prepareBody(face int, templateID uint32, cont ModelController, r io.Reader) ([]byte, error) {
+func prepareBody(face int, templateID uint32, cont controllers.ModelController, r io.Reader) ([]byte, error) {
 	cardFace, ok := faces[face]
 	if !ok {
 		return nil, errors.Errorf("Unrecognized card face %d", face)
@@ -541,7 +544,7 @@ func findContainer(n *html.Node, targetID, targetClass string) *html.Node {
 	return findContainer(n.NextSibling, targetID, targetClass)
 }
 
-// GetAttachment fetches an attachment from the note, failling back to the model
+// GetAttachment fetches an attachment from the note, falling back to the model.
 func (c *PouchCard) GetAttachment(filename string) (*Attachment, error) {
 	n, err := c.Note()
 	if err != nil {

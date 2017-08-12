@@ -3,6 +3,7 @@
 package studyhandler
 
 import (
+	"context"
 	"net/url"
 	"time"
 
@@ -14,14 +15,13 @@ import (
 
 	"github.com/FlashbackSRS/flashback/iframes"
 	"github.com/FlashbackSRS/flashback/model"
-	"github.com/FlashbackSRS/flashback/repository"
 	"github.com/FlashbackSRS/flashback/webclient/views/studyview"
 )
 
 var jQuery = jquery.NewJQuery
 
 type cardState struct {
-	Card      repo.Card
+	Card      model.Card
 	StartTime time.Time
 	Face      int
 }
@@ -31,28 +31,23 @@ var currentCard *cardState
 // BeforeTransition prepares the page to study
 func BeforeTransition(repo *model.Repo) jqeventrouter.HandlerFunc {
 	return func(_ *jquery.Event, _ *js.Object, _ url.Values) bool {
-		panic("Fix study")
-		// u, err := repo.CurrentUser()
-		// if err != nil {
-		// 	log.Printf("No user logged in: %s\n", err)
-		// 	return false
-		// }
-		// go func() {
-		// 	if err := ShowCard(u); err != nil {
-		// 		log.Printf("Error showing card: %v", err)
-		// 	}
-		// }()
-		//
-		// return true
+		if _, err := repo.CurrentUser(); err != nil {
+			log.Printf("No user logged in: %s\n", err)
+			return false
+		}
+		go func() {
+			if err := ShowCard(repo); err != nil {
+				log.Printf("Error showing card: %v", err)
+			}
+		}()
+
+		return true
 	}
 }
 
-func ShowCard(u *repo.User) error {
-	// Ensure the indexes are created before trying to use them
-	u.DB()
-
+func ShowCard(repo *model.Repo) error {
 	if currentCard == nil {
-		card, err := u.GetNextCard()
+		card, err := repo.GetCardToStudy(context.TODO())
 		if err != nil {
 			return errors.Wrap(err, "fetch card")
 		}
@@ -61,9 +56,9 @@ func ShowCard(u *repo.User) error {
 		}
 		go func() {
 			// Bury the related cards
-			if err := card.BuryRelated(); err != nil {
-				log.Printf("Error buring related cards: %s\n", err)
-			}
+			// if err := card.BuryRelated(); err != nil {
+			// 	log.Printf("Error buring related cards: %s\n", err)
+			// }
 		}()
 		currentCard = &cardState{
 			Card: card,

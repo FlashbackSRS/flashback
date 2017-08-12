@@ -8,7 +8,8 @@ import (
 	"github.com/flimzy/log"
 	"github.com/gopherjs/gopherjs/js"
 
-	repo "github.com/FlashbackSRS/flashback/repository"
+	fb "github.com/FlashbackSRS/flashback-model"
+	"github.com/FlashbackSRS/flashback/controllers"
 	"github.com/FlashbackSRS/flashback/webclient/views/studyview"
 )
 
@@ -17,12 +18,12 @@ type Mock struct {
 	t string
 }
 
-var _ repo.ModelController = &Mock{}
+var _ controllers.ModelController = &Mock{}
 
 // RegisterMock registers the mock Model as the requested type, for tests.
 func RegisterMock(t string) {
 	m := &Mock{t: t}
-	repo.RegisterModelController(m)
+	controllers.RegisterModelController(m)
 }
 
 // Type returns the string "anki-basic", to identify this model handler's type.
@@ -61,8 +62,9 @@ func (m *Mock) Buttons(_ int) (studyview.ButtonMap, error) {
 }
 
 // Action responds to a card action, such as a button press
-func (m *Mock) Action(card *repo.PouchCard, face *int, _ time.Time, query *js.Object) (bool, error) {
-	button := studyview.Button(query.Get("submit").String())
+func (m *Mock) Action(card *fb.Card, face *int, _ time.Time, query interface{}) (bool, error) {
+	q := query.(*js.Object)
+	button := studyview.Button(q.Get("submit").String())
 	log.Debugf("face: %d, button: %+v\n", face, button)
 	return true, nil
 }

@@ -37,7 +37,6 @@ func (n *Note) Theme() (*Theme, error) {
 		return nil, errors.Wrap(err, "Error fetching theme for Theme()")
 	}
 	return n.theme, nil
-
 }
 
 // Model returns the card's associated Model

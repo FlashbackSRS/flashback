@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/FlashbackSRS/flashback-model"
+	"github.com/FlashbackSRS/flashback/model"
 )
 
 const floatTolerance = 0.00001
@@ -20,7 +21,7 @@ type ScheduleTest struct {
 	Name             string
 	Card             *fb.Card
 	Now              time.Time
-	Answer           AnswerQuality
+	Answer           model.AnswerQuality
 	ExpectedEase     float32
 	ExpectedDue      fb.Due
 	ExpectedInterval fb.Interval
@@ -33,7 +34,7 @@ func TestScheduling(t *testing.T) {
 			Name:             "New card, Easy",
 			Card:             &fb.Card{},
 			Now:              parseTime("2017-01-01 00:00:00"),
-			Answer:           AnswerPerfect,
+			Answer:           model.AnswerPerfect,
 			ExpectedEase:     2.5,
 			ExpectedDue:      parseDue("2017-01-02"),
 			ExpectedInterval: InitialInterval,
@@ -42,7 +43,7 @@ func TestScheduling(t *testing.T) {
 			Name:             "New card, Correct",
 			Card:             &fb.Card{},
 			Now:              parseTime("2017-01-01 00:00:00"),
-			Answer:           AnswerCorrect,
+			Answer:           model.AnswerCorrect,
 			ExpectedEase:     2.5,
 			ExpectedDue:      parseDue("2017-01-02"),
 			ExpectedInterval: InitialInterval,
@@ -51,7 +52,7 @@ func TestScheduling(t *testing.T) {
 			Name:             "New card, Difficult",
 			Card:             &fb.Card{},
 			Now:              parseTime("2017-01-01 00:00:00"),
-			Answer:           AnswerCorrectDifficult,
+			Answer:           model.AnswerCorrectDifficult,
 			ExpectedEase:     2.36,
 			ExpectedDue:      parseDue("2017-01-02"),
 			ExpectedInterval: InitialInterval,
@@ -60,7 +61,7 @@ func TestScheduling(t *testing.T) {
 			Name:             "New card, Wrong",
 			Card:             &fb.Card{},
 			Now:              parseTime("2017-01-01 00:00:00"),
-			Answer:           AnswerIncorrectEasy,
+			Answer:           model.AnswerIncorrectEasy,
 			ExpectedEase:     1.7,
 			ExpectedDue:      parseDue("2017-01-01 00:10:00"),
 			ExpectedInterval: 10 * fb.Minute,
@@ -69,7 +70,7 @@ func TestScheduling(t *testing.T) {
 			Name:             "New card, Wrong #2",
 			Card:             &fb.Card{},
 			Now:              parseTime("2017-01-01 00:00:00"),
-			Answer:           AnswerIncorrectRemembered,
+			Answer:           model.AnswerIncorrectRemembered,
 			ExpectedEase:     1.7,
 			ExpectedDue:      parseDue("2017-01-01 00:10:00"),
 			ExpectedInterval: 10 * fb.Minute,
@@ -84,7 +85,7 @@ func TestScheduling(t *testing.T) {
 				EaseFactor: 1.7,
 			},
 			Now:              parseTime("2017-01-01 00:10:00"),
-			Answer:           AnswerPerfect,
+			Answer:           model.AnswerPerfect,
 			ExpectedEase:     1.8,
 			ExpectedDue:      parseDue("2017-01-02"),
 			ExpectedInterval: InitialInterval,
@@ -97,7 +98,7 @@ func TestScheduling(t *testing.T) {
 				EaseFactor: 1.7,
 			},
 			Now:              parseTime("2017-01-01 00:10:00"),
-			Answer:           AnswerCorrect,
+			Answer:           model.AnswerCorrect,
 			ExpectedEase:     1.7,
 			ExpectedDue:      parseDue("2017-01-02"),
 			ExpectedInterval: InitialInterval,
@@ -110,7 +111,7 @@ func TestScheduling(t *testing.T) {
 				EaseFactor: 1.7,
 			},
 			Now:              parseTime("2017-01-01 00:10:00"),
-			Answer:           AnswerCorrectDifficult,
+			Answer:           model.AnswerCorrectDifficult,
 			ExpectedEase:     1.56,
 			ExpectedDue:      parseDue("2017-01-02"),
 			ExpectedInterval: InitialInterval,
@@ -123,7 +124,7 @@ func TestScheduling(t *testing.T) {
 				EaseFactor: 1.7,
 			},
 			Now:              parseTime("2017-01-01 00:10:00"),
-			Answer:           AnswerIncorrectEasy,
+			Answer:           model.AnswerIncorrectEasy,
 			ExpectedEase:     1.3,
 			ExpectedDue:      parseDue("2017-01-01 00:20:00"),
 			ExpectedInterval: 10 * fb.Minute,
@@ -139,7 +140,7 @@ func TestScheduling(t *testing.T) {
 				ReviewCount: 1,
 			},
 			Now:              parseTime("2017-01-02 00:00:00"),
-			Answer:           AnswerPerfect,
+			Answer:           model.AnswerPerfect,
 			ExpectedEase:     2.1,
 			ExpectedDue:      parseDue("2017-01-08"),
 			ExpectedInterval: SecondInterval,
@@ -153,7 +154,7 @@ func TestScheduling(t *testing.T) {
 				ReviewCount: 1,
 			},
 			Now:              parseTime("2017-01-02 00:00:00"),
-			Answer:           AnswerCorrect,
+			Answer:           model.AnswerCorrect,
 			ExpectedEase:     2.0,
 			ExpectedDue:      parseDue("2017-01-08"),
 			ExpectedInterval: SecondInterval,
@@ -167,7 +168,7 @@ func TestScheduling(t *testing.T) {
 				ReviewCount: 1,
 			},
 			Now:              parseTime("2017-01-02 00:00:00"),
-			Answer:           AnswerCorrectDifficult,
+			Answer:           model.AnswerCorrectDifficult,
 			ExpectedEase:     1.86,
 			ExpectedDue:      parseDue("2017-01-08"),
 			ExpectedInterval: SecondInterval,
@@ -181,7 +182,7 @@ func TestScheduling(t *testing.T) {
 				ReviewCount: 1,
 			},
 			Now:              parseTime("2017-01-02 00:00:00"),
-			Answer:           AnswerIncorrectEasy,
+			Answer:           model.AnswerIncorrectEasy,
 			ExpectedEase:     1.3,
 			ExpectedDue:      parseDue("2017-01-02 00:10:00"),
 			ExpectedInterval: 10 * fb.Minute,
@@ -196,7 +197,7 @@ func TestScheduling(t *testing.T) {
 				ReviewCount: 1,
 			},
 			Now:              parseTime("2017-01-04 00:00:00"),
-			Answer:           AnswerPerfect,
+			Answer:           model.AnswerPerfect,
 			ExpectedEase:     2.1,
 			ExpectedDue:      parseDue("2017-01-11"),
 			ExpectedInterval: 7 * fb.Day,
@@ -210,7 +211,7 @@ func TestScheduling(t *testing.T) {
 				EaseFactor:  2.36,
 				ReviewCount: 0,
 			},
-			Answer:           AnswerCorrect,
+			Answer:           model.AnswerCorrect,
 			ExpectedEase:     2.36,
 			ExpectedDue:      parseDue("2017-01-24"),
 			ExpectedInterval: fb.Day,
@@ -239,7 +240,7 @@ func TestScheduling(t *testing.T) {
 
 type EaseTest struct {
 	Ease     float32
-	Quality  AnswerQuality
+	Quality  model.AnswerQuality
 	Expected float32
 }
 

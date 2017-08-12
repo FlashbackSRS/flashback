@@ -3,7 +3,6 @@ package repo
 import (
 	"encoding/json"
 	"fmt"
-	"math"
 	"strings"
 	"testing"
 	"time"
@@ -11,7 +10,6 @@ import (
 	"github.com/FlashbackSRS/flashback-model"
 	"github.com/FlashbackSRS/flashback/webclient/views/studyview"
 	"github.com/flimzy/testify/require"
-	"github.com/gopherjs/gopherjs/js"
 )
 
 // We need to implement our own, minimal fake controller here, because using
@@ -21,7 +19,7 @@ type fakeController struct{}
 func (f *fakeController) Type() string                               { return "fake-model" }
 func (f *fakeController) IframeScript() []byte                       { return []byte("/* Fake Model */") }
 func (f *fakeController) Buttons(_ int) (studyview.ButtonMap, error) { return nil, nil }
-func (f *fakeController) Action(_ *PouchCard, _ *int, _ time.Time, _ *js.Object) (bool, error) {
+func (f *fakeController) Action(_ *fb.Card, _ *int, _ time.Time, _ interface{}) (bool, error) {
 	return false, nil
 }
 
@@ -100,61 +98,6 @@ type PrioTest struct {
 	Interval fb.Interval
 	Expected float64
 	Now      time.Time
-}
-
-var PrioTests = []PrioTest{
-	PrioTest{
-		Due:      parseDue("2017-01-01 00:00:00"),
-		Interval: fb.Day,
-		Expected: 1,
-	},
-	PrioTest{
-		Due:      parseDue("2017-01-01 12:00:00"),
-		Interval: fb.Day,
-		Expected: 0.125,
-	},
-	PrioTest{
-		Due:      parseDue("2016-12-31 12:00:00"),
-		Interval: fb.Day,
-		Expected: 3.375,
-	},
-	PrioTest{
-		Due:      parseDue("2017-02-01 00:00:00"),
-		Interval: 60 * fb.Day,
-		Expected: 0.112912,
-	},
-	PrioTest{
-		Due:      parseDue("2017-01-02 00:00:00"),
-		Interval: fb.Day,
-		Expected: 0,
-	},
-	PrioTest{
-		Due:      parseDue("2016-01-02 00:00:00"),
-		Interval: 7 * fb.Day,
-		Expected: 150084.109375,
-	},
-	PrioTest{
-		Due:      parseDue("2017-01-24 11:16:59"),
-		Interval: 10 * fb.Minute,
-		Expected: 132.520996,
-		Now:      parseTime("2017-01-24T11:57:58+01:00"),
-	},
-}
-
-func floatCompare(x, y float64) bool {
-	return math.Abs(x-y) < 0.01
-}
-
-func TestPrio(t *testing.T) {
-	for _, test := range PrioTests {
-		if test.Now.IsZero() {
-			test.Now = parseTime("2017-01-01 00:00:00")
-		}
-		prio := CardPrio(test.Due, test.Interval, test.Now)
-		if !floatCompare(float64(prio), test.Expected) {
-			t.Errorf("%s / %s: Expected priority %f, got %f\n", test.Due, test.Interval, test.Expected, prio)
-		}
-	}
 }
 
 var timeFormats = []string{

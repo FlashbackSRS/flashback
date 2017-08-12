@@ -79,3 +79,12 @@ func getDoc(ctx context.Context, db getter, id string, dst interface{}) error {
 	}
 	return row.ScanDoc(dst)
 }
+
+func firstErr(errs ...error) error {
+	for _, err := range errs {
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
