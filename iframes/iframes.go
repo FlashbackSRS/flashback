@@ -23,6 +23,7 @@ type Respond func(mtype string, payload interface{}, transferrable ...*js.Object
 
 // Init installs the event listener to receive messages from iframes.
 func Init() {
+	log.Debug("Initializing iframe handler\n")
 	js.Global.Call("addEventListener", "message", func(e *js.Object) {
 		go func() {
 			if err := receiveMessage(e); err != nil {
@@ -30,6 +31,7 @@ func Init() {
 			}
 		}()
 	})
+	log.Debug("iframe init complete\n")
 }
 
 // ListenerFunc is a function which responds to a parsed iframe message. It

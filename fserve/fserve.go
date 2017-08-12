@@ -10,7 +10,9 @@ import (
 )
 
 func init() {
+	log.Debug("Registering fserve listener\n")
 	iframes.RegisterListener("fserve", fserve)
+	log.Debug("Done registering fserve listener\n")
 }
 
 func fserve(cardID string, payload *js.Object, respond iframes.Respond) error {

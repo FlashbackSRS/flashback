@@ -47,6 +47,7 @@ func BeforeTransition(repo *model.Repo) jqeventrouter.HandlerFunc {
 
 func ShowCard(repo *model.Repo) error {
 	if currentCard == nil {
+		log.Debug("Fetching card\n")
 		card, err := repo.GetCardToStudy(context.TODO())
 		if err != nil {
 			return errors.Wrap(err, "fetch card")
@@ -136,7 +137,9 @@ func ShowCard(repo *model.Repo) error {
 }
 
 func init() {
+	log.Debug("Registering iframes listener\n")
 	iframes.RegisterListener("submit", handleSubmit)
+	log.Debug("Done registering iframes listener\n")
 }
 
 func handleSubmit(cardID string, payload *js.Object, _ iframes.Respond) error {

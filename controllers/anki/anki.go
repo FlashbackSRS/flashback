@@ -36,6 +36,7 @@ func init() {
 	log.Debug("Registering anki models\n")
 	controllers.RegisterModelController(&AnkiBasic{})
 	controllers.RegisterModelController(&AnkiCloze{})
+	log.Debug("Done registering anki models\n")
 }
 
 // Type returns the string "anki-basic", to identify this model handler's type.

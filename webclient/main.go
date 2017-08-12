@@ -39,6 +39,7 @@ var jQMobile *js.Object
 var document *js.Object = js.Global.Get("document")
 
 func main() {
+	log.Debug("Starting main()\n")
 	RouterInit()
 
 	var wg sync.WaitGroup
@@ -55,16 +56,20 @@ func main() {
 	// This is what actually loads jQuery Mobile. We have to register our 'mobileinit'
 	// event handler above first, though, as part of RouterInit
 	js.Global.Call("loadjqueryMobile")
+	log.Debug("main() finished\n")
 }
 
 func initjQuery() {
+	log.Debug("Initializing jQuery\n")
 	js.Global.Get("jQuery").Set("cors", true)
 	jQuery(js.Global).On("resize", resizeContent)
 	jQuery(js.Global).On("orentationchange", resizeContent)
 	jQuery(document).On("pagecontainertransition", resizeContent)
+	log.Debug("jQuery init complete\n")
 }
 
 func initCordova(wg *sync.WaitGroup) {
+	log.Debug("Initializing Cordova extensions\n")
 	if !cordova.IsMobile() {
 		return
 	}
@@ -73,6 +78,7 @@ func initCordova(wg *sync.WaitGroup) {
 		// TODO: Don't defer; and perhaps even pass wg.Done directly to the Call method?
 		defer wg.Done()
 	}, false)
+	log.Debug("Cordova init complete\n")
 }
 
 func resizeContent() {
@@ -91,6 +97,7 @@ func resizeContent() {
 }
 
 func RouterInit() {
+	log.Debug("Initializing router\n")
 	confJSON := document.Call("getElementById", "config").Get("innerText").String()
 	conf, err := config.NewFromJSON([]byte(confJSON))
 	if err != nil {
@@ -137,6 +144,7 @@ func RouterInit() {
 	beforeShow := jqeventrouter.NullHandler()
 	setupSyncButton := synchandler.SetupSyncButton(repo)
 	jqeventrouter.Listen("pagecontainerbeforeshow", l10n_handler.LocalizePage(setupSyncButton(beforeShow)))
+	log.Debug("Router init complete\n")
 }
 
 func getJqmUri(_ *jquery.Event, ui *js.Object) string {
