@@ -54,16 +54,16 @@ func getCardsFromView(ctx context.Context, db querier, view string, limit, offse
 		if err := rows.ScanDoc(card); err != nil {
 			return nil, err
 		}
-		if card.BuriedUntil != nil && card.BuriedUntil.After(fb.Due(now())) {
+		if card.BuriedUntil.After(fb.Due(now())) {
 			continue
 		}
-		if card.Interval != nil {
+		if card.Interval != 0 {
 			// Skip cards we already saw today, with an interval >= 1d; they would make no progress.
-			if card.LastReview != nil && card.Interval.Days() >= 1 && !time.Time(fb.On(now())).After(*card.LastReview) {
+			if card.Interval.Days() >= 1 && !time.Time(fb.On(now())).After(card.LastReview) {
 				continue
 			}
 			// Skip sub-day intervals that aren't due yet. We only allow forward-fuzzing for intervals > 1day
-			if card.Due != nil && card.Interval.Days() == 0 && card.Due.After(fb.Due(now())) {
+			if card.Interval.Days() == 0 && card.Due.After(fb.Due(now())) {
 				continue
 			}
 		}
@@ -104,15 +104,7 @@ func selectWeightedCard(cards []*fb.Card) *fb.Card {
 	var weights float64
 	priorities := make([]float64, len(cards))
 	for i, card := range cards {
-		var due fb.Due
-		if card.Due != nil {
-			due = *card.Due
-		}
-		var interval fb.Interval
-		if card.Interval != nil {
-			interval = *card.Interval
-		}
-		priority := cardPriority(due, interval, now())
+		priority := cardPriority(card.Due, card.Interval, now())
 		priorities[i] = priority
 		weights += priority
 	}

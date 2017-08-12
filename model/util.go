@@ -14,8 +14,8 @@ import (
 type FlashbackDoc interface {
 	DocID() string
 	SetRev(string)
-	ImportedTime() *time.Time
-	ModifiedTime() *time.Time
+	ImportedTime() time.Time
+	ModifiedTime() time.Time
 	MergeImport(interface{}) (bool, error)
 	json.Marshaler
 	json.Unmarshaler
@@ -23,7 +23,7 @@ type FlashbackDoc interface {
 
 func mergeDoc(ctx context.Context, db getPutter, doc FlashbackDoc) error {
 	// Don't attempt to merge a non-import
-	if doc.ImportedTime() == nil {
+	if doc.ImportedTime().IsZero() {
 		return errors.Status(kivik.StatusConflict, "document update conflict")
 	}
 	existing := reflect.New(reflect.TypeOf(doc).Elem()).Interface().(FlashbackDoc)
@@ -35,10 +35,10 @@ func mergeDoc(ctx context.Context, db getPutter, doc FlashbackDoc) error {
 		return errors.Wrap(e, "failed to parse existing document")
 	}
 	imported := existing.ImportedTime()
-	if imported == nil {
+	if imported.IsZero() {
 		return errors.Status(kivik.StatusConflict, "document update conflict")
 	}
-	if existing.ModifiedTime().After(*imported) {
+	if existing.ModifiedTime().After(imported) {
 		// The existing document was modified after import, so we won't allow re-importing
 		return errors.Status(kivik.StatusConflict, "document update conflict")
 	}

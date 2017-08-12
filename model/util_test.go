@@ -14,11 +14,11 @@ import (
 )
 
 type testDoc struct {
-	ID       string     `json:"_id"`
-	Rev      string     `json:"_rev,omitempty"`
-	ITime    *time.Time `json:"imported_time,omitempty"`
-	MTime    *time.Time `json:"modified_time,omitempty"`
-	Value    string     `json:"value,omitempty"`
+	ID       string    `json:"_id"`
+	Rev      string    `json:"_rev,omitempty"`
+	ITime    time.Time `json:"imported_time,omitempty"`
+	MTime    time.Time `json:"modified_time,omitempty"`
+	Value    string    `json:"value,omitempty"`
 	doMerge  bool
 	mergeErr error
 }
@@ -27,8 +27,8 @@ var _ FlashbackDoc = &testDoc{}
 
 func (d *testDoc) DocID() string                { return d.ID }
 func (d *testDoc) SetRev(rev string)            { d.Rev = rev }
-func (d *testDoc) ImportedTime() *time.Time     { return d.ITime }
-func (d *testDoc) ModifiedTime() *time.Time     { return d.MTime }
+func (d *testDoc) ImportedTime() time.Time      { return d.ITime }
+func (d *testDoc) ModifiedTime() time.Time      { return d.MTime }
 func (d *testDoc) MarshalJSON() ([]byte, error) { return json.Marshal(*d) }
 func (d *testDoc) MergeImport(doc interface{}) (bool, error) {
 	if d.doMerge {
@@ -83,10 +83,15 @@ func TestSaveDoc(t *testing.T) {
 	then := time.Now().Add(-24 * time.Hour)
 	tests := []sdTest{
 		{
-			name:     "New doc",
-			db:       testDB(t),
-			doc:      &testDoc{ID: "foo"},
-			expected: map[string]interface{}{"_id": "foo", "_rev": "1"},
+			name: "New doc",
+			db:   testDB(t),
+			doc:  &testDoc{ID: "foo"},
+			expected: map[string]interface{}{
+				"_id":           "foo",
+				"_rev":          "1",
+				"imported_time": "0001-01-01T00:00:00Z",
+				"modified_time": "0001-01-01T00:00:00Z",
+			},
 		},
 		{
 			name: "Put Error",
@@ -100,7 +105,7 @@ func TestSaveDoc(t *testing.T) {
 				putErr: []error{errors.Status(http.StatusConflict, "conflict")},
 				getErr: errors.New("get error"),
 			},
-			doc: &testDoc{ID: "_foo", ITime: &now},
+			doc: &testDoc{ID: "_foo", ITime: now},
 			err: "failed to fetch existing document: get error",
 		},
 		{
@@ -115,7 +120,7 @@ func TestSaveDoc(t *testing.T) {
 				}
 				return db
 			}(),
-			doc: &testDoc{ID: "foo", ITime: &now},
+			doc: &testDoc{ID: "foo", ITime: now},
 			err: "document update conflict",
 		},
 		{
@@ -132,7 +137,7 @@ func TestSaveDoc(t *testing.T) {
 				}
 				return db
 			}(),
-			doc: &testDoc{ID: "foo", ITime: &now, MTime: &now},
+			doc: &testDoc{ID: "foo", ITime: now, MTime: now},
 			err: "document update conflict",
 		},
 		{
@@ -149,7 +154,7 @@ func TestSaveDoc(t *testing.T) {
 				}
 				return db
 			}(),
-			doc: &testDoc{ID: "foo", ITime: &now, MTime: &now, mergeErr: errors.New("merge error")},
+			doc: &testDoc{ID: "foo", ITime: now, MTime: now, mergeErr: errors.New("merge error")},
 			err: "failed to merge into existing document: merge error",
 		},
 		{
@@ -166,7 +171,7 @@ func TestSaveDoc(t *testing.T) {
 				}
 				return db
 			}(),
-			doc:      &testDoc{ID: "foo", Rev: "1", ITime: &now, MTime: &now},
+			doc:      &testDoc{ID: "foo", Rev: "1", ITime: now, MTime: now},
 			expected: map[string]interface{}{"_id": "foo", "_rev": "1", "imported_time": now, "modified_time": now},
 		},
 		{
@@ -183,7 +188,7 @@ func TestSaveDoc(t *testing.T) {
 				}
 				return db
 			}(),
-			doc:      &testDoc{ID: "foo", ITime: &now, MTime: &now, doMerge: true},
+			doc:      &testDoc{ID: "foo", ITime: now, MTime: now, doMerge: true},
 			expected: map[string]interface{}{"_id": "foo", "_rev": "2", "imported_time": now, "modified_time": now, "value": "new value"},
 		},
 		{
@@ -200,7 +205,7 @@ func TestSaveDoc(t *testing.T) {
 				}
 				return db
 			}(),
-			doc:      &testDoc{ID: "foo", ITime: &then, MTime: &then},
+			doc:      &testDoc{ID: "foo", ITime: then, MTime: then},
 			expected: map[string]interface{}{"_id": "foo", "_rev": "1", "imported_time": then, "modified_time": then},
 		},
 	}
@@ -228,7 +233,7 @@ func TestSaveDoc(t *testing.T) {
 			}
 			revParts := strings.Split(result["_rev"].(string), "-")
 			result["_rev"] = revParts[0]
-			if d := diff.AsJSON(test.expected, result); d != "" {
+			if d := diff.AsJSON(test.expected, result); d != nil {
 				t.Error(d)
 			}
 		})
@@ -282,9 +287,42 @@ func TestGetDoc(t *testing.T) {
 			if err != nil {
 				return
 			}
-			if d := diff.AsJSON(test.expected, test.dst); d != "" {
+			if d := diff.AsJSON(test.expected, test.dst); d != nil {
 				t.Error(d)
 			}
+		})
+	}
+}
+
+func TestFirstErr(t *testing.T) {
+	type feTest struct {
+		name     string
+		errs     []error
+		expected string
+	}
+	tests := []feTest{
+		{
+			name: "no errors",
+		},
+		{
+			name: "only nil",
+			errs: []error{nil},
+		},
+		{
+			name:     "one err",
+			errs:     []error{errors.New("one")},
+			expected: "one",
+		},
+		{
+			name:     "three errs",
+			errs:     []error{errors.New("one"), errors.New("two"), errors.New("three")},
+			expected: "one",
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			err := firstErr(test.errs...)
+			checkErr(t, test.expected, err)
 		})
 	}
 }

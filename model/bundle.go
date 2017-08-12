@@ -10,11 +10,14 @@ import (
 
 // SaveBundle saves the bundle.
 func (r *Repo) SaveBundle(ctx context.Context, bundle *fb.Bundle) error {
-	if bundle == nil || !bundle.ID.Valid() {
-		return errors.New("invalid bundle")
-	}
 	if _, err := r.CurrentUser(); err != nil {
 		return err
+	}
+	if bundle == nil {
+		return errors.New("nil bundle")
+	}
+	if err := bundle.Validate(); err != nil {
+		return errors.Wrap(err, "invalid bundle")
 	}
 	udb, err := r.userDB(ctx)
 	if err != nil {
@@ -27,7 +30,7 @@ func (r *Repo) SaveBundle(ctx context.Context, bundle *fb.Bundle) error {
 	if err := saveDoc(ctx, bdb, bundle); err != nil {
 		return errors.Wrap(err, "bundle db write")
 	}
-	bundle.Rev = nil
+	bundle.Rev = ""
 	if err := saveDoc(ctx, udb, bundle); err != nil {
 		return errors.Wrap(err, "user db write")
 	}

@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"strings"
 	"testing"
-	"time"
 
 	fb "github.com/FlashbackSRS/flashback-model"
 	"github.com/flimzy/diff"
@@ -19,8 +18,7 @@ func TestSaveBundle(t *testing.T) {
 		expected map[string]interface{}
 		err      string
 	}
-	id, _ := fb.NewDbID("bundle", []byte{1, 2, 3, 4})
-	owner, _ := fb.NewDbID("user", []byte{1, 2, 3, 4, 5})
+	id := fb.EncodeDBID("bundle", []byte{1, 2, 3, 4})
 	tests := []sbTest{
 		{
 			name:   "not logged in",
@@ -30,9 +28,9 @@ func TestSaveBundle(t *testing.T) {
 		},
 		{
 			name:   "invalid bundle",
-			repo:   &Repo{},
+			repo:   &Repo{user: "user-bob"},
 			bundle: &fb.Bundle{},
-			err:    "invalid bundle",
+			err:    "invalid bundle: id required",
 		},
 		{
 			name: "user db does not exist",
@@ -46,7 +44,7 @@ func TestSaveBundle(t *testing.T) {
 					user:  "bob",
 				}
 			}(),
-			bundle: &fb.Bundle{ID: id},
+			bundle: &fb.Bundle{ID: id, Created: now(), Modified: now(), Owner: "user-mjxwe"},
 			err:    "userDB: database does not exist",
 		},
 		{
@@ -56,25 +54,24 @@ func TestSaveBundle(t *testing.T) {
 				if err != nil {
 					t.Fatal(err)
 				}
-				if err := local.CreateDB(context.Background(), "user-bob"); err != nil {
+				if err := local.CreateDB(context.Background(), "user-mjxwe"); err != nil {
 					t.Fatal(err)
 				}
-				if err := local.CreateDB(context.Background(), id.String()); err != nil {
+				if err := local.CreateDB(context.Background(), id); err != nil {
 					t.Fatal(err)
 				}
 				return &Repo{
 					local: local,
-					user:  "bob",
+					user:  "mjxwe",
 				}
 			}(),
-			bundle: &fb.Bundle{ID: id, Owner: &fb.User{ID: owner}},
+			bundle: &fb.Bundle{ID: id, Owner: "user-mjxwe", Created: now(), Modified: now()},
 			expected: map[string]interface{}{
-				"_id":      id.String(),
+				"_id":      id,
 				"_rev":     "1",
-				"type":     "bundle",
-				"owner":    owner.Identity(),
-				"created":  time.Time{},
-				"modified": time.Time{},
+				"owner":    "user-mjxwe",
+				"created":  now(),
+				"modified": now(),
 			},
 		},
 	}
@@ -112,7 +109,7 @@ func checkDoc(t *testing.T, db getter, doc interface{}) {
 	case map[string]interface{}:
 		docID = b["_id"].(string)
 	case *fb.Bundle:
-		docID = b.ID.String()
+		docID = b.ID
 	default:
 		x, err := json.Marshal(doc)
 		if err != nil {
@@ -137,7 +134,7 @@ func checkDoc(t *testing.T, db getter, doc interface{}) {
 	}
 	parts := strings.Split(result["_rev"].(string), "-")
 	result["_rev"] = parts[0]
-	if d := diff.AsJSON(doc, result); d != "" {
+	if d := diff.AsJSON(doc, result); d != nil {
 		t.Error(d)
 	}
 }

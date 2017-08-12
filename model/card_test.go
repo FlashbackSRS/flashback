@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"math/rand"
+	"strings"
 	"testing"
 	"time"
 
@@ -165,7 +166,7 @@ func TestGetCardsFromView(t *testing.T) {
 			name: "ignore card seen today",
 			db: &mockQuerier{rows: map[string]*mockRows{
 				"test": &mockRows{rows: []string{
-					`{"type": "card", "_id": "card-krsxg5baij2w4zdmmu.VGVzdCBOb3Rl.1", "_rev": "1-6e1b6fb5352429cf3013eab5d692aac8", "created": "2016-07-31T15:08:24.730156517Z", "modified": "2016-07-31T15:08:24.730156517Z", "model": "theme-VGVzdCBUaGVtZQ/0", "interval": "5d", "lastReview": "2017-01-01T11:50:00Z"}`,
+					`{"type": "card", "_id": "card-krsxg5baij2w4zdmmu.VGVzdCBOb3Rl.1", "_rev": "1-6e1b6fb5352429cf3013eab5d692aac8", "created": "2016-07-31T15:08:24.730156517Z", "modified": "2016-07-31T15:08:24.730156517Z", "model": "theme-VGVzdCBUaGVtZQ/0", "interval": 5, "lastReview": "2017-01-01T11:50:00Z"}`,
 				}},
 			}},
 			limit:    5,
@@ -176,7 +177,7 @@ func TestGetCardsFromView(t *testing.T) {
 			name: "skip same-day forward fuzzing",
 			db: &mockQuerier{rows: map[string]*mockRows{
 				"test": &mockRows{rows: []string{
-					`{"type": "card", "_id": "card-krsxg5baij2w4zdmmu.VGVzdCBOb3Rl.1", "_rev": "1-6e1b6fb5352429cf3013eab5d692aac8", "created": "2016-07-31T15:08:24.730156517Z", "modified": "2016-07-31T15:08:24.730156517Z", "model": "theme-VGVzdCBUaGVtZQ/0", "interval": "30m", "due": "2017-01-01 12:01:00"}`,
+					`{"type": "card", "_id": "card-krsxg5baij2w4zdmmu.VGVzdCBOb3Rl.1", "_rev": "1-6e1b6fb5352429cf3013eab5d692aac8", "created": "2016-07-31T15:08:24.730156517Z", "modified": "2016-07-31T15:08:24.730156517Z", "model": "theme-VGVzdCBUaGVtZQ/0", "interval": -1800, "due": "2017-01-01 12:01:00"}`,
 				}},
 			}},
 			limit:    5,
@@ -191,7 +192,7 @@ func TestGetCardsFromView(t *testing.T) {
 			if err != nil {
 				return
 			}
-			if d := diff.AsJSON(test.expected, cards); d != "" {
+			if d := diff.AsJSON(test.expected, cards); d != nil {
 				t.Error(d)
 			}
 		})
@@ -275,27 +276,27 @@ func TestSelectWeightedCard(t *testing.T) {
 		{
 			name: "one card",
 			cards: []*fb.Card{
-				&fb.Card{Rev: func() *string { x := "a"; return &x }()},
+				&fb.Card{Rev: "a"},
 			},
 			expected: 0,
 		},
 		{
 			name: "two equal card",
 			cards: []*fb.Card{
-				&fb.Card{Rev: func() *string { x := "a"; return &x }()},
-				&fb.Card{Rev: func() *string { x := "b"; return &x }()},
+				&fb.Card{Rev: "a"},
+				&fb.Card{Rev: "b"},
 			},
 			expected: 1,
 		},
 		{
 			name: "three cards, different prios",
 			cards: []*fb.Card{
-				&fb.Card{Rev: func() *string { x := "a"; return &x }()},
-				&fb.Card{Rev: func() *string { x := "b"; return &x }()},
+				&fb.Card{Rev: "a"},
+				&fb.Card{Rev: "b"},
 				&fb.Card{
-					Due:      func() *fb.Due { x := parseDue(t, "2015-01-01"); return &x }(),
-					Interval: func() *fb.Interval { x := fb.Interval(20 * fb.Day); return &x }(),
-					Rev:      func() *string { x := "c"; return &x }()},
+					Due:      parseDue(t, "2015-01-01"),
+					Interval: fb.Interval(20 * fb.Day),
+					Rev:      "c"},
 			},
 			expected: 2,
 		},
@@ -375,7 +376,7 @@ func TestRepoGetCardToStudy(t *testing.T) {
 			if err != nil {
 				return
 			}
-			if d := diff.AsJSON(result, test.expected); d != "" {
+			if d := diff.AsJSON(result, test.expected); d != nil {
 				t.Error(d)
 			}
 		})
@@ -423,9 +424,192 @@ func TestGetCardToStudy(t *testing.T) {
 			if err != nil {
 				return
 			}
-			if d := diff.AsJSON(test.expected, result); d != "" {
+			if d := diff.AsJSON(test.expected, result); d != nil {
 				t.Error(d)
 			}
 		})
 	}
 }
+
+/*
+func TestCardButtons(t *testing.T) {
+	type cbTest struct {
+		name     string
+		card     *fbCard
+		face     int
+		expected studyview.ButtonMap
+		err      string
+	}
+	tests := []cbTest{
+
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			result, err := test.card.Buttons(test.face)
+			checkErr(t, test.err, err)
+			if err != nil {
+				return
+			}
+			if d := diff.Interface(test.expected, result); d != nil {
+				t.Error(d)
+			}
+		})
+	}
+}
+*/
+
+/*
+func TestGetCardModel(t *testing.T) {
+	type cgmTest struct {
+		name     string
+		card     *fbCard
+		expected interface{}
+		err      string
+	}
+	tests := []cgmTest{
+		{}
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			result, err := test.card.model(context.Background())
+			checkErr(t, test.err, err)
+			if err != nil {
+				return
+			}
+			if d := diff.AsJSON(test.expected, result); d != nil {
+				t.Error(d)
+			}
+		})
+	}
+}
+*/
+
+// func TestGetNote(t *testing.T) {
+// 	type gnTest struct {
+// 		name     string
+// 		card     *fbCard
+// 		expected interface{}
+// 		err      string
+// 	}
+// 	tests := []gnTest{
+// 		{
+// 			name: "not logged in",
+// 			card: &fbCard{repo: &Repo{
+// 				local: testClient(t),
+// 			}},
+// 			err: "not logged in",
+// 		},
+// 	}
+// 	for _, test := range tests {
+// 		t.Run(test.name, func(t *testing.T) {
+// 			result, err := test.card.getNote(context.Background())
+// 			checkErr(t, test.err, err)
+// 			if err != nil {
+// 				return
+// 			}
+// 			if d := diff.AsJSON(test.expected, result); d != nil {
+// 				t.Error(d)
+// 			}
+// 		})
+// 	}
+// }
+
+type cfClient struct {
+	kivikClient
+	db    kivikDB
+	dbErr error
+}
+
+func (c *cfClient) DB(_ context.Context, _ string, _ ...kivik.Options) (kivikDB, error) {
+	return c.db, c.dbErr
+}
+
+type cfDB struct {
+	kivikDB
+	note  string
+	theme string
+}
+
+func (db *cfDB) Get(_ context.Context, id string, _ ...kivik.Options) (kivikRow, error) {
+	if strings.HasPrefix(id, "note-") {
+		return mockRow(db.note), nil
+	}
+	return mockRow(db.theme), nil
+}
+
+func TestCardFetch(t *testing.T) {
+	type cfTest struct {
+		name     string
+		card     *fb.Card
+		client   kivikClient
+		expected *fbCard
+		err      string
+	}
+	tests := []cfTest{
+		{
+			name:   "db error",
+			card:   &fb.Card{ID: "card-foo.bar.0"},
+			client: &cfClient{dbErr: errors.New("db error")},
+			err:    "db error",
+		},
+		{
+			name:   "note err",
+			card:   &fb.Card{ID: "card-foo.bar.0", ModelID: "theme-foo/0"},
+			client: &cfClient{db: &cfDB{note: "invalid json"}},
+			err:    "invalid character 'i' looking for beginning of value",
+		},
+		{
+			name:   "theme err",
+			card:   &fb.Card{ID: "card-foo.bar.0", ModelID: "theme-foo/0"},
+			client: &cfClient{db: &cfDB{note: `{}`, theme: "bad json"}},
+			err:    "id required",
+		},
+		{
+			name:     "valid",
+			card:     &fb.Card{ID: "card-foo.bar.0", ModelID: "theme-Zm9v/0"},
+			client:   &cfClient{db: &cfDB{note: `{"_id":"note-Zm9v", "created":"2017-01-01T01:01:01Z", "modified":"2017-01-01T01:01:01Z"}`, theme: `{"_id":"theme-Zm9v", "created":"2017-01-01T01:01:01Z", "modified":"2017-01-01T01:01:01Z", "_attachments":{}, "files":[]}`}},
+			expected: &fbCard{Card: &fb.Card{ID: "card-foo.bar.0", ModelID: "theme-Zm9v/0"}},
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			card := &fbCard{Card: test.card}
+			err := card.fetch(context.Background(), test.client)
+			checkErr(t, test.err, err)
+			if err != nil {
+				return
+			}
+			if d := diff.Interface(test.expected, card); d != nil {
+				t.Error(d)
+			}
+		})
+	}
+}
+
+/*
+func TestCardBody(t *testing.T) {
+	type cbTest struct {
+		name     string
+		card     *fb.Card
+		face     int
+		expected string
+		err      string
+	}
+	tests := []cbTest{}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			card := &fbCard{
+				Card: test.card,
+			}
+			result, err := card.Body(test.face)
+			checkErr(t, test.err, err)
+			if err != nil {
+				return
+			}
+			if d := diff.Text(test.expected, result); d != nil {
+				t.Error(d)
+			}
+		})
+	}
+}
+*/

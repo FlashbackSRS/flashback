@@ -54,7 +54,7 @@ func (m *fbModel) Template() (*template.Template, error) {
 		return nil, errors.Wrap(err, "Error parsing master template") // This should never happen
 	}
 	for filename, t := range templates {
-		tmplName := strings.TrimPrefix(filename, "!"+*m.Name+".")
+		tmplName := strings.TrimPrefix(filename, "!"+m.Name+".")
 		content := fmt.Sprintf("{{define \"%s\"}}%s{{end}}", tmplName, t)
 		if _, err := tmpl.Parse(content); err != nil {
 			return nil, errors.Wrapf(err, "Error parsing template file `%s`", filename)

@@ -113,7 +113,7 @@ func (r *Repo) syncBundles(ctx context.Context, reads, writes *int32) error {
 	log.Debugf("bundles = %v\n", bundles)
 	for _, bundle := range bundles {
 		log.Debugf("Bundle %s", bundle)
-		ldb := bundle.ID.String()
+		ldb := bundle.ID
 		rdb := r.remoteDSN(ldb)
 		if err := r.remote.CreateDB(ctx, rdb); err != nil {
 			return err

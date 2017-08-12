@@ -148,11 +148,14 @@ func (r *Repo) bundleDB(ctx context.Context, bundle *fb.Bundle) (kivikDB, error)
 	if _, err := r.CurrentUser(); err != nil {
 		return nil, err
 	}
-	if bundle == nil || !bundle.ID.Valid() {
-		return nil, errors.New("invalid bundle")
+	if bundle == nil {
+		return nil, errors.New("nil bundle")
 	}
-	if err := r.local.CreateDB(ctx, bundle.ID.String()); err != nil && kivik.StatusCode(err) != kivik.StatusPreconditionFailed {
+	if err := bundle.Validate(); err != nil {
+		return nil, errors.Wrap(err, "invalid bundle")
+	}
+	if err := r.local.CreateDB(ctx, bundle.ID); err != nil && kivik.StatusCode(err) != kivik.StatusPreconditionFailed {
 		return nil, err
 	}
-	return r.newDB(ctx, bundle.ID.String())
+	return r.newDB(ctx, bundle.ID)
 }

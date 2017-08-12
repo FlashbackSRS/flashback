@@ -156,7 +156,7 @@ func TestFetchUser(t *testing.T) {
 				if err != nil {
 					return
 				}
-				if d := diff.AsJSON(test.expected, u); d != "" {
+				if d := diff.AsJSON(test.expected, u); d != nil {
 					t.Error(d)
 				}
 			})
@@ -284,8 +284,12 @@ func TestBundleDB(t *testing.T) {
 		bundleDBName string
 		err          string
 	}
-	id, _ := fb.NewDbID("bundle", []byte{1, 2, 3, 4})
-	testBundle := &fb.Bundle{ID: id}
+	testBundle := &fb.Bundle{
+		ID:       fb.EncodeDBID("bundle", []byte{1, 2, 3, 4}),
+		Owner:    fb.EncodeDBID("user", []byte{5, 6, 7, 8}),
+		Created:  now(),
+		Modified: now(),
+	}
 	tests := []bdTest{
 		{
 			name:   "Not logged in",
@@ -297,7 +301,7 @@ func TestBundleDB(t *testing.T) {
 			name:   "Invalid bundle",
 			repo:   &Repo{user: "bob"},
 			bundle: &fb.Bundle{},
-			err:    "invalid bundle",
+			err:    "invalid bundle: id required",
 		},
 		{
 			name: "database not exist",
@@ -320,8 +324,7 @@ func TestBundleDB(t *testing.T) {
 				if err != nil {
 					t.Fatal(err)
 				}
-				dbName := testBundle.ID.String()
-				if err := local.CreateDB(context.Background(), dbName); err != nil {
+				if err := local.CreateDB(context.Background(), testBundle.ID); err != nil {
 					t.Fatal(err)
 				}
 				return &Repo{

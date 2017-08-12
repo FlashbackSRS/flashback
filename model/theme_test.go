@@ -143,7 +143,7 @@ var theme1 = func() *fb.Theme {
         "files": [
             "$main.css"
         ],
-        "modelSequence": 2
+        "modelSequence": 4
     }
     `)
 	theme := &fb.Theme{}
@@ -284,7 +284,7 @@ var FB = {
 			if e := result.Execute(buf, nil); e != nil {
 				panic(e)
 			}
-			if d := diff.Text(test.expected, buf.String()); d != "" {
+			if d := diff.Text(test.expected, buf.String()); d != nil {
 				t.Error(d)
 			}
 		})
@@ -325,7 +325,7 @@ func TestExtractTemplateFiles(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			result := extractTemplateFiles(test.view)
-			if d := diff.Interface(test.expected, result); d != "" {
+			if d := diff.Interface(test.expected, result); d != nil {
 				t.Error(d)
 			}
 		})
