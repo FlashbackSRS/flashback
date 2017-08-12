@@ -5,8 +5,8 @@ import (
 	"github.com/gopherjs/gopherjs/js"
 	"github.com/pkg/errors"
 
+	fb "github.com/FlashbackSRS/flashback-model"
 	"github.com/FlashbackSRS/flashback/iframes"
-	"github.com/FlashbackSRS/flashback/repository"
 )
 
 func init() {
@@ -28,14 +28,15 @@ func fserve(cardID string, payload *js.Object, respond iframes.Respond) error {
 	}, data)
 }
 
-func fetchAttachment(cardID, filename string) (*repo.Attachment, error) {
-	u, err := repo.CurrentUser()
-	if err != nil {
-		return nil, errors.Wrap(err, "current user")
-	}
-	card, err := u.GetCard(cardID)
-	if err != nil {
-		return nil, errors.Wrap(err, "fetch card")
-	}
-	return card.GetAttachment(filename)
+func fetchAttachment(cardID, filename string) (*fb.Attachment, error) {
+	panic("fix me")
+	// u, err := repo.CurrentUser()
+	// if err != nil {
+	// 	return nil, errors.Wrap(err, "current user")
+	// }
+	// card, err := u.GetCard(cardID)
+	// if err != nil {
+	// 	return nil, errors.Wrap(err, "fetch card")
+	// }
+	// return card.GetAttachment(filename)
 }
