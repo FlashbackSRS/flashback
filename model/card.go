@@ -2,11 +2,12 @@ package model
 
 import (
 	"context"
-	"errors"
 	"math"
 	"math/rand"
 	"sync"
 	"time"
+
+	"github.com/pkg/errors"
 
 	fb "github.com/FlashbackSRS/flashback-model"
 	"github.com/FlashbackSRS/flashback/webclient/views/studyview"
@@ -77,13 +78,13 @@ func getCardsFromView(ctx context.Context, db querier, view string, limit, offse
 	if limit <= 0 {
 		return nil, errors.New("invalid limit")
 	}
-	rows, err := db.Query(context.TODO(), "cards", view, map[string]interface{}{
+	rows, err := db.Query(context.TODO(), "index", view, map[string]interface{}{
 		"limit":        limit + limitPadding,
 		"offset":       offset,
 		"include_docs": true,
 	})
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "query failed")
 	}
 	defer func() { _ = rows.Close() }()
 	cards := make([]*fb.Card, 0, limit)
@@ -199,11 +200,11 @@ func (c *fbCard) fetch(ctx context.Context, client kivikClient) error {
 }
 
 func getCardToStudy(ctx context.Context, db querier) (*fb.Card, error) {
-	newCards, err := getCardsFromView(ctx, db, "NewCardsMap", newBatchSize, 0)
+	newCards, err := getCardsFromView(ctx, db, "newCards", newBatchSize, 0)
 	if err != nil {
 		return nil, err
 	}
-	oldCards, err := getCardsFromView(ctx, db, "OldCardsMap", oldBatchSize, 0)
+	oldCards, err := getCardsFromView(ctx, db, "oldCards", oldBatchSize, 0)
 	if err != nil {
 		return nil, err
 	}

@@ -106,7 +106,7 @@ func TestGetCardsFromView(t *testing.T) {
 			name:  "query error",
 			db:    &mockQuerier{err: errors.New("query failed")},
 			limit: 1,
-			err:   "query failed",
+			err:   "query failed: query failed",
 		},
 		{
 			name: "invalid JSON",
@@ -357,13 +357,13 @@ func TestRepoGetCardToStudy(t *testing.T) {
 				}
 				return c
 			}()},
-			err: "kivik: not yet implemented in memory driver",
+			err: "query failed: kivik: not yet implemented in memory driver",
 		},
 		{
 			name: "success",
 			repo: &Repo{user: "bob", local: &gctsClient{db: &gctsDB{
 				q: &mockQuerier{rows: map[string]*mockRows{
-					"NewCardsMap": &mockRows{rows: storedCards[1:2]},
+					"newCards": &mockRows{rows: storedCards[1:2]},
 				}},
 			}}},
 			expected: expectedCards[0],
@@ -376,7 +376,7 @@ func TestRepoGetCardToStudy(t *testing.T) {
 			if err != nil {
 				return
 			}
-			if d := diff.AsJSON(result, test.expected); d != nil {
+			if d := diff.AsJSON(test.expected, result); d != nil {
 				t.Error(d)
 			}
 		})
@@ -398,21 +398,21 @@ func TestGetCardToStudy(t *testing.T) {
 		{
 			name: "new query failure",
 			db: &mockQuerier{rows: map[string]*mockRows{
-				"NewCardsMap": &mockRows{rows: []string{"invalid json"}},
+				"newCards": &mockRows{rows: []string{"invalid json"}},
 			}},
 			err: `invalid character 'i' looking for beginning of value`,
 		},
 		{
 			name: "old query failure",
 			db: &mockQuerier{rows: map[string]*mockRows{
-				"OldCardsMap": &mockRows{rows: []string{"invalid json"}},
+				"oldCards": &mockRows{rows: []string{"invalid json"}},
 			}},
 			err: `invalid character 'i' looking for beginning of value`,
 		},
 		{
 			name: "one new card",
 			db: &mockQuerier{rows: map[string]*mockRows{
-				"NewCardsMap": &mockRows{rows: storedCards[1:2]},
+				"newCards": &mockRows{rows: storedCards[1:2]},
 			}},
 			expected: expectedCards[0],
 		},
