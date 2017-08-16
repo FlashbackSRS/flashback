@@ -134,3 +134,11 @@ func (m *fbModel) FuncMap(card *fbCard, face int) (template.FuncMap, error) {
 	}
 	return nil, nil
 }
+
+func (m *fbModel) IframeScript() ([]byte, error) {
+	mc, err := controllers.GetModelController(m.Type)
+	if err != nil {
+		return nil, err
+	}
+	return mc.IframeScript(), nil
+}

@@ -16,7 +16,8 @@ type basicCM struct {
 	controllers.ModelController
 }
 
-func (cm *basicCM) Type() string { return "basic" }
+func (cm *basicCM) Type() string         { return "basic" }
+func (cm *basicCM) IframeScript() []byte { return []byte("alert('Hi!');") }
 
 var _ controllers.ModelController = &basicCM{}
 
@@ -399,4 +400,21 @@ func TestFuncMap(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestIframeScript(t *testing.T) {
+	t.Run("unregistered", func(t *testing.T) {
+		m := &fbModel{Model: &fb.Model{Type: "unregistered"}}
+		_, err := m.IframeScript()
+		checkErr(t, "ModelController for 'unregistered' not found", err)
+	})
+	t.Run("registered", func(t *testing.T) {
+		m := &fbModel{Model: &fb.Model{Type: "basic"}}
+		s, err := m.IframeScript()
+		checkErr(t, nil, err)
+		expected := "alert('Hi!');"
+		if string(s) != expected {
+			t.Errorf("Unexpected result:\n%s\n", string(s))
+		}
+	})
 }
