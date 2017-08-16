@@ -3,6 +3,7 @@ package model
 import (
 	"bytes"
 	"encoding/json"
+	"html/template"
 	"testing"
 
 	fb "github.com/FlashbackSRS/flashback-model"
@@ -325,6 +326,74 @@ func TestExtractTemplateFiles(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			result := extractTemplateFiles(test.view)
+			if d := diff.Interface(test.expected, result); d != nil {
+				t.Error(d)
+			}
+		})
+	}
+}
+
+type funcMapperCM struct {
+	controllers.ModelController
+}
+
+func (cm *funcMapperCM) Type() string { return "funcmapper" }
+func (cm *funcMapperCM) FuncMap(card *fb.Card, face int) template.FuncMap {
+	return map[string]interface{}{
+		"foo": nilFunc,
+	}
+}
+
+var _ controllers.ModelController = &funcMapperCM{}
+var _ controllers.FuncMapper = &funcMapperCM{}
+
+func init() {
+	controllers.RegisterModelController(&funcMapperCM{})
+}
+
+var nilFunc = func() {}
+
+func TestFuncMap(t *testing.T) {
+	tests := []struct {
+		name      string
+		modelType string
+		card      *fbCard
+		expected  template.FuncMap
+		err       string
+	}{
+		{
+			name:      "unregistered",
+			modelType: "unregistered",
+			err:       "ModelController for 'unregistered' not found",
+		},
+		{
+			name:      "non funcMapper",
+			modelType: "basic",
+		},
+		{
+			name:      "funcMapper",
+			modelType: "funcmapper",
+			expected: template.FuncMap{
+				"foo": nilFunc,
+			},
+		},
+		{
+			name:      "non nil card",
+			modelType: "funcmapper",
+			card:      &fbCard{Card: &fb.Card{}},
+			expected: template.FuncMap{
+				"foo": nilFunc,
+			},
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			m := &fbModel{Model: &fb.Model{Type: test.modelType}}
+			result, err := m.FuncMap(test.card, 0)
+			checkErr(t, test.err, err)
+			if err != nil {
+				return
+			}
 			if d := diff.Interface(test.expected, result); d != nil {
 				t.Error(d)
 			}

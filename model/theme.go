@@ -4,7 +4,9 @@ import (
 	"fmt"
 	"html/template"
 	"strings"
+	"time"
 
+	"github.com/flimzy/log"
 	"github.com/pkg/errors"
 
 	fb "github.com/FlashbackSRS/flashback-model"
@@ -26,6 +28,12 @@ type fbModel struct {
 const mainCSS = "$main.css"
 
 func (m *fbModel) Template() (*template.Template, error) {
+	start := time.Now()
+	log.Debug("started Template()")
+	defer func() {
+		finish := time.Now()
+		log.Debug("finished Template (%v)", finish.Sub(start))
+	}()
 	mc, err := controllers.GetModelController(m.Type)
 	if err != nil {
 		return nil, err
@@ -110,3 +118,19 @@ var FB = {
 <body>{{ block "template.html" $g }}{{end}}</body>
 </html>
 `
+
+func (m *fbModel) FuncMap(card *fbCard, face int) (template.FuncMap, error) {
+	mc, err := controllers.GetModelController(m.Type)
+	if err != nil {
+		return nil, err
+	}
+	if funcMapper, ok := mc.(controllers.FuncMapper); ok {
+		// card may be nil during template creation
+		var c *fb.Card
+		if card != nil {
+			c = card.Card
+		}
+		return funcMapper.FuncMap(c, face), nil
+	}
+	return nil, nil
+}
