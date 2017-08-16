@@ -7,6 +7,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/flimzy/log"
 	"github.com/pkg/errors"
 
 	fb "github.com/FlashbackSRS/flashback-model"
@@ -200,12 +201,26 @@ func (c *fbCard) fetch(ctx context.Context, client kivikClient) error {
 }
 
 func getCardToStudy(ctx context.Context, db querier) (*fb.Card, error) {
-	newCards, err := getCardsFromView(ctx, db, "newCards", newBatchSize, 0)
-	if err != nil {
-		return nil, err
-	}
-	oldCards, err := getCardsFromView(ctx, db, "oldCards", oldBatchSize, 0)
-	if err != nil {
+	start := time.Now()
+	log.Debugf("[%v] start getCardToStudy\n", start)
+	defer func() {
+		finish := time.Now()
+		log.Debugf("[%v] finish getCardToStudy (%v)\n", finish, finish.Sub(start))
+	}()
+	var newCards, oldCards []*fb.Card
+	var newErr, oldErr error
+	var wg sync.WaitGroup
+	wg.Add(2)
+	go func() {
+		newCards, newErr = getCardsFromView(ctx, db, "newCards", newBatchSize, 0)
+		wg.Done()
+	}()
+	go func() {
+		oldCards, oldErr = getCardsFromView(ctx, db, "oldCards", oldBatchSize, 0)
+		wg.Done()
+	}()
+	wg.Wait()
+	if err := firstErr(newErr, oldErr); err != nil {
 		return nil, err
 	}
 	return selectWeightedCard(append(newCards, oldCards...)), nil
