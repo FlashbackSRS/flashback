@@ -2,14 +2,13 @@ package model
 
 import (
 	"context"
+	"fmt"
 	"strings"
 	"sync/atomic"
 
 	"github.com/flimzy/kivik"
 	"github.com/flimzy/log"
 	"github.com/pkg/errors"
-
-	fb "github.com/FlashbackSRS/flashback-model"
 )
 
 func (r *Repo) remoteDSN(name string) string {
@@ -41,6 +40,10 @@ func (r *Repo) Sync(ctx context.Context) error {
 		return errors.Wrap(err, "sync remote to local")
 	}
 
+	if err := r.syncBundles(ctx, &docsRead, &docsWritten); err != nil {
+		return errors.Wrap(err, "bundle sync")
+	}
+
 	log.Debugf("Synced %d docs from server, %d to server\n", docsRead, docsWritten)
 	return nil
 }
@@ -59,6 +62,7 @@ func dbDSN(db clientNamer) string {
 }
 
 func replicate(ctx context.Context, client clientReplicator, target, source string, count *int32) error {
+	defer profile(fmt.Sprintf("replicate %s -> %s", source, target))()
 	replication, err := client.Replicate(ctx, target, source)
 	if err != nil {
 		return err
@@ -89,6 +93,7 @@ func processReplication(ctx context.Context, rep replication) (int32, error) {
 }
 
 func (r *Repo) syncBundles(ctx context.Context, reads, writes *int32) error {
+	defer profile("syncBundles")()
 	udb, err := r.userDB(ctx)
 	if err != nil {
 		return err
@@ -102,26 +107,27 @@ func (r *Repo) syncBundles(ctx context.Context, reads, writes *int32) error {
 		return errors.Wrap(err, "failed to sync bundles")
 	}
 
-	var bundles []*fb.Bundle
+	var bundles []string
 	for rows.Next() {
-		var bundle *fb.Bundle
-		if err := rows.ScanDoc(&bundle); err != nil {
+		var result struct {
+			ID string `json:"_id"`
+		}
+		if err := rows.ScanDoc(&result); err != nil {
 			return errors.Wrapf(err, "failed to scan bundle %s", rows.ID())
 		}
-		bundles = append(bundles, bundle)
+		bundles = append(bundles, result.ID)
 	}
 	log.Debugf("bundles = %v\n", bundles)
 	for _, bundle := range bundles {
 		log.Debugf("Bundle %s", bundle)
-		ldb := bundle.ID
-		rdb := r.remoteDSN(ldb)
-		if err := r.remote.CreateDB(ctx, rdb); err != nil {
+		rdb := r.remoteDSN(bundle)
+		if err := r.remote.CreateDB(ctx, bundle); err != nil {
 			return err
 		}
-		if err := replicate(ctx, r.local, rdb, ldb, writes); err != nil {
+		if err := replicate(ctx, r.local, rdb, bundle, writes); err != nil {
 			return errors.Wrap(err, "bundle push")
 		}
-		if err := replicate(ctx, r.local, ldb, rdb, reads); err != nil {
+		if err := replicate(ctx, r.local, bundle, rdb, reads); err != nil {
 			return errors.Wrap(err, "bundle pull")
 		}
 	}
