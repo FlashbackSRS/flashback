@@ -13,7 +13,6 @@ import (
 	"time"
 
 	"github.com/PuerkitoBio/goquery"
-	"github.com/flimzy/log"
 	"github.com/pkg/errors"
 
 	fb "github.com/FlashbackSRS/flashback-model"
@@ -281,12 +280,7 @@ func (c *fbCard) fetch(ctx context.Context, client kivikClient) error {
 }
 
 func getCardToStudy(ctx context.Context, db querier) (*fb.Card, error) {
-	start := time.Now()
-	log.Debugf("[%v] start getCardToStudy\n", start)
-	defer func() {
-		finish := time.Now()
-		log.Debugf("[%v] finish getCardToStudy (%v)\n", finish, finish.Sub(start))
-	}()
+	defer profile("getCardToStudy")()
 	var newCards, oldCards []*fb.Card
 	var newErr, oldErr error
 	var wg sync.WaitGroup
@@ -319,6 +313,7 @@ var faces = map[int]string{
 }
 
 func prepareBody(cardFace string, templateID uint32, iframeScript string, r io.Reader) ([]byte, error) {
+	defer profile("prepareBody")()
 	doc, err := goquery.NewDocumentFromReader(r)
 	if err != nil {
 		return nil, errors.Wrap(err, "goquery parse")
