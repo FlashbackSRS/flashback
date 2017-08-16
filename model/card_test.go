@@ -635,6 +635,11 @@ func TestCardBody(t *testing.T) {
 		err      string
 	}{
 		{
+			name: "unknown face",
+			face: 3,
+			err:  "unrecognized card face 3",
+		},
+		{
 			name: "unfetched card",
 			card: &fbCard{},
 			err:  "card hasn't been fetched",
@@ -712,6 +717,55 @@ var FB = {
 				return
 			}
 			if d := diff.Text(test.expected, result); d != nil {
+				t.Error(d)
+			}
+		})
+	}
+}
+
+type errReader struct{ err error }
+
+var _ io.Reader = &errReader{}
+
+func (r *errReader) Read(_ []byte) (int, error) {
+	return 0, r.err
+}
+
+func TestCardPrepareBody(t *testing.T) {
+	tests := []struct {
+		name         string
+		cardFace     string
+		templateID   uint32
+		iframeScript string
+		r            io.Reader
+		expected     string
+		err          string
+	}{
+		{
+			name: "goquery failure",
+			r:    &errReader{err: errors.New("read fail")},
+			err:  "goquery parse: read fail",
+		},
+		{
+			name: "no div",
+			r:    strings.NewReader(""),
+			err:  "No div matching 'div.[data-id='0']' found in template output",
+		},
+		{
+			name:     "success",
+			cardFace: "question",
+			r:        strings.NewReader(`<body><div class="question" data-id="0">foo</div></body>`),
+			expected: `<html><head><script type="text/javascript"></script></head><body class="card card1"><form id="mainform">foo</form></body></html>`,
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			result, err := prepareBody(test.cardFace, test.templateID, test.iframeScript, test.r)
+			checkErr(t, test.err, err)
+			if err != nil {
+				return
+			}
+			if d := diff.Text(test.expected, string(result)); d != nil {
 				t.Error(d)
 			}
 		})

@@ -4,12 +4,15 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
 	"html/template"
+	"io"
 	"math"
 	"math/rand"
 	"sync"
 	"time"
 
+	"github.com/PuerkitoBio/goquery"
 	"github.com/flimzy/log"
 	"github.com/pkg/errors"
 
@@ -69,6 +72,9 @@ type cardData struct {
 }
 
 func (c *fbCard) Body(face int) (body string, err error) {
+	if _, ok := faces[face]; !ok {
+		return "", errors.Errorf("unrecognized card face %d", face)
+	}
 	if c.note == nil {
 		return "", errors.New("card hasn't been fetched")
 	}
@@ -298,4 +304,46 @@ func getCardToStudy(ctx context.Context, db querier) (*fb.Card, error) {
 		return nil, err
 	}
 	return selectWeightedCard(append(newCards, oldCards...)), nil
+}
+
+const (
+	// Question is a card's first face
+	Question = iota
+	// Answer is a card's second face
+	Answer
+)
+
+var faces = map[int]string{
+	Question: "question",
+	Answer:   "answer",
+}
+
+func prepareBody(cardFace string, templateID uint32, iframeScript string, r io.Reader) ([]byte, error) {
+	doc, err := goquery.NewDocumentFromReader(r)
+	if err != nil {
+		return nil, errors.Wrap(err, "goquery parse")
+	}
+	body := doc.Find("body")
+	sel := fmt.Sprintf("div.%s[data-id='%d']", cardFace, templateID)
+	container := body.Find(sel)
+	if container.Length() == 0 {
+		return nil, errors.Errorf("No div matching '%s' found in template output", sel)
+	}
+
+	containerHTML, err := container.Html()
+	if err != nil {
+		return nil, errors.Wrap(err, "error extracting div html")
+	}
+
+	body.Empty()
+	body.AppendHtml(fmt.Sprintf(`<form id="mainform">%s</form>`, containerHTML))
+	body.AddClass("card", fmt.Sprintf("card%d", templateID+1))
+
+	doc.Find("head").AppendHtml(fmt.Sprintf(`<script type="text/javascript">%s</script>`, iframeScript))
+
+	newBody, err := goquery.OuterHtml(doc.Selection)
+	if err != nil {
+		return nil, errors.Wrap(err, "outer html failed")
+	}
+	return []byte(newBody), nil
 }
