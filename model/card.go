@@ -27,7 +27,8 @@ type Card interface {
 // like .Note(), .Model(), and .Body()
 type fbCard struct {
 	*fb.Card
-	note *fbNote
+	note  *fbNote
+	model *fbModel
 }
 
 var _ Card = &fbCard{}
@@ -176,6 +177,9 @@ func (r *Repo) GetCardToStudy(ctx context.Context) (Card, error) {
 }
 
 func (c *fbCard) fetch(ctx context.Context, client kivikClient) error {
+	if c.note != nil {
+		return nil
+	}
 	db, err := client.DB(ctx, c.BundleID())
 	if err != nil {
 		return err
@@ -197,6 +201,12 @@ func (c *fbCard) fetch(ctx context.Context, client kivikClient) error {
 	if err := firstErr(noteErr, themeErr); err != nil {
 		return err
 	}
+	if len(theme.Models) == 0 {
+		// This means corrupted/broken data
+		return errors.New("card's theme has no model")
+	}
+	c.note = &fbNote{Note: note}
+	c.model = &fbModel{Model: theme.Models[c.ThemeModelID()]}
 	return nil
 }
 

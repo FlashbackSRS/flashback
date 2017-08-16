@@ -376,7 +376,7 @@ func TestRepoGetCardToStudy(t *testing.T) {
 					db: &gctsDB{
 						q:     &mockQuerier{rows: map[string]*mockRows{"newCards": &mockRows{rows: storedCards[1:2]}}},
 						note:  `{"_id":"note-Zm9v", "created":"2017-01-01T01:01:01Z", "modified":"2017-01-01T01:01:01Z"}`,
-						theme: `{"_id":"theme-Zm9v", "created":"2017-01-01T01:01:01Z", "modified":"2017-01-01T01:01:01Z", "_attachments":{}, "files":[]}`,
+						theme: `{"_id":"theme-Zm9v", "created":"2017-01-01T01:01:01Z", "modified":"2017-01-01T01:01:01Z", "_attachments":{}, "files":[], "modelSequence":1, "models": [{"id":0, "files":[], "modelType":"foo"}]}`,
 					},
 				},
 			},
@@ -541,46 +541,79 @@ func (c *cfClient) DB(_ context.Context, _ string, _ ...kivik.Options) (kivikDB,
 func TestCardFetch(t *testing.T) {
 	type cfTest struct {
 		name     string
-		card     *fb.Card
+		card     *fbCard
 		client   kivikClient
 		expected *fbCard
 		err      string
 	}
 	tests := []cfTest{
 		{
+			name:     "already loaded",
+			card:     &fbCard{Card: &fb.Card{ID: "card-foo.bar.0"}, note: &fbNote{}},
+			expected: &fbCard{Card: &fb.Card{ID: "card-foo.bar.0"}, note: &fbNote{}},
+		},
+		{
 			name:   "db error",
-			card:   &fb.Card{ID: "card-foo.bar.0"},
+			card:   &fbCard{Card: &fb.Card{ID: "card-foo.bar.0"}},
 			client: &cfClient{dbErr: errors.New("db error")},
 			err:    "db error",
 		},
 		{
 			name:   "note err",
-			card:   &fb.Card{ID: "card-foo.bar.0", ModelID: "theme-foo/0"},
+			card:   &fbCard{Card: &fb.Card{ID: "card-foo.bar.0", ModelID: "theme-foo/0"}},
 			client: &cfClient{db: &gctsDB{note: "invalid json"}},
 			err:    "invalid character 'i' looking for beginning of value",
 		},
 		{
 			name:   "theme err",
-			card:   &fb.Card{ID: "card-foo.bar.0", ModelID: "theme-foo/0"},
+			card:   &fbCard{Card: &fb.Card{ID: "card-foo.bar.0", ModelID: "theme-foo/0"}},
 			client: &cfClient{db: &gctsDB{note: `{}`, theme: "bad json"}},
 			err:    "id required",
 		},
 		{
-			name:     "valid",
-			card:     &fb.Card{ID: "card-foo.bar.0", ModelID: "theme-Zm9v/0"},
-			client:   &cfClient{db: &gctsDB{note: `{"_id":"note-Zm9v", "created":"2017-01-01T01:01:01Z", "modified":"2017-01-01T01:01:01Z"}`, theme: `{"_id":"theme-Zm9v", "created":"2017-01-01T01:01:01Z", "modified":"2017-01-01T01:01:01Z", "_attachments":{}, "files":[]}`}},
-			expected: &fbCard{Card: &fb.Card{ID: "card-foo.bar.0", ModelID: "theme-Zm9v/0"}},
+			name:   "valid",
+			card:   &fbCard{Card: &fb.Card{ID: "card-foo.bar.0", ModelID: "theme-Zm9v/0"}},
+			client: &cfClient{db: &gctsDB{note: `{"_id":"note-Zm9v", "created":"2017-01-01T01:01:01Z", "modified":"2017-01-01T01:01:01Z"}`, theme: `{"_id":"theme-Zm9v", "created":"2017-01-01T01:01:01Z", "modified":"2017-01-01T01:01:01Z", "_attachments":{}, "files":[], "modelSequence":1, "models":[{"id":0,"files":[], "modelType":"foo"}]}`}},
+			expected: func() *fbCard {
+				themeAtt := fb.NewFileCollection()
+				theme := &fb.Theme{
+					ID:            "theme-Zm9v",
+					Created:       parseTime(t, "2017-01-01T01:01:01Z"),
+					Modified:      parseTime(t, "2017-01-01T01:01:01Z"),
+					Attachments:   themeAtt,
+					Files:         themeAtt.NewView(),
+					ModelSequence: 1,
+				}
+				model := &fb.Model{
+					ID:    0,
+					Type:  "foo",
+					Theme: theme,
+					Files: themeAtt.NewView(),
+				}
+				theme.Models = []*fb.Model{model}
+				return &fbCard{
+					Card: &fb.Card{ID: "card-foo.bar.0", ModelID: "theme-Zm9v/0"},
+					note: &fbNote{Note: &fb.Note{
+						ID:          "note-Zm9v",
+						Created:     parseTime(t, "2017-01-01T01:01:01Z"),
+						Modified:    parseTime(t, "2017-01-01T01:01:01Z"),
+						Attachments: fb.NewFileCollection(),
+					}},
+					model: &fbModel{
+						Model: model,
+					},
+				}
+			}(),
 		},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			card := &fbCard{Card: test.card}
-			err := card.fetch(context.Background(), test.client)
+			err := test.card.fetch(context.Background(), test.client)
 			checkErr(t, test.err, err)
 			if err != nil {
 				return
 			}
-			if d := diff.Interface(test.expected, card); d != nil {
+			if d := diff.Interface(test.expected, test.card); d != nil {
 				t.Error(d)
 			}
 		})
