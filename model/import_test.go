@@ -178,6 +178,7 @@ func TestImport(t *testing.T) {
 					"version": 2,
 					"bundle": {
 						"_id": "bundle-aebagba",
+						"type": "bundle",
 						"created": "2016-07-31T15:08:24.730156517Z",
 						"modified": "2016-07-31T15:08:24.730156517Z",
 						"owner": "user-aebagbaf"
@@ -194,6 +195,7 @@ func TestImport(t *testing.T) {
 					"notes": [
 						{
 							"_id": "note-VGVzdCBOb3Rl",
+							"type": "note",
 							"created": "2016-07-31T15:08:24.730156517Z",
 							"modified": "2016-07-31T15:08:24.730156517Z",
 							"imported": "2016-08-02T15:08:24.730156517Z",
@@ -209,6 +211,7 @@ func TestImport(t *testing.T) {
 					"decks": [
 						{
 							"_id": "deck-VGVzdCBEZWNr",
+							"type": "deck",
 							"created": "2016-07-31T15:08:24.730156517Z",
 							"modified": "2016-07-31T15:08:24.730156517Z",
 							"imported": "2016-08-02T15:08:24.730156517Z",
@@ -220,6 +223,7 @@ func TestImport(t *testing.T) {
 					"themes": [
 						{
 							"_id": "theme-VGVzdCBUaGVtZQ",
+							"type": "theme",
 							"created": "2016-07-31T15:08:24.730156517Z",
 							"modified": "2016-07-31T15:08:24.730156517Z",
 							"imported": "2016-08-02T15:08:24.730156517Z",
@@ -285,6 +289,7 @@ func TestImport(t *testing.T) {
 				},
 				map[string]interface{}{
 					"_id":         "deck-VGVzdCBEZWNr",
+					"type":        "deck",
 					"_rev":        "1",
 					"name":        "Test Deck",
 					"description": "Deck for testing",
@@ -295,6 +300,7 @@ func TestImport(t *testing.T) {
 				},
 				map[string]interface{}{
 					"_id":           "theme-VGVzdCBUaGVtZQ",
+					"type":          "theme",
 					"_rev":          "1",
 					"name":          "Test Theme",
 					"description":   "Theme for testing",
@@ -321,6 +327,7 @@ func TestImport(t *testing.T) {
 				},
 				map[string]interface{}{
 					"_id":         "note-VGVzdCBOb3Rl",
+					"type":        "note",
 					"_rev":        "1",
 					"theme":       "theme-VGVzdCBUaGVtZQ",
 					"model":       0,

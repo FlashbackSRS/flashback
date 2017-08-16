@@ -68,6 +68,7 @@ func TestSaveBundle(t *testing.T) {
 			bundle: &fb.Bundle{ID: id, Owner: "user-mjxwe", Created: now(), Modified: now()},
 			expected: map[string]interface{}{
 				"_id":      id,
+				"type":     "bundle",
 				"_rev":     "1",
 				"owner":    "user-mjxwe",
 				"created":  now(),
