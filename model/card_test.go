@@ -571,6 +571,12 @@ func TestCardFetch(t *testing.T) {
 			err:    "id required",
 		},
 		{
+			name:   "corrupt theme",
+			card:   &fbCard{Card: &fb.Card{ID: "card-foo.bar.0", ModelID: "theme-Zm9v/0"}},
+			client: &cfClient{db: &gctsDB{note: `{"_id":"note-Zm9v", "created":"2017-01-01T01:01:01Z", "modified":"2017-01-01T01:01:01Z"}`, theme: `{"_id":"theme-Zm9v", "created":"2017-01-01T01:01:01Z", "modified":"2017-01-01T01:01:01Z", "_attachments":{}, "files":[], "modelSequence":1}`}},
+			err:    "card's theme has no model",
+		},
+		{
 			name:   "valid",
 			card:   &fbCard{Card: &fb.Card{ID: "card-foo.bar.0", ModelID: "theme-Zm9v/0"}},
 			client: &cfClient{db: &gctsDB{note: `{"_id":"note-Zm9v", "created":"2017-01-01T01:01:01Z", "modified":"2017-01-01T01:01:01Z"}`, theme: `{"_id":"theme-Zm9v", "created":"2017-01-01T01:01:01Z", "modified":"2017-01-01T01:01:01Z", "_attachments":{}, "files":[], "modelSequence":1, "models":[{"id":0,"files":[], "modelType":"foo"}]}`}},
