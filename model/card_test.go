@@ -328,11 +328,20 @@ func (c *gctsClient) DB(_ context.Context, _ string, _ ...kivik.Options) (kivikD
 
 type gctsDB struct {
 	kivikDB
-	q *mockQuerier
+	q     *mockQuerier
+	note  string
+	theme string
 }
 
 func (db *gctsDB) Query(ctx context.Context, ddoc, view string, options ...kivik.Options) (kivikRows, error) {
 	return db.q.Query(ctx, ddoc, view, options...)
+}
+
+func (db *gctsDB) Get(_ context.Context, id string, _ ...kivik.Options) (kivikRow, error) {
+	if strings.HasPrefix(id, "note-") {
+		return mockRow(db.note), nil
+	}
+	return mockRow(db.theme), nil
 }
 
 func TestRepoGetCardToStudy(t *testing.T) {
@@ -361,11 +370,16 @@ func TestRepoGetCardToStudy(t *testing.T) {
 		},
 		{
 			name: "success",
-			repo: &Repo{user: "bob", local: &gctsClient{db: &gctsDB{
-				q: &mockQuerier{rows: map[string]*mockRows{
-					"newCards": &mockRows{rows: storedCards[1:2]},
-				}},
-			}}},
+			repo: &Repo{
+				user: "bob",
+				local: &gctsClient{
+					db: &gctsDB{
+						q:     &mockQuerier{rows: map[string]*mockRows{"newCards": &mockRows{rows: storedCards[1:2]}}},
+						note:  `{"_id":"note-Zm9v", "created":"2017-01-01T01:01:01Z", "modified":"2017-01-01T01:01:01Z"}`,
+						theme: `{"_id":"theme-Zm9v", "created":"2017-01-01T01:01:01Z", "modified":"2017-01-01T01:01:01Z", "_attachments":{}, "files":[]}`,
+					},
+				},
+			},
 			expected: expectedCards[0],
 		},
 	}
@@ -524,19 +538,6 @@ func (c *cfClient) DB(_ context.Context, _ string, _ ...kivik.Options) (kivikDB,
 	return c.db, c.dbErr
 }
 
-type cfDB struct {
-	kivikDB
-	note  string
-	theme string
-}
-
-func (db *cfDB) Get(_ context.Context, id string, _ ...kivik.Options) (kivikRow, error) {
-	if strings.HasPrefix(id, "note-") {
-		return mockRow(db.note), nil
-	}
-	return mockRow(db.theme), nil
-}
-
 func TestCardFetch(t *testing.T) {
 	type cfTest struct {
 		name     string
@@ -555,19 +556,19 @@ func TestCardFetch(t *testing.T) {
 		{
 			name:   "note err",
 			card:   &fb.Card{ID: "card-foo.bar.0", ModelID: "theme-foo/0"},
-			client: &cfClient{db: &cfDB{note: "invalid json"}},
+			client: &cfClient{db: &gctsDB{note: "invalid json"}},
 			err:    "invalid character 'i' looking for beginning of value",
 		},
 		{
 			name:   "theme err",
 			card:   &fb.Card{ID: "card-foo.bar.0", ModelID: "theme-foo/0"},
-			client: &cfClient{db: &cfDB{note: `{}`, theme: "bad json"}},
+			client: &cfClient{db: &gctsDB{note: `{}`, theme: "bad json"}},
 			err:    "id required",
 		},
 		{
 			name:     "valid",
 			card:     &fb.Card{ID: "card-foo.bar.0", ModelID: "theme-Zm9v/0"},
-			client:   &cfClient{db: &cfDB{note: `{"_id":"note-Zm9v", "created":"2017-01-01T01:01:01Z", "modified":"2017-01-01T01:01:01Z"}`, theme: `{"_id":"theme-Zm9v", "created":"2017-01-01T01:01:01Z", "modified":"2017-01-01T01:01:01Z", "_attachments":{}, "files":[]}`}},
+			client:   &cfClient{db: &gctsDB{note: `{"_id":"note-Zm9v", "created":"2017-01-01T01:01:01Z", "modified":"2017-01-01T01:01:01Z"}`, theme: `{"_id":"theme-Zm9v", "created":"2017-01-01T01:01:01Z", "modified":"2017-01-01T01:01:01Z", "_attachments":{}, "files":[]}`}},
 			expected: &fbCard{Card: &fb.Card{ID: "card-foo.bar.0", ModelID: "theme-Zm9v/0"}},
 		},
 	}

@@ -172,7 +172,7 @@ func (r *Repo) GetCardToStudy(ctx context.Context) (Card, error) {
 		return nil, err
 	}
 	c := &fbCard{Card: card}
-	return c, nil
+	return c, c.fetch(ctx, r.local)
 }
 
 func (c *fbCard) fetch(ctx context.Context, client kivikClient) error {
@@ -186,12 +186,12 @@ func (c *fbCard) fetch(ctx context.Context, client kivikClient) error {
 	var wg sync.WaitGroup
 	wg.Add(2)
 	go func() {
-		defer wg.Done()
 		noteErr = getDoc(ctx, db, c.NoteID(), &note)
+		wg.Done()
 	}()
 	go func() {
-		defer wg.Done()
 		themeErr = getDoc(ctx, db, c.ThemeID(), &theme)
+		wg.Done()
 	}()
 	wg.Wait()
 	if err := firstErr(noteErr, themeErr); err != nil {
