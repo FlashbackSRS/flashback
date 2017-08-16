@@ -1,7 +1,10 @@
 package model
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
+	"html/template"
 	"math"
 	"math/rand"
 	"sync"
@@ -27,23 +30,81 @@ type Card interface {
 // like .Note(), .Model(), and .Body()
 type fbCard struct {
 	*fb.Card
-	note  *fbNote
-	model *fbModel
+	note   *fbNote
+	model  *fbModel
+	appURL string
 }
 
 var _ Card = &fbCard{}
+
+type jsCard struct {
+	ID      string      `json:"id"`
+	ModelID int         `json:"model"`
+	Context interface{} `json:"context,omitempty"`
+}
+
+// MarshalJSON marshals a Card for the benefit of javascript context in HTML
+// templates.
+func (c *fbCard) MarshalJSON() ([]byte, error) {
+	card := &jsCard{
+		ID:      c.ID,
+		ModelID: c.ThemeModelID(),
+		Context: c.Context,
+	}
+	return json.Marshal(card)
+}
 
 func (c *fbCard) Buttons(face int) (studyview.ButtonMap, error) {
 	return studyview.ButtonMap{}, nil
 }
 
-func (c *fbCard) Body(face int) (body string, err error) {
-	// _, err = c.repo.newDB(context.TODO(), c.BundleID())
-	// if err != nil {
-	// 	return "", err
-	// }
+type cardData struct {
+	Card *fbCard
+	Face int
+	Note *fbNote
+	// Model    *Model
+	// Deck     *Deck
+	BaseURI string
+	Fields  map[string]template.HTML
+}
 
-	return "", nil
+func (c *fbCard) Body(face int) (body string, err error) {
+	if c.note == nil {
+		return "", errors.New("card hasn't been fetched")
+	}
+
+	funcMap, err := c.model.FuncMap(c, face)
+	if err != nil {
+		return "", errors.Wrap(err, "failed to get FuncMap")
+	}
+
+	tmpl, err := c.model.Template()
+	if err != nil {
+		return "", errors.Wrap(err, "failed to generate template")
+	}
+
+	data := cardData{
+		Card: c,
+		Face: face,
+		Note: c.note,
+		// Model:    model,
+		BaseURI: c.appURL,
+		Fields:  make(map[string]template.HTML, len(c.model.Fields)),
+	}
+
+	for i, field := range c.model.Fields {
+		switch c.note.FieldValues[i].Type() {
+		case fb.AnkiField, fb.TextField:
+			data.Fields[field.Name] = template.HTML(c.note.FieldValues[i].Text)
+		}
+	}
+
+	htmlDoc := new(bytes.Buffer)
+	if e := tmpl.Funcs(funcMap).Execute(htmlDoc, data); e != nil {
+		return "", errors.Wrap(e, "template execution")
+	}
+
+	return htmlDoc.String(), nil
 }
 
 func (c *fbCard) Action(face *int, startTime time.Time, query interface{}) (done bool, err error) {
@@ -172,7 +233,10 @@ func (r *Repo) GetCardToStudy(ctx context.Context) (Card, error) {
 	if err != nil {
 		return nil, err
 	}
-	c := &fbCard{Card: card}
+	c := &fbCard{
+		Card:   card,
+		appURL: r.appURL,
+	}
 	return c, c.fetch(ctx, r.local)
 }
 

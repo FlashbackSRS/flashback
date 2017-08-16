@@ -21,6 +21,7 @@ const currentUserDoc = "_local/currentUser"
 
 // Repo represents an instance of the Couch/Pouch model.
 type Repo struct {
+	appURL string
 	chttp  *chttp.Client
 	remote kivikClient
 	local  kivikClient
@@ -29,7 +30,7 @@ type Repo struct {
 }
 
 // New returns a new Repo instance, pointing to the specified remote server.
-func New(ctx context.Context, remoteURL string) (*Repo, error) {
+func New(ctx context.Context, remoteURL, appURL string) (*Repo, error) {
 	remoteClient, err := remoteConnection(remoteURL)
 	if err != nil {
 		return nil, err
@@ -54,6 +55,7 @@ func New(ctx context.Context, remoteURL string) (*Repo, error) {
 		remote: remoteClient,
 		local:  localClient,
 		state:  stateDB,
+		appURL: appURL,
 	}, nil
 }
 

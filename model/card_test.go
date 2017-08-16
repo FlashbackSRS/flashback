@@ -380,7 +380,7 @@ func TestRepoGetCardToStudy(t *testing.T) {
 					},
 				},
 			},
-			expected: expectedCards[0],
+			expected: map[string]interface{}{"id": "card-krsxg5baij2w4zdmmu.VGVzdCBOb3Rl.1", "model": 0},
 		},
 	}
 	for _, test := range tests {
@@ -626,22 +626,87 @@ func TestCardFetch(t *testing.T) {
 	}
 }
 
-/*
 func TestCardBody(t *testing.T) {
-	type cbTest struct {
+	tests := []struct {
 		name     string
-		card     *fb.Card
+		card     *fbCard
 		face     int
 		expected string
 		err      string
+	}{
+		{
+			name: "unfetched card",
+			card: &fbCard{},
+			err:  "card hasn't been fetched",
+		},
+		{
+			name: "controller error",
+			card: &fbCard{
+				note:  &fbNote{},
+				model: &fbModel{Model: &fb.Model{Type: "foo"}},
+			},
+			err: "failed to get FuncMap: ModelController for 'foo' not found",
+		},
+		{
+			name: "template error",
+			card: func() *fbCard {
+				theme, _ := fb.NewTheme("theme-Zm9v")
+				return &fbCard{
+					note:  &fbNote{},
+					model: &fbModel{Model: &fb.Model{Type: "basic", Files: theme.Attachments.NewView()}},
+				}
+			}(),
+			err: "failed to generate template: main template '$template.0.html' not found in model",
+		},
+		{
+			name: "success",
+			card: func() *fbCard {
+				theme, _ := fb.NewTheme("theme-Zm9v")
+				modelFiles := theme.Attachments.NewView()
+				_ = modelFiles.AddFile("$template.0.html", "text/html", []byte("<html></html>"))
+				model := &fb.Model{
+					Theme: theme,
+					Type:  "basic",
+					Files: modelFiles,
+				}
+				return &fbCard{
+					Card: &fb.Card{
+						ID:       "card-foo.bar.0",
+						Created:  time.Now(),
+						Modified: time.Now(),
+					},
+					note:   &fbNote{Note: &fb.Note{ID: "note-Zm9v"}},
+					model:  &fbModel{Model: model},
+					appURL: "http://foo.com/",
+				}
+			}(),
+			expected: `<!DOCTYPE html>
+<html>
+<head>
+	<title>FB Card</title>
+	<base href="http://foo.com/">
+	<meta charset="UTF-8">
+	<link rel="stylesheet" type="text/css" href="css/cardframe.css">
+<script type="text/javascript">
+'use strict';
+var FB = {
+	face:  0 ,
+	card: {"id":"card-foo.bar.0","model":0},
+	note: {"id":"note-Zm9v"}
+};
+</script>
+<script type="text/javascript" src="js/cardframe.js"></script>
+<script type="text/javascript"></script>
+<style></style>
+</head>
+<body><html></html></body>
+</html>
+`,
+		},
 	}
-	tests := []cbTest{}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			card := &fbCard{
-				Card: test.card,
-			}
-			result, err := card.Body(test.face)
+			result, err := test.card.Body(test.face)
 			checkErr(t, test.err, err)
 			if err != nil {
 				return
@@ -652,4 +717,3 @@ func TestCardBody(t *testing.T) {
 		})
 	}
 }
-*/

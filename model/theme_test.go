@@ -222,7 +222,7 @@ func TestModelTemplate(t *testing.T) {
 			name:    "main template missing",
 			theme:   theme1,
 			modelID: 1,
-			err:     "Main template not found in model",
+			err:     "main template '$template.1.html' not found in model",
 		},
 		{
 			name:    "unknown model type",
@@ -264,7 +264,6 @@ var FB = {
 <script type="text/javascript" src="js/cardframe.js"></script>
 <script type="text/javascript"></script>
 <style> </style>
-</style>
 </head>
 <body>Boring template
 </body>

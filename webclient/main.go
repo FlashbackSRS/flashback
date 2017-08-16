@@ -109,7 +109,7 @@ func RouterInit() {
 	}
 	prefix := strings.TrimSuffix(appURL.Path, "/")
 
-	repo, err := model.New(context.TODO(), conf.GetString("flashback_api"))
+	repo, err := model.New(context.TODO(), conf.GetString("flashback_api"), conf.GetString("flashback_app"))
 	if err != nil {
 		panic(err)
 	}

@@ -40,7 +40,7 @@ func (m *fbModel) Template() (*template.Template, error) {
 	}
 	mainTemplate := fmt.Sprintf("$template.%d.html", m.ID)
 	if _, ok := m.Files.GetFile(mainTemplate); !ok {
-		return nil, errors.New("Main template not found in model")
+		return nil, fmt.Errorf("main template '%s' not found in model", mainTemplate)
 	}
 	templates := extractTemplateFiles(m.Files)
 	tmpl2 := extractTemplateFiles(m.Theme.Files)
@@ -113,7 +113,6 @@ var FB = {
 <script type="text/javascript" src="js/cardframe.js"></script>
 <script type="text/javascript">{{ block "script.js" $g }}{{end}}</script>
 <style>{{ block "style.css" $g }}{{end}}</style>
-</style>
 </head>
 <body>{{ block "template.html" $g }}{{end}}</body>
 </html>

@@ -14,13 +14,13 @@ import (
 
 func TestNew(t *testing.T) {
 	t.Run("InvalidURL", func(t *testing.T) {
-		_, err := New(context.Background(), "http://foo.com/%xx")
+		_, err := New(context.Background(), "http://foo.com/%xx", "")
 		if err == nil || err.Error() != `parse http://foo.com/%xx: invalid URL escape "%xx"` {
 			t.Errorf("Unexpected error: %s", err)
 		}
 	})
 	t.Run("Valid", func(t *testing.T) {
-		_, err := New(context.Background(), "http://foo.com")
+		_, err := New(context.Background(), "http://foo.com", "")
 		if err != nil {
 			t.Errorf("Unexpected error: %s", err)
 		}
@@ -31,7 +31,7 @@ func TestAuth(t *testing.T) {
 	s := mockServer(t)
 	t.Run("Success", func(t *testing.T) {
 		t.Parallel()
-		repo, err := New(context.Background(), s.URL)
+		repo, err := New(context.Background(), s.URL, "")
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -45,7 +45,7 @@ func TestAuth(t *testing.T) {
 
 	t.Run("Unauthorized", func(t *testing.T) {
 		t.Parallel()
-		repo, err := New(context.Background(), s.URL)
+		repo, err := New(context.Background(), s.URL, "")
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -61,7 +61,7 @@ func TestAuth(t *testing.T) {
 
 func TestLogout(t *testing.T) {
 	s := mockServer(t)
-	repo, err := New(context.Background(), s.URL)
+	repo, err := New(context.Background(), s.URL, "")
 	if err != nil {
 		t.Fatal(err)
 	}
