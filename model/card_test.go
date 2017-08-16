@@ -359,9 +359,9 @@ func TestRepoGetCardToStudy(t *testing.T) {
 		},
 		{
 			name: "logged in",
-			repo: &Repo{user: "bob", local: func() kivikClient {
+			repo: &Repo{user: "user-mjxwe", local: func() kivikClient {
 				c := testClient(t)
-				if e := c.CreateDB(context.Background(), "user-bob"); e != nil {
+				if e := c.CreateDB(context.Background(), "user-mjxwe"); e != nil {
 					t.Fatal(e)
 				}
 				return c

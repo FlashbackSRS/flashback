@@ -143,7 +143,7 @@ func (r *Repo) userDB(ctx context.Context) (kivikDB, error) {
 	if err != nil {
 		return nil, err
 	}
-	return r.newDB(ctx, "user-"+user)
+	return r.newDB(ctx, user)
 }
 
 func (r *Repo) bundleDB(ctx context.Context, bundle *fb.Bundle) (kivikDB, error) {

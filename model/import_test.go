@@ -45,13 +45,13 @@ func TestImportFile(t *testing.T) {
 		},
 		{
 			name: "file read error",
-			repo: &Repo{user: "bob"},
+			repo: &Repo{user: "user-mjxwe"},
 			file: &mockFile{err: errors.New("read error")},
 			err:  "read error",
 		},
 		{
 			name: "Invalid gzip data",
-			repo: &Repo{user: "bob"},
+			repo: &Repo{user: "user-mjxwe"},
 			file: &mockFile{body: []byte("bogus data")},
 			err:  "gzip: invalid header",
 		},
@@ -62,14 +62,14 @@ func TestImportFile(t *testing.T) {
 				if err != nil {
 					t.Fatal(err)
 				}
-				if err := local.CreateDB(context.Background(), "user-bob"); err != nil {
+				if err := local.CreateDB(context.Background(), "user-mjxwe"); err != nil {
 					t.Fatal(err)
 				}
 				if err := local.CreateDB(context.Background(), fb.EncodeDBID("bundle", []byte{1, 2, 3, 4})); err != nil {
 					t.Fatal(err)
 				}
 				return &Repo{
-					user:  "bob",
+					user:  "user-mjxwe",
 					local: local,
 				}
 			}(),
@@ -113,8 +113,6 @@ func TestImport(t *testing.T) {
 		expectedDocs   []interface{}
 		err            string
 	}
-	id := fb.EncodeDBID("bundle", []byte{1, 2, 3, 4})
-	owner := fb.EncodeDBID("user", []byte{1, 2, 3, 4, 5})
 	tests := []iTest{
 		{
 			name: "Not logged in",
@@ -124,10 +122,10 @@ func TestImport(t *testing.T) {
 		},
 		{
 			name: "Invalid JSON",
-			repo: &Repo{user: "bob",
+			repo: &Repo{user: "user-mjxwe",
 				local: func() kivikClient {
 					c := testClient(t)
-					if err := c.CreateDB(context.Background(), "user-bob"); err != nil {
+					if err := c.CreateDB(context.Background(), "user-mjxwe"); err != nil {
 						t.Fatal(err)
 					}
 					return c
@@ -143,11 +141,11 @@ func TestImport(t *testing.T) {
 				if err != nil {
 					t.Fatal(err)
 				}
-				if err := local.CreateDB(context.Background(), "user-bob"); err != nil {
+				if err := local.CreateDB(context.Background(), "user-mjxwe"); err != nil {
 					t.Fatal(err)
 				}
 				return &Repo{
-					user:  "bob",
+					user:  "user-mjxwe",
 					local: local,
 				}
 			}(),
@@ -161,14 +159,14 @@ func TestImport(t *testing.T) {
 				if err != nil {
 					t.Fatal(err)
 				}
-				if err := local.CreateDB(context.Background(), "user-bob"); err != nil {
+				if err := local.CreateDB(context.Background(), "user-mjxwe"); err != nil {
 					t.Fatal(err)
 				}
-				if err := local.CreateDB(context.Background(), id); err != nil {
+				if err := local.CreateDB(context.Background(), "bundle-aebagba"); err != nil {
 					t.Fatal(err)
 				}
 				return &Repo{
-					user:  "bob",
+					user:  "user-mjxwe",
 					local: local,
 				}
 			}(),
@@ -181,7 +179,7 @@ func TestImport(t *testing.T) {
 						"type": "bundle",
 						"created": "2016-07-31T15:08:24.730156517Z",
 						"modified": "2016-07-31T15:08:24.730156517Z",
-						"owner": "user-aebagbaf"
+						"owner": "user-mjxwe"
 					},
 					"cards": [
 						{
@@ -272,9 +270,9 @@ func TestImport(t *testing.T) {
 				`)
 			}(),
 			expectedBundle: &fb.Bundle{
-				ID:       id,
+				ID:       "bundle-aebagba",
 				Rev:      "1",
-				Owner:    owner,
+				Owner:    "user-mjxwe",
 				Created:  ParseTime("2016-07-31T15:08:24.730156517Z"),
 				Modified: ParseTime("2016-07-31T15:08:24.730156517Z"),
 			},

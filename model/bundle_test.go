@@ -62,7 +62,7 @@ func TestSaveBundle(t *testing.T) {
 				}
 				return &Repo{
 					local: local,
-					user:  "mjxwe",
+					user:  "user-mjxwe",
 				}
 			}(),
 			bundle: &fb.Bundle{ID: id, Owner: "user-mjxwe", Created: now(), Modified: now()},
