@@ -71,7 +71,9 @@ type cardData struct {
 }
 
 func (c *fbCard) Body(face int) (body string, err error) {
-	if _, ok := faces[face]; !ok {
+	// cardFace, ok := faces[face]
+	_, ok := faces[face]
+	if !ok {
 		return "", errors.Errorf("unrecognized card face %d", face)
 	}
 	if c.note == nil {
@@ -108,8 +110,17 @@ func (c *fbCard) Body(face int) (body string, err error) {
 	if e := tmpl.Funcs(funcMap).Execute(htmlDoc, data); e != nil {
 		return "", errors.Wrap(e, "template execution")
 	}
-
 	return htmlDoc.String(), nil
+
+	// iframeScript, _ := c.model.IframeScript()
+	// newBody, err := prepareBody(cardFace, c.TemplateID(), string(iframeScript), htmlDoc)
+	// if err != nil {
+	// 	return "", errors.Wrap(err, "prepare body")
+	// }
+	//
+	// nbString := string(newBody)
+	// log.Debugf("new body size = %d\n", len(nbString))
+	// return nbString, nil
 }
 
 func (c *fbCard) Action(face *int, startTime time.Time, query interface{}) (done bool, err error) {
