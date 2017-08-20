@@ -286,7 +286,7 @@ func TestBundleDB(t *testing.T) {
 	}
 	testBundle := &fb.Bundle{
 		ID:       fb.EncodeDBID("bundle", []byte{1, 2, 3, 4}),
-		Owner:    fb.EncodeDBID("user", []byte{5, 6, 7, 8}),
+		Owner:    fb.B32enc([]byte{5, 6, 7, 8}),
 		Created:  now(),
 		Modified: now(),
 	}

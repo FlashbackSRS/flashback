@@ -45,13 +45,13 @@ func TestImportFile(t *testing.T) {
 		},
 		{
 			name: "file read error",
-			repo: &Repo{user: "user-mjxwe"},
+			repo: &Repo{user: "mjxwe"},
 			file: &mockFile{err: errors.New("read error")},
 			err:  "read error",
 		},
 		{
 			name: "Invalid gzip data",
-			repo: &Repo{user: "user-mjxwe"},
+			repo: &Repo{user: "mjxwe"},
 			file: &mockFile{body: []byte("bogus data")},
 			err:  "gzip: invalid header",
 		},
@@ -179,7 +179,7 @@ func TestImport(t *testing.T) {
 						"type": "bundle",
 						"created": "2016-07-31T15:08:24.730156517Z",
 						"modified": "2016-07-31T15:08:24.730156517Z",
-						"owner": "user-mjxwe"
+						"owner": "mjxwe"
 					},
 					"cards": [
 						{
@@ -272,7 +272,7 @@ func TestImport(t *testing.T) {
 			expectedBundle: &fb.Bundle{
 				ID:       "bundle-aebagba",
 				Rev:      "1",
-				Owner:    "user-mjxwe",
+				Owner:    "mjxwe",
 				Created:  ParseTime("2016-07-31T15:08:24.730156517Z"),
 				Modified: ParseTime("2016-07-31T15:08:24.730156517Z"),
 			},
