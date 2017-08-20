@@ -106,12 +106,13 @@ func TestImportFile(t *testing.T) {
 
 func TestImport(t *testing.T) {
 	type iTest struct {
-		name           string
-		repo           *Repo
-		file           io.Reader
-		expectedBundle *fb.Bundle
-		expectedDocs   []interface{}
-		err            string
+		name               string
+		repo               *Repo
+		file               io.Reader
+		expectedBundle     *fb.Bundle
+		expectedUserDocs   []interface{}
+		expectedBundleDocs []interface{}
+		err                string
 	}
 	tests := []iTest{
 		{
@@ -275,7 +276,7 @@ func TestImport(t *testing.T) {
 				Created:  ParseTime("2016-07-31T15:08:24.730156517Z"),
 				Modified: ParseTime("2016-07-31T15:08:24.730156517Z"),
 			},
-			expectedDocs: []interface{}{
+			expectedUserDocs: []interface{}{
 				map[string]interface{}{
 					"_id":      "card-krsxg5baij2w4zdmmu.VGVzdCBOb3Rl.0",
 					"_rev":     "1",
@@ -284,6 +285,8 @@ func TestImport(t *testing.T) {
 					"modified": "2016-07-31T15:08:24.730156517Z",
 					"model":    "theme-VGVzdCBUaGVtZQ/0",
 				},
+			},
+			expectedBundleDocs: []interface{}{
 				map[string]interface{}{
 					"_id":         "deck-VGVzdCBEZWNr",
 					"type":        "deck",
@@ -359,8 +362,11 @@ func TestImport(t *testing.T) {
 				t.Fatal(err)
 			}
 			checkDoc(t, bdb, test.expectedBundle)
-			for _, doc := range test.expectedDocs {
+			for _, doc := range test.expectedUserDocs {
 				checkDoc(t, udb, doc)
+			}
+			for _, doc := range test.expectedBundleDocs {
+				checkDoc(t, bdb, doc)
 			}
 		})
 	}

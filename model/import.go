@@ -8,6 +8,7 @@ import (
 	"io"
 
 	"github.com/flimzy/kivik"
+	"github.com/flimzy/log"
 	multierror "github.com/hashicorp/go-multierror"
 	"github.com/pkg/errors"
 
@@ -55,7 +56,12 @@ func (r *Repo) Import(ctx context.Context, f io.Reader) error {
 		return err
 	}
 
-	var docs []FlashbackDoc
+	bdb, err := r.bundleDB(ctx, bundle)
+	if err != nil {
+		return err
+	}
+
+	docs := make([]FlashbackDoc, 0, len(pkg.Themes)+len(pkg.Notes)+len(pkg.Decks))
 	for _, theme := range pkg.Themes {
 		docs = append(docs, theme)
 	}
@@ -65,11 +71,21 @@ func (r *Repo) Import(ctx context.Context, f io.Reader) error {
 	for _, deck := range pkg.Decks {
 		docs = append(docs, deck)
 	}
-	for _, card := range pkg.Cards {
-		docs = append(docs, card)
+	if err := bulkInsert(ctx, bdb, docs...); err != nil {
+		return err
 	}
 
-	return bulkInsert(ctx, udb, docs...)
+	cards := make([]FlashbackDoc, 0, len(pkg.Cards))
+	for _, card := range pkg.Cards {
+		cards = append(cards, card)
+	}
+
+	if err := bulkInsert(ctx, udb, cards...); err != nil {
+		return err
+	}
+	log.Printf("Imported:\n%d Bundles\n%d Themes\n%d Decks\n%d Notes\n%d Cards\n",
+		1, len(pkg.Themes), len(pkg.Decks), len(pkg.Notes), len(pkg.Cards))
+	return nil
 }
 
 func bulkInsert(ctx context.Context, db getPutBulkDocer, docs ...FlashbackDoc) error {
