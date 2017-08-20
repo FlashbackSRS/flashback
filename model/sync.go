@@ -119,9 +119,8 @@ func (r *Repo) syncBundles(ctx context.Context, reads, writes *int32) error {
 	}
 	log.Debugf("bundles = %v\n", bundles)
 	for _, bundle := range bundles {
-		log.Debugf("Bundle %s", bundle)
 		rdb := r.remoteDSN(bundle)
-		if err := r.remote.CreateDB(ctx, bundle); err != nil {
+		if err := r.remote.CreateDB(ctx, bundle); err != nil && kivik.StatusCode(err) != kivik.StatusPreconditionFailed {
 			return err
 		}
 		if err := replicate(ctx, r.local, rdb, bundle, writes); err != nil {
