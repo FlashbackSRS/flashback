@@ -6,7 +6,7 @@ import (
 	"context"
 
 	"github.com/flimzy/kivik"
-	_ "github.com/flimzy/kivik/driver/memory" // Memory driver
+	_ "github.com/go-kivik/memorydb" // Kivik Memory driver
 )
 
 func localConnection() (kivikClient, error) {
