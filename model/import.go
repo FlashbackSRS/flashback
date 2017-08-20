@@ -50,7 +50,7 @@ func (r *Repo) Import(ctx context.Context, f io.Reader) error {
 	}
 
 	bundle := pkg.Bundle
-	bundle.Owner = r.user
+	bundle.Owner = "user-" + r.user
 	if err := r.SaveBundle(ctx, bundle); err != nil {
 		return err
 	}

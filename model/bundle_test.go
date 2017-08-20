@@ -28,7 +28,7 @@ func TestSaveBundle(t *testing.T) {
 		},
 		{
 			name:   "invalid bundle",
-			repo:   &Repo{user: "user-bob"},
+			repo:   &Repo{user: "bob"},
 			bundle: &fb.Bundle{},
 			err:    "invalid bundle: id required",
 		},
@@ -62,7 +62,7 @@ func TestSaveBundle(t *testing.T) {
 				}
 				return &Repo{
 					local: local,
-					user:  "user-mjxwe",
+					user:  "mjxwe",
 				}
 			}(),
 			bundle: &fb.Bundle{ID: id, Owner: "user-mjxwe", Created: now(), Modified: now()},

@@ -26,7 +26,8 @@ type Repo struct {
 	remote kivikClient
 	local  kivikClient
 	state  kivikDB
-	user   string
+	// user is the username, without the "user-" prefix
+	user string
 }
 
 // New returns a new Repo instance, pointing to the specified remote server.
@@ -143,7 +144,7 @@ func (r *Repo) userDB(ctx context.Context) (kivikDB, error) {
 	if err != nil {
 		return nil, err
 	}
-	return r.newDB(ctx, user)
+	return r.newDB(ctx, "user-"+user)
 }
 
 func (r *Repo) bundleDB(ctx context.Context, bundle *fb.Bundle) (kivikDB, error) {

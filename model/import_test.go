@@ -69,7 +69,7 @@ func TestImportFile(t *testing.T) {
 					t.Fatal(err)
 				}
 				return &Repo{
-					user:  "user-mjxwe",
+					user:  "mjxwe",
 					local: local,
 				}
 			}(),
@@ -122,7 +122,7 @@ func TestImport(t *testing.T) {
 		},
 		{
 			name: "Invalid JSON",
-			repo: &Repo{user: "user-mjxwe",
+			repo: &Repo{user: "mjxwe",
 				local: func() kivikClient {
 					c := testClient(t)
 					if err := c.CreateDB(context.Background(), "user-mjxwe"); err != nil {
@@ -145,7 +145,7 @@ func TestImport(t *testing.T) {
 					t.Fatal(err)
 				}
 				return &Repo{
-					user:  "user-mjxwe",
+					user:  "mjxwe",
 					local: local,
 				}
 			}(),
@@ -166,13 +166,12 @@ func TestImport(t *testing.T) {
 					t.Fatal(err)
 				}
 				return &Repo{
-					user:  "user-mjxwe",
+					user:  "mjxwe",
 					local: local,
 				}
 			}(),
 			file: func() io.Reader {
-				return strings.NewReader(`
-				{
+				return strings.NewReader(`{
 					"version": 2,
 					"bundle": {
 						"_id": "bundle-aebagba",
