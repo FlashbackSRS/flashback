@@ -6,7 +6,7 @@ import (
 	"context"
 
 	"github.com/flimzy/kivik"
-	_ "github.com/flimzy/kivik/driver/pouchdb" // PouchDB driver
+	_ "github.com/go-kivik/pouchdb" // PouchDB driver
 )
 
 func localConnection() (kivikClient, error) {

@@ -13,9 +13,8 @@ import:
   subpackages:
   - file
 - package: github.com/flimzy/jqeventrouter
-- package: github.com/flimzy/kivik
-  subpackages:
-  - driver/pouchdb
+- package: github.com/flimzy/pouchdb
+- package: github.com/go-kivik/pouchdb
 - package: github.com/flimzy/log
 - package: github.com/gopherjs/jquery
 - package: github.com/gopherjs/jsbuiltin

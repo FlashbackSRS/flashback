@@ -10,7 +10,7 @@ import (
 	"time"
 
 	"github.com/flimzy/kivik"
-	_ "github.com/flimzy/kivik/driver/pouchdb" // PouchDB driver
+	_ "github.com/go-kivik/pouchdb" // PouchDB driver
 	"github.com/gopherjs/gopherjs/js"
 	multierror "github.com/hashicorp/go-multierror"
 	"github.com/pborman/uuid"
