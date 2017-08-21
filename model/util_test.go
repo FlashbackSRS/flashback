@@ -3,11 +3,13 @@ package model
 import (
 	"context"
 	"encoding/json"
+	"io/ioutil"
 	"net/http"
 	"strings"
 	"testing"
 	"time"
 
+	fb "github.com/FlashbackSRS/flashback-model"
 	"github.com/flimzy/diff"
 	"github.com/flimzy/kivik"
 	"github.com/flimzy/kivik/errors"
@@ -323,6 +325,51 @@ func TestFirstErr(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			err := firstErr(test.errs...)
 			checkErr(t, test.expected, err)
+		})
+	}
+}
+
+func TestGetAttachment(t *testing.T) {
+	tests := []struct {
+		name     string
+		db       attachmentGetter
+		docID    string
+		filename string
+		expected *fb.Attachment
+		err      string
+	}{
+		{
+			name:     "not found",
+			filename: "foo.txt",
+			db:       &mockAttachmentGetter{err: errors.New("not found")},
+			err:      "not found",
+		},
+		{
+			name: "found it",
+			db: &mockAttachmentGetter{attachments: map[string]*kivik.Attachment{
+				"foo.txt": &kivik.Attachment{
+					Filename:    "foo.txt",
+					ContentType: "text/plain",
+					ReadCloser:  ioutil.NopCloser(strings.NewReader("some text")),
+				},
+			}},
+			filename: "foo.txt",
+			expected: &fb.Attachment{
+				ContentType: "text/plain",
+				Content:     []byte("some text"),
+			},
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			result, err := getAttachment(context.Background(), test.db, test.docID, test.filename)
+			checkErr(t, test.err, err)
+			if err != nil {
+				return
+			}
+			if d := diff.Interface(test.expected, result); d != nil {
+				t.Error(d)
+			}
 		})
 	}
 }

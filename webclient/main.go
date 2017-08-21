@@ -16,7 +16,7 @@ import (
 	"github.com/gopherjs/jquery"
 
 	"github.com/FlashbackSRS/flashback/config"
-	_ "github.com/FlashbackSRS/flashback/fserve" // Load the file server for card assets
+	"github.com/FlashbackSRS/flashback/fserve"
 	"github.com/FlashbackSRS/flashback/iframes"
 	"github.com/FlashbackSRS/flashback/model"
 	"github.com/FlashbackSRS/flashback/oauth2"
@@ -113,6 +113,8 @@ func RouterInit() {
 	if err != nil {
 		panic(err)
 	}
+
+	fserve.Register(repo)
 
 	// mobileinit
 	jQuery(document).On("mobileinit", func() {

@@ -1,12 +1,14 @@
 package model
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/flimzy/log"
 )
 
-func profile(name string) func() {
+func profile(format string, args ...interface{}) func() {
+	name := fmt.Sprintf(format, args...)
 	start := time.Now()
 	log.Debugf("Starting %s", name)
 	return func() {

@@ -6,6 +6,7 @@ import (
 	"reflect"
 	"time"
 
+	fb "github.com/FlashbackSRS/flashback-model"
 	"github.com/flimzy/kivik"
 	"github.com/flimzy/kivik/errors"
 )
@@ -87,4 +88,20 @@ func firstErr(errs ...error) error {
 		}
 	}
 	return nil
+}
+
+func getAttachment(ctx context.Context, db attachmentGetter, docID, filename string) (*fb.Attachment, error) {
+	att, err := db.GetAttachment(ctx, docID, "", filename)
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = att.Close() }()
+	content, err := att.Bytes()
+	if err != nil {
+		return nil, err
+	}
+	return &fb.Attachment{
+		ContentType: att.ContentType,
+		Content:     content,
+	}, nil
 }
