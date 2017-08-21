@@ -18,10 +18,22 @@ type fbModel struct {
 	db attachmentGetter
 }
 
-func (m *fbModel) getAttachment(ctx context.Context, filename string) (*fb.Attachment, error) {
+func (m *fbModel) getCachedAttachment(filename string) (*fb.Attachment, error) {
 	att, ok := m.Files.GetFile(filename)
-	if !ok {
-		return nil, errors.New("not found")
+	if ok {
+		return att, nil
+	}
+	att, ok = m.Theme.Files.GetFile(filename)
+	if ok {
+		return att, nil
+	}
+	return nil, fmt.Errorf("attachment '%s' not found", filename)
+}
+
+func (m *fbModel) getAttachment(ctx context.Context, filename string) (*fb.Attachment, error) {
+	att, err := m.getCachedAttachment(filename)
+	if err != nil {
+		return nil, err
 	}
 	if len(att.Content) != 0 {
 		return att, nil

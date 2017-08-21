@@ -459,7 +459,7 @@ func TestGetAttachment(t *testing.T) {
 			name:     "not found",
 			model:    &fbModel{Model: realTheme.Models[0]},
 			filename: "foo.txt",
-			err:      "not found",
+			err:      "attachment 'foo.txt' not found",
 		},
 		{
 			name: "db error",
