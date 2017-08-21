@@ -38,16 +38,11 @@ func (m *fbModel) getAttachment(ctx context.Context, filename string) (*fb.Attac
 	if len(att.Content) != 0 {
 		return att, nil
 	}
-	dbAtt, err := m.db.GetAttachment(ctx, m.Model.Theme.ID, "", filename)
+	dbAtt, err := getAttachment(ctx, m.db, m.Model.Theme.ID, filename)
 	if err != nil {
 		return nil, err
 	}
-	defer func() { _ = dbAtt.Close() }()
-	content, err := dbAtt.Bytes()
-	if err != nil {
-		return nil, err
-	}
-	m.Files.SetFile(filename, att.ContentType, content)
+	m.Files.SetFile(filename, att.ContentType, dbAtt.Content)
 	att, _ = m.Files.GetFile(filename)
 	return att, nil
 }

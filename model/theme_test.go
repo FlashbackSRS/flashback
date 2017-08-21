@@ -382,7 +382,7 @@ func TestIframeScript(t *testing.T) {
 	})
 }
 
-func TestGetAttachment(t *testing.T) {
+func TestModelGetAttachment(t *testing.T) {
 	tests := []struct {
 		name     string
 		model    *fbModel
