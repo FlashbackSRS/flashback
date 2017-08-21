@@ -71,6 +71,7 @@ type cardData struct {
 }
 
 func (c *fbCard) Body(face int) (body string, err error) {
+	defer profile("Body")()
 	// cardFace, ok := faces[face]
 	_, ok := faces[face]
 	if !ok {
@@ -286,8 +287,9 @@ func (c *fbCard) fetch(ctx context.Context, client kivikClient) error {
 		return errors.New("card's theme has no model")
 	}
 	c.note = &fbNote{Note: note}
-	c.model = &fbModel{Model: theme.Models[c.ThemeModelID()]}
-	return nil
+	model := theme.Models[c.ThemeModelID()]
+	c.model = &fbModel{Model: model}
+	return c.note.SetModel(model)
 }
 
 func getCardToStudy(ctx context.Context, db querier) (*fb.Card, error) {

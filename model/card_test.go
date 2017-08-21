@@ -375,7 +375,7 @@ func TestRepoGetCardToStudy(t *testing.T) {
 				local: &gctsClient{
 					db: &gctsDB{
 						q:     &mockQuerier{rows: map[string]*mockRows{"newCards": &mockRows{rows: storedCards[1:2]}}},
-						note:  `{"_id":"note-Zm9v", "created":"2017-01-01T01:01:01Z", "modified":"2017-01-01T01:01:01Z"}`,
+						note:  `{"_id":"note-Zm9v", "theme":"theme-Zm9v", "created":"2017-01-01T01:01:01Z", "modified":"2017-01-01T01:01:01Z"}`,
 						theme: `{"_id":"theme-Zm9v", "created":"2017-01-01T01:01:01Z", "modified":"2017-01-01T01:01:01Z", "_attachments":{}, "files":[], "modelSequence":1, "models": [{"id":0, "files":[], "modelType":"foo"}]}`,
 					},
 				},
@@ -579,7 +579,7 @@ func TestCardFetch(t *testing.T) {
 		{
 			name:   "valid",
 			card:   &fbCard{Card: &fb.Card{ID: "card-foo.bar.0", ModelID: "theme-Zm9v/0"}},
-			client: &cfClient{db: &gctsDB{note: `{"_id":"note-Zm9v", "created":"2017-01-01T01:01:01Z", "modified":"2017-01-01T01:01:01Z"}`, theme: `{"_id":"theme-Zm9v", "created":"2017-01-01T01:01:01Z", "modified":"2017-01-01T01:01:01Z", "_attachments":{}, "files":[], "modelSequence":1, "models":[{"id":0,"files":[], "modelType":"foo"}]}`}},
+			client: &cfClient{db: &gctsDB{note: `{"_id":"note-Zm9v", "theme":"theme-Zm9v", "created":"2017-01-01T01:01:01Z", "modified":"2017-01-01T01:01:01Z"}`, theme: `{"_id":"theme-Zm9v", "created":"2017-01-01T01:01:01Z", "modified":"2017-01-01T01:01:01Z", "_attachments":{}, "files":[], "modelSequence":1, "models":[{"id":0,"files":[], "modelType":"foo"}]}`}},
 			expected: func() *fbCard {
 				themeAtt := fb.NewFileCollection()
 				theme := &fb.Theme{
@@ -601,9 +601,11 @@ func TestCardFetch(t *testing.T) {
 					Card: &fb.Card{ID: "card-foo.bar.0", ModelID: "theme-Zm9v/0"},
 					note: &fbNote{Note: &fb.Note{
 						ID:          "note-Zm9v",
+						ThemeID:     "theme-Zm9v",
 						Created:     parseTime(t, "2017-01-01T01:01:01Z"),
 						Modified:    parseTime(t, "2017-01-01T01:01:01Z"),
 						Attachments: fb.NewFileCollection(),
+						Model:       model,
 					}},
 					model: &fbModel{
 						Model: model,
