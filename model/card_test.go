@@ -2,7 +2,6 @@ package model
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -43,28 +42,6 @@ func (db *mockQuerier) Query(ctx context.Context, ddoc, view string, options ...
 	rows.limit = limit + offset
 	rows.i = offset
 	return rows, nil
-}
-
-type mockRows struct {
-	rows     []string
-	i, limit int
-}
-
-var _ kivikRows = &mockRows{}
-
-func (r *mockRows) Close() error     { return nil }
-func (r *mockRows) Next() bool       { return r.i < r.limit && r.i < len(r.rows) }
-func (r *mockRows) TotalRows() int64 { return int64(len(r.rows)) }
-func (r *mockRows) ID() string       { panic("ID() not implemented") }
-func (r *mockRows) ScanDoc(d interface{}) error {
-	if r.i > r.limit || r.i >= len(r.rows) {
-		return io.EOF
-	}
-	if err := json.Unmarshal([]byte(r.rows[r.i]), &d); err != nil {
-		return err
-	}
-	r.i++
-	return nil
 }
 
 var storedCards = []string{
@@ -774,5 +751,17 @@ func TestCardPrepareBody(t *testing.T) {
 				t.Error(d)
 			}
 		})
+	}
+}
+
+func TestRelatedKeyRange(t *testing.T) {
+	startExp := "card-foo.bar."
+	endExp := "card-foo.bar." + string(rune(0x10FFFF))
+	start, end := relatedKeyRange("card-foo.bar.0")
+	if start != startExp {
+		t.Errorf("Unexpected start key: %s", start)
+	}
+	if end != endExp {
+		t.Errorf("Unexpected end key: %s", end)
 	}
 }

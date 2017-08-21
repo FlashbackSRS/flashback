@@ -9,6 +9,7 @@ import (
 	"io"
 	"math"
 	"math/rand"
+	"strings"
 	"sync"
 	"time"
 
@@ -26,7 +27,6 @@ type Card interface {
 	Buttons(face int) (studyview.ButtonMap, error)
 	Body(ctx context.Context, face int) (body string, err error)
 	Action(face *int, startTime time.Time, query interface{}) (done bool, err error)
-	BuryRelated() error
 }
 
 // fbCard is a wrapper around *fb.Card, which provides convenience functions
@@ -58,7 +58,8 @@ func (c *fbCard) MarshalJSON() ([]byte, error) {
 }
 
 func (c *fbCard) Buttons(face int) (studyview.ButtonMap, error) {
-	return studyview.ButtonMap{}, nil
+	panic("fix me")
+	// return studyview.ButtonMap{}, nil
 }
 
 type cardData struct {
@@ -125,11 +126,8 @@ func (c *fbCard) Body(ctx context.Context, face int) (body string, err error) {
 }
 
 func (c *fbCard) Action(face *int, startTime time.Time, query interface{}) (done bool, err error) {
-	return false, nil
-}
-
-func (c *fbCard) BuryRelated() error {
-	return nil
+	panic("fix me")
+	// return false, nil
 }
 
 var now = time.Now
@@ -354,4 +352,9 @@ func prepareBody(cardFace string, templateID uint32, iframeScript string, r io.R
 		return nil, errors.Wrap(err, "outer html failed")
 	}
 	return []byte(newBody), nil
+}
+
+func relatedKeyRange(cardID string) (startKey, endKey string) {
+	startKey = strings.TrimRight(cardID, "0123456789")
+	return startKey, startKey + string(rune(0x10FFFF))
 }

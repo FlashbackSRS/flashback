@@ -136,6 +136,9 @@ func (r *Repo) CurrentUser() (string, error) {
 }
 
 func (r *Repo) newDB(ctx context.Context, dbName string) (kivikDB, error) {
+	if _, err := r.CurrentUser(); err != nil {
+		return nil, err
+	}
 	return r.local.DB(ctx, dbName)
 }
 

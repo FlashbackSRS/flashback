@@ -51,6 +51,10 @@ type getter interface {
 	Get(ctx context.Context, docID string, options ...kivik.Options) (kivikRow, error)
 }
 
+type allDocer interface {
+	AllDocs(ctx context.Context, options ...kivik.Options) (kivikRows, error)
+}
+
 type bulkDocer interface {
 	BulkDocs(context.Context, interface{}) (*kivik.BulkResults, error)
 }
@@ -97,6 +101,7 @@ type kivikDB interface {
 	statser
 	clientNamer
 	attachmentGetter
+	allDocer
 }
 
 type dbWrapper struct {
@@ -117,6 +122,10 @@ func (db *dbWrapper) Find(ctx context.Context, query interface{}) (kivikRows, er
 	return db.DB.Find(ctx, query)
 }
 
+func (db *dbWrapper) AllDocs(ctx context.Context, options ...kivik.Options) (kivikRows, error) {
+	return db.DB.AllDocs(ctx, options...)
+}
+
 func (db *dbWrapper) Client() kivikClient {
 	return wrapClient(db.DB.Client())
 }
@@ -135,4 +144,5 @@ type kivikRows interface {
 	ScanDoc(dest interface{}) error
 	TotalRows() int64
 	ID() string
+	Err() error
 }
