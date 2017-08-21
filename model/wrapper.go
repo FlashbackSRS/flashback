@@ -66,6 +66,10 @@ type getPutBulkDocer interface {
 	bulkDocer
 }
 
+type attachmentGetter interface {
+	GetAttachment(ctx context.Context, docID, rev, filename string) (*kivik.Attachment, error)
+}
+
 type finder interface {
 	Find(ctx context.Context, query interface{}) (kivikRows, error)
 }
@@ -92,6 +96,7 @@ type kivikDB interface {
 	deleter
 	statser
 	clientNamer
+	attachmentGetter
 }
 
 type dbWrapper struct {

@@ -11,17 +11,11 @@ import (
 	"github.com/FlashbackSRS/flashback/controllers"
 )
 
-// // Model is an interface to a model.
-// type Model interface {
-// 	Template() (*template.Template, error)
-// }
-
 // fbModel is a wrapper around a *fb.Model
 type fbModel struct {
 	*fb.Model
+	db attachmentGetter
 }
-
-// var _ Model = &fbModel{}
 
 const mainCSS = "$main.css"
 

@@ -621,6 +621,12 @@ func TestCardFetch(t *testing.T) {
 			if err != nil {
 				return
 			}
+			if test.card.model != nil {
+				if test.card.model.db == nil {
+					t.Fatalf("db not set")
+				}
+				test.card.model.db = nil
+			}
 			if d := diff.Interface(test.expected, test.card); d != nil {
 				t.Error(d)
 			}

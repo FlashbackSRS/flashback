@@ -288,7 +288,7 @@ func (c *fbCard) fetch(ctx context.Context, client kivikClient) error {
 	}
 	c.note = &fbNote{Note: note}
 	model := theme.Models[c.ThemeModelID()]
-	c.model = &fbModel{Model: model}
+	c.model = &fbModel{Model: model, db: db}
 	return c.note.SetModel(model)
 }
 
