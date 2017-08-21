@@ -4,9 +4,7 @@ import (
 	"fmt"
 	"html/template"
 	"strings"
-	"time"
 
-	"github.com/flimzy/log"
 	"github.com/pkg/errors"
 
 	fb "github.com/FlashbackSRS/flashback-model"
@@ -28,12 +26,7 @@ type fbModel struct {
 const mainCSS = "$main.css"
 
 func (m *fbModel) Template() (*template.Template, error) {
-	start := time.Now()
-	log.Debug("started Template()")
-	defer func() {
-		finish := time.Now()
-		log.Debug("finished Template (%v)", finish.Sub(start))
-	}()
+	defer profile("Template")()
 	mc, err := controllers.GetModelController(m.Type)
 	if err != nil {
 		return nil, err
