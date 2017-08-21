@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/PuerkitoBio/goquery"
+	"github.com/flimzy/log"
 	"github.com/pkg/errors"
 
 	fb "github.com/FlashbackSRS/flashback-model"
@@ -72,8 +73,7 @@ type cardData struct {
 
 func (c *fbCard) Body(face int) (body string, err error) {
 	defer profile("Body")()
-	// cardFace, ok := faces[face]
-	_, ok := faces[face]
+	cardFace, ok := faces[face]
 	if !ok {
 		return "", errors.Errorf("unrecognized card face %d", face)
 	}
@@ -111,17 +111,17 @@ func (c *fbCard) Body(face int) (body string, err error) {
 	if e := tmpl.Funcs(funcMap).Execute(htmlDoc, data); e != nil {
 		return "", errors.Wrap(e, "template execution")
 	}
-	return htmlDoc.String(), nil
+	// return htmlDoc.String(), nil
 
-	// iframeScript, _ := c.model.IframeScript()
-	// newBody, err := prepareBody(cardFace, c.TemplateID(), string(iframeScript), htmlDoc)
-	// if err != nil {
-	// 	return "", errors.Wrap(err, "prepare body")
-	// }
-	//
-	// nbString := string(newBody)
-	// log.Debugf("new body size = %d\n", len(nbString))
-	// return nbString, nil
+	iframeScript, _ := c.model.IframeScript()
+	newBody, err := prepareBody(cardFace, c.TemplateID(), string(iframeScript), htmlDoc)
+	if err != nil {
+		return "", errors.Wrap(err, "prepare body")
+	}
+
+	nbString := string(newBody)
+	log.Debugf("new body size = %d\n", len(nbString))
+	return nbString, nil
 }
 
 func (c *fbCard) Action(face *int, startTime time.Time, query interface{}) (done bool, err error) {

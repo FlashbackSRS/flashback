@@ -670,7 +670,7 @@ func TestCardBody(t *testing.T) {
 			card: func() *fbCard {
 				theme, _ := fb.NewTheme("theme-Zm9v")
 				modelFiles := theme.Attachments.NewView()
-				_ = modelFiles.AddFile("$template.0.html", "text/html", []byte("<html></html>"))
+				_ = modelFiles.AddFile("$template.0.html", "text/html", []byte(`<body><div class="question" data-id="0">foo</div></body>`))
 				model := &fb.Model{
 					Theme: theme,
 					Type:  "basic",
@@ -687,13 +687,11 @@ func TestCardBody(t *testing.T) {
 					appURL: "http://foo.com/",
 				}
 			}(),
-			expected: `<!DOCTYPE html>
-<html>
-<head>
+			expected: `<!DOCTYPE html><html><head>
 	<title>FB Card</title>
-	<base href="http://foo.com/">
-	<meta charset="UTF-8">
-	<link rel="stylesheet" type="text/css" href="css/cardframe.css">
+	<base href="http://foo.com/"/>
+	<meta charset="UTF-8"/>
+	<link rel="stylesheet" type="text/css" href="css/cardframe.css"/>
 <script type="text/javascript">
 'use strict';
 var FB = {
@@ -705,9 +703,8 @@ var FB = {
 <script type="text/javascript" src="js/cardframe.js"></script>
 <script type="text/javascript"></script>
 <style></style>
-</head>
-<body><html></html></body>
-</html>
+<script type="text/javascript">alert('Hi!');</script></head>
+<body class="card card1"><form id="mainform">foo</form></body></html>
 `,
 		},
 	}
