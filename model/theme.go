@@ -1,6 +1,7 @@
 package model
 
 import (
+	"context"
 	"fmt"
 	"html/template"
 	"strings"
@@ -15,6 +16,28 @@ import (
 type fbModel struct {
 	*fb.Model
 	db attachmentGetter
+}
+
+func (m *fbModel) getAttachment(ctx context.Context, filename string) (*fb.Attachment, error) {
+	att, ok := m.Files.GetFile(filename)
+	if !ok {
+		return nil, errors.New("not found")
+	}
+	if len(att.Content) != 0 {
+		return att, nil
+	}
+	dbAtt, err := m.db.GetAttachment(ctx, m.Model.Theme.ID, "", filename)
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = dbAtt.Close() }()
+	content, err := dbAtt.Bytes()
+	if err != nil {
+		return nil, err
+	}
+	m.Files.SetFile(filename, att.ContentType, content)
+	att, _ = m.Files.GetFile(filename)
+	return att, nil
 }
 
 const mainCSS = "$main.css"

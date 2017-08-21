@@ -2,14 +2,19 @@ package model
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
+	"errors"
 	"html/template"
+	"io/ioutil"
+	"strings"
 	"testing"
 
 	fb "github.com/FlashbackSRS/flashback-model"
 	"github.com/FlashbackSRS/flashback/controllers"
 	// _ "github.com/FlashbackSRS/flashback/controllers/anki"
 	"github.com/flimzy/diff"
+	"github.com/flimzy/kivik"
 )
 
 type basicCM struct {
@@ -416,4 +421,88 @@ func TestIframeScript(t *testing.T) {
 			t.Errorf("Unexpected result:\n%s\n", string(s))
 		}
 	})
+}
+
+func TestGetAttachment(t *testing.T) {
+	tests := []struct {
+		name     string
+		model    *fbModel
+		filename string
+		expected *fb.Attachment
+		err      string
+	}{
+		{
+			name: "content already set",
+			model: func() *fbModel {
+				theme, err := fb.NewTheme("theme-aaa")
+				if err != nil {
+					t.Fatal(err)
+				}
+				model, err := fb.NewModel(theme, "basic")
+				if err != nil {
+					t.Fatal(err)
+				}
+				if err := model.Files.AddFile("foo.txt", "text/plain", []byte("some text")); err != nil {
+					t.Fatal(err)
+				}
+				return &fbModel{
+					Model: model,
+				}
+			}(),
+			filename: "foo.txt",
+			expected: &fb.Attachment{
+				ContentType: "text/plain",
+				Content:     []byte("some text"),
+			},
+		},
+		{
+			name:     "not found",
+			model:    &fbModel{Model: realTheme.Models[0]},
+			filename: "foo.txt",
+			err:      "not found",
+		},
+		{
+			name: "db error",
+			model: &fbModel{
+				Model: realTheme.Models[0],
+				db: &mockAttachmentGetter{
+					err: errors.New("db error"),
+				},
+			},
+			filename: "!Basic-24b78.Card 1 answer.html",
+			err:      "db error",
+		},
+		{
+			name: "db fetch",
+			model: &fbModel{
+				Model: realTheme.Models[0],
+				db: &mockAttachmentGetter{
+					attachments: map[string]*kivik.Attachment{
+						"!Basic-24b78.Card 1 answer.html": {
+							Filename:    "!Basic-24b78.Card 1 answer.html",
+							ContentType: "text/html",
+							ReadCloser:  ioutil.NopCloser(strings.NewReader("some html")),
+						},
+					},
+				},
+			},
+			filename: "!Basic-24b78.Card 1 answer.html",
+			expected: &fb.Attachment{
+				ContentType: "text/html",
+				Content:     []byte("some html"),
+			},
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			result, err := test.model.getAttachment(context.Background(), test.filename)
+			checkErr(t, test.err, err)
+			if err != nil {
+				return
+			}
+			if d := diff.Interface(test.expected, result); d != nil {
+				t.Error(d)
+			}
+		})
+	}
 }
