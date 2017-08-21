@@ -716,7 +716,7 @@ var FB = {
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			result, err := test.card.Body(test.face)
+			result, err := test.card.Body(context.Background(), test.face)
 			checkErr(t, test.err, err)
 			if err != nil {
 				return

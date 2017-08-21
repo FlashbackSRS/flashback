@@ -54,7 +54,7 @@ func (m *fbModel) getAttachment(ctx context.Context, filename string) (*fb.Attac
 
 const mainCSS = "$main.css"
 
-func (m *fbModel) Template() (*template.Template, error) {
+func (m *fbModel) Template(ctx context.Context) (*template.Template, error) {
 	defer profile("Template")()
 	mc, err := controllers.GetModelController(m.Type)
 	if err != nil {
@@ -64,10 +64,10 @@ func (m *fbModel) Template() (*template.Template, error) {
 	if _, ok := m.Files.GetFile(mainTemplate); !ok {
 		return nil, fmt.Errorf("main template '%s' not found in model", mainTemplate)
 	}
-	templates := extractTemplateFiles(m.Files)
-	tmpl2 := extractTemplateFiles(m.Theme.Files)
-	for k, v := range tmpl2 {
-		templates[k] = v
+
+	templates, err := m.extractTemplateFiles(ctx)
+	if err != nil {
+		return nil, err
 	}
 
 	// Rename to match the masterTemplate expectation
@@ -104,15 +104,23 @@ var templateTypes = map[string]struct{}{
 	"script/javascript":    struct{}{},
 }
 
-func extractTemplateFiles(v *fb.FileCollectionView) map[string]string {
+func (m *fbModel) extractTemplateFiles(ctx context.Context) (map[string]string, error) {
 	templates := make(map[string]string)
-	for _, filename := range v.FileList() {
-		att, _ := v.GetFile(filename)
-		if _, ok := templateTypes[att.ContentType]; ok {
-			templates[filename] = string(att.Content)
+	for _, filename := range m.Files.FileList() {
+		att, err := m.getAttachment(ctx, filename)
+		if err != nil {
+			return nil, err
 		}
+		templates[filename] = string(att.Content)
 	}
-	return templates
+	for _, filename := range m.Theme.Files.FileList() {
+		att, err := m.getAttachment(ctx, filename)
+		if err != nil {
+			return nil, err
+		}
+		templates[filename] = string(att.Content)
+	}
+	return templates, nil
 }
 
 var masterTemplate = `

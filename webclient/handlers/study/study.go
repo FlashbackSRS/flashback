@@ -67,7 +67,7 @@ func ShowCard(repo *model.Repo) error {
 	}
 	log.Debugf("Card ID: %s\n", currentCard.Card.DocID())
 
-	body, err := currentCard.Card.Body(currentCard.Face)
+	body, err := currentCard.Card.Body(context.TODO(), currentCard.Face)
 	if err != nil {
 		return errors.Wrap(err, "fetching body")
 	}

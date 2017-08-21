@@ -24,7 +24,7 @@ import (
 type Card interface {
 	DocID() string
 	Buttons(face int) (studyview.ButtonMap, error)
-	Body(face int) (body string, err error)
+	Body(ctx context.Context, face int) (body string, err error)
 	Action(face *int, startTime time.Time, query interface{}) (done bool, err error)
 	BuryRelated() error
 }
@@ -71,7 +71,7 @@ type cardData struct {
 	Fields  map[string]template.HTML
 }
 
-func (c *fbCard) Body(face int) (body string, err error) {
+func (c *fbCard) Body(ctx context.Context, face int) (body string, err error) {
 	defer profile("Body")()
 	cardFace, ok := faces[face]
 	if !ok {
@@ -86,7 +86,7 @@ func (c *fbCard) Body(face int) (body string, err error) {
 		return "", errors.Wrap(err, "failed to get FuncMap")
 	}
 
-	tmpl, err := c.model.Template()
+	tmpl, err := c.model.Template(ctx)
 	if err != nil {
 		return "", errors.Wrap(err, "failed to generate template")
 	}
