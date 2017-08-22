@@ -101,13 +101,13 @@ type answer struct {
 }
 
 // Action responds to a card action, such as a button press
-func (m *AnkiBasic) Action(card *fb.Card, face *int, startTime time.Time, query interface{}) (bool, error) {
+func (m *AnkiBasic) Action(card *fb.Card, face *int, startTime time.Time, payload interface{}) (bool, error) {
+	query := convertQuery(payload)
+	log.Debugf("Submit recieved for face %d: %v\n", *face, query)
+	button := studyview.Button(query.Submit)
+	log.Debugf("Button %s pressed\n", button)
 	panic("fixme")
 	/*
-		q := query.(*js.Object)
-		log.Debugf("Submit recieved for face %d: %v\n", *face, query)
-		button := studyview.Button(q.Get("submit").String())
-		log.Debugf("Button %s pressed\n", button)
 		switch *face {
 		case QuestionFace:
 			// Any input is fine; the only options are the right button, or 'ENTER' in a text field.
@@ -121,12 +121,7 @@ func (m *AnkiBasic) Action(card *fb.Card, face *int, startTime time.Time, query 
 		switch *face {
 		case QuestionFace:
 			*face++
-			typedAnswers := make(map[string]string)
-			for _, k := range js.Keys(query) {
-				if strings.HasPrefix(k, "type:") {
-					typedAnswers[k] = query.Get(k).String()
-				}
-			}
+			typedAnswers := query.TypedAnswers
 			if len(typedAnswers) > 0 {
 				results := make(map[string]answer)
 				m, err := card.Model()
