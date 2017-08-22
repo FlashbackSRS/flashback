@@ -41,8 +41,8 @@ func TestRegisterModelController(t *testing.T) {
 			return
 		}()
 		expected := "A controller for 'foo' is already registered"
-		if d := diff.Interface(expected, r); d != "" {
-			t.Errorf(d)
+		if d := diff.Interface(expected, r); d != nil {
+			t.Error(d)
 		}
 	})
 }
@@ -50,7 +50,7 @@ func TestRegisterModelController(t *testing.T) {
 func TestRegisteredModelControllers(t *testing.T) {
 	expected := []string{"foo"}
 	result := RegisteredModelControllers()
-	if d := diff.Interface(expected, result); d != "" {
+	if d := diff.Interface(expected, result); d != nil {
 		t.Error(d)
 	}
 }
