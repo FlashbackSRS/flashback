@@ -2,11 +2,9 @@ package model
 
 import (
 	"context"
-	"fmt"
 	"io"
 
 	fb "github.com/FlashbackSRS/flashback-model"
-	"github.com/davecgh/go-spew/spew"
 	"github.com/pkg/errors"
 )
 
@@ -20,7 +18,7 @@ import (
 // 3. The target burial time is the current card's interval, divided by the number
 //    of related cards. NewBuryTime is used as the minimum target burial time.
 // 4. The maximum burial is MaxBuryRatio of the card's interval.
-func (r *Repo) BuryRelatedCards(ctx context.Context, card *fbCard) error {
+func (r *Repo) BuryRelatedCards(ctx context.Context, card *fb.Card) error {
 	defer profile("BuryRelatedCards")()
 	db, err := r.newDB(ctx, card.BundleID())
 	if err != nil {
@@ -34,8 +32,7 @@ func (r *Repo) BuryRelatedCards(ctx context.Context, card *fbCard) error {
 	if len(toBury) == 0 {
 		return nil
 	}
-	spew.Dump(toBury)
-	return nil
+	return updateDocs(ctx, db, toBury)
 }
 
 func setBurials(interval fb.Interval, cards []*fb.Card) []*fb.Card {
@@ -72,7 +69,6 @@ func fetchRelatedCards(ctx context.Context, db allDocer, cardID string) ([]*fb.C
 	}
 	cards := make([]*fb.Card, 0)
 	for rows.Next() {
-		fmt.Printf("row id = %v\n", rows.ID())
 		if cardID == rows.ID() {
 			// Skip the reference card
 			continue

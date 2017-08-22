@@ -27,6 +27,7 @@ type Card interface {
 	Buttons(face int) (studyview.ButtonMap, error)
 	Body(ctx context.Context, face int) (body string, err error)
 	Action(face *int, startTime time.Time, query interface{}) (done bool, err error)
+	BuryRelated(ctx context.Context, repo *Repo) error
 }
 
 // fbCard is a wrapper around *fb.Card, which provides convenience functions
@@ -39,6 +40,11 @@ type fbCard struct {
 }
 
 var _ Card = &fbCard{}
+
+// BuryRelated is an ugly hacky wrapper around repo.BuryRelatedCards
+func (c *fbCard) BuryRelated(ctx context.Context, repo *Repo) error {
+	return repo.BuryRelatedCards(ctx, c.Card)
+}
 
 type jsCard struct {
 	ID      string      `json:"id"`

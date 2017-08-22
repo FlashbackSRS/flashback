@@ -126,17 +126,17 @@ func (c *buryClient) DB(_ context.Context, _ string, _ ...kivik.Options) (kivikD
 	return c.db, nil
 }
 
-func TestBuryRelated(t *testing.T) {
+func TestBuryRelatedCards(t *testing.T) {
 	tests := []struct {
 		name string
 		repo *Repo
-		card *fbCard
+		card *fb.Card
 		err  string
 	}{
 		{
 			name: "not logged in",
 			repo: &Repo{},
-			card: &fbCard{Card: &fb.Card{ID: "card-foo.bar.0"}},
+			card: &fb.Card{ID: "card-foo.bar.0"},
 			err:  "not logged in",
 		},
 		{
@@ -148,8 +148,16 @@ func TestBuryRelated(t *testing.T) {
 					},
 				},
 			},
-			card: &fbCard{Card: &fb.Card{ID: "card-foo.bar.0"}},
+			card: &fb.Card{ID: "card-foo.bar.0"},
 			err:  "db error",
+		},
+		{
+			name: "no related cards",
+			repo: &Repo{user: "bob",
+				local: &buryClient{db: &mockAllDocer{
+					rows: &mockRows{},
+				}}},
+			card: &fb.Card{ID: "card-foo.bar.0"},
 		},
 	}
 	for _, test := range tests {

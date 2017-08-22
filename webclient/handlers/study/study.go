@@ -56,10 +56,10 @@ func ShowCard(repo *model.Repo) error {
 			return errors.New("got a nil card")
 		}
 		go func() {
-			// Bury the related cards
-			// if err := card.BuryRelated(); err != nil {
-			// 	log.Printf("Error buring related cards: %s\n", err)
-			// }
+			// Bury related cards
+			if err := card.BuryRelated(context.TODO(), repo); err != nil {
+				log.Printf("Failed to bury cards: %s\n", err)
+			}
 		}()
 		currentCard = &cardState{
 			Card: card,
