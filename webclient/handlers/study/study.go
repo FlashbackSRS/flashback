@@ -13,6 +13,7 @@ import (
 	"github.com/gopherjs/jquery"
 	"github.com/pkg/errors"
 
+	"github.com/FlashbackSRS/flashback"
 	"github.com/FlashbackSRS/flashback/iframes"
 	"github.com/FlashbackSRS/flashback/model"
 	"github.com/FlashbackSRS/flashback/webclient/views/studyview"
@@ -21,7 +22,7 @@ import (
 var jQuery = jquery.NewJQuery
 
 type cardState struct {
-	Card      model.Card
+	Card      flashback.Card
 	StartTime time.Time
 	Face      int
 }
@@ -57,7 +58,7 @@ func ShowCard(repo *model.Repo) error {
 		}
 		go func() {
 			// Bury related cards
-			if err := card.BuryRelated(context.TODO(), repo); err != nil {
+			if err := card.BuryRelated(context.TODO()); err != nil {
 				log.Printf("Failed to bury cards: %s\n", err)
 			}
 		}()

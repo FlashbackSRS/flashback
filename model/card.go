@@ -17,19 +17,11 @@ import (
 	"github.com/flimzy/log"
 	"github.com/pkg/errors"
 
+	"github.com/FlashbackSRS/flashback"
 	fb "github.com/FlashbackSRS/flashback-model"
 	"github.com/FlashbackSRS/flashback/controllers"
 	"github.com/FlashbackSRS/flashback/webclient/views/studyview"
 )
-
-// Card represents a generic card-like object.
-type Card interface {
-	DocID() string
-	Buttons(face int) (studyview.ButtonMap, error)
-	Body(ctx context.Context, face int) (body string, err error)
-	Action(face *int, startTime time.Time, query interface{}) (done bool, err error)
-	BuryRelated(ctx context.Context, repo *Repo) error
-}
 
 // fbCard is a wrapper around *fb.Card, which provides convenience functions
 // like .Note(), .Model(), and .Body()
@@ -38,13 +30,14 @@ type fbCard struct {
 	note   *fbNote
 	model  *fbModel
 	appURL string
+	repo   *Repo
 }
 
-var _ Card = &fbCard{}
+var _ flashback.Card = &fbCard{}
 
 // BuryRelated is an ugly hacky wrapper around repo.BuryRelatedCards
-func (c *fbCard) BuryRelated(ctx context.Context, repo *Repo) error {
-	return repo.BuryRelatedCards(ctx, c.Card)
+func (c *fbCard) BuryRelated(ctx context.Context) error {
+	return c.repo.BuryRelatedCards(ctx, c.Card)
 }
 
 type jsCard struct {
@@ -252,7 +245,7 @@ func selectWeightedCard(cards []*fb.Card) *fb.Card {
 }
 
 // GetCardToStudy returns a card to display to the user to study.
-func (r *Repo) GetCardToStudy(ctx context.Context) (Card, error) {
+func (r *Repo) GetCardToStudy(ctx context.Context) (flashback.Card, error) {
 	udb, err := r.userDB(ctx)
 	if err != nil {
 		return nil, err
@@ -264,6 +257,7 @@ func (r *Repo) GetCardToStudy(ctx context.Context) (Card, error) {
 	c := &fbCard{
 		Card:   card,
 		appURL: r.appURL,
+		repo:   r,
 	}
 	return c, c.fetch(ctx, r.local)
 }

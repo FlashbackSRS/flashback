@@ -1,7 +1,11 @@
 package flashback
 
 import (
+	"context"
+	"time"
+
 	fb "github.com/FlashbackSRS/flashback-model"
+	"github.com/FlashbackSRS/flashback/webclient/views/studyview"
 )
 
 // AnswerQuality represents the SM-2 quality of the answer. See here:
@@ -41,3 +45,12 @@ const (
 const (
 	LapseInterval = fb.Interval(10 * fb.Minute)
 )
+
+// Card represents a generic card-like object.
+type Card interface {
+	DocID() string
+	Buttons(face int) (studyview.ButtonMap, error)
+	Body(ctx context.Context, face int) (body string, err error)
+	Action(face *int, startTime time.Time, query interface{}) (done bool, err error)
+	BuryRelated(ctx context.Context) error
+}
