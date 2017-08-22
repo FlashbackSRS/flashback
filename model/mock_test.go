@@ -75,3 +75,38 @@ func (r *mockRows) ScanDoc(d interface{}) error {
 	}
 	return nil
 }
+
+type mockBulkDocer struct {
+	results kivikBulkResults
+	err     error
+}
+
+var _ bulkDocer = &mockBulkDocer{}
+
+func (db *mockBulkDocer) BulkDocs(_ context.Context, docs interface{}) (kivikBulkResults, error) {
+	return db.results, db.err
+}
+
+type mockBulkResults struct {
+	i    int
+	errs []error
+	err  error
+}
+
+var _ kivikBulkResults = &mockBulkResults{}
+
+func (r *mockBulkResults) Close() error {
+	r.errs = nil
+	return nil
+}
+
+func (r *mockBulkResults) Err() error { return r.err }
+func (r *mockBulkResults) ID() string { panic("not done") }
+func (r *mockBulkResults) Next() bool {
+	if r.i >= len(r.errs) {
+		return false
+	}
+	r.i++
+	return true
+}
+func (r *mockBulkResults) UpdateErr() error { return r.errs[r.i-1] }

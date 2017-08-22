@@ -373,3 +373,55 @@ func TestGetAttachment(t *testing.T) {
 		})
 	}
 }
+
+func TestUpdateDocs(t *testing.T) {
+	tests := []struct {
+		name string
+		db   bulkDocer
+		docs []interface{}
+		err  string
+	}{
+		{
+			name: "db error",
+			db:   &mockBulkDocer{err: errors.New("db error")},
+			docs: []interface{}{""},
+			err:  "db error",
+		},
+		{
+			name: "single doc error",
+			db: &mockBulkDocer{
+				results: &mockBulkResults{
+					errs: []error{nil, errors.New("doc error"), nil},
+				},
+			},
+			docs: []interface{}{"", "", ""},
+			err:  "doc error",
+		},
+		{
+			name: "result error",
+			db: &mockBulkDocer{
+				results: &mockBulkResults{
+					errs: []error{nil, nil, nil},
+					err:  errors.New("result error"),
+				},
+			},
+			docs: []interface{}{"", "", ""},
+			err:  "result error",
+		},
+		{
+			name: "success",
+			db: &mockBulkDocer{
+				results: &mockBulkResults{
+					errs: []error{nil, nil, nil},
+				},
+			},
+			docs: []interface{}{"", "", ""},
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			err := updateDocs(context.Background(), test.db, test.docs)
+			checkErr(t, test.err, err)
+		})
+	}
+}

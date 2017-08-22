@@ -414,7 +414,7 @@ type failBulkDocs struct {
 	kivik.DB
 }
 
-func (f *failBulkDocs) BulkDocs(_ context.Context, _ interface{}) (*kivik.BulkResults, error) {
+func (f *failBulkDocs) BulkDocs(_ context.Context, _ interface{}) (kivikBulkResults, error) {
 	return nil, errors.New("bulkdocs failed")
 }
 

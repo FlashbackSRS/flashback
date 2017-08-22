@@ -3,6 +3,7 @@ package model
 import (
 	"context"
 	"encoding/json"
+	"io"
 	"reflect"
 	"time"
 
@@ -104,4 +105,21 @@ func getAttachment(ctx context.Context, db attachmentGetter, docID, filename str
 		ContentType: att.ContentType,
 		Content:     content,
 	}, nil
+}
+
+func updateDocs(ctx context.Context, db bulkDocer, docs interface{}) error {
+	results, err := db.BulkDocs(ctx, docs)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = results.Close() }()
+	for results.Next() {
+		if err := results.UpdateErr(); err != nil {
+			return err
+		}
+	}
+	if err := results.Err(); err != nil && err != io.EOF {
+		return err
+	}
+	return nil
 }

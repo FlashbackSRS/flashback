@@ -56,7 +56,15 @@ type allDocer interface {
 }
 
 type bulkDocer interface {
-	BulkDocs(context.Context, interface{}) (*kivik.BulkResults, error)
+	BulkDocs(context.Context, interface{}) (kivikBulkResults, error)
+}
+
+type kivikBulkResults interface {
+	Close() error
+	Next() bool
+	Err() error
+	ID() string
+	UpdateErr() error
 }
 
 type getPutter interface {
@@ -116,6 +124,10 @@ func (db *dbWrapper) Get(ctx context.Context, docID string, options ...kivik.Opt
 
 func (db *dbWrapper) Query(ctx context.Context, ddoc, view string, options ...kivik.Options) (kivikRows, error) {
 	return db.DB.Query(ctx, ddoc, view, options...)
+}
+
+func (db *dbWrapper) BulkDocs(ctx context.Context, docs interface{}) (kivikBulkResults, error) {
+	return db.DB.BulkDocs(ctx, docs)
 }
 
 func (db *dbWrapper) Find(ctx context.Context, query interface{}) (kivikRows, error) {
