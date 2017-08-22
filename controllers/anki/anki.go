@@ -2,7 +2,6 @@
 package anki
 
 import (
-	"html/template"
 	"time"
 
 	"github.com/flimzy/log"
@@ -25,14 +24,6 @@ type Basic struct{}
 
 var _ controllers.ModelController = &Basic{}
 
-// Cloze is the controller for the Anki Cloze model.
-type Cloze struct {
-	*Basic
-}
-
-var _ controllers.ModelController = &Cloze{}
-var _ controllers.FuncMapper = &Cloze{}
-
 func init() {
 	log.Debug("Registering anki models\n")
 	controllers.RegisterModelController(&Basic{})
@@ -43,11 +34,6 @@ func init() {
 // Type returns the string "anki-basic", to identify this model handler's type.
 func (m *Basic) Type() string {
 	return "anki-basic"
-}
-
-// Type returns the string "anki-cloze", to identify this model handler's type.
-func (m *Cloze) Type() string {
-	return "anki-cloze"
 }
 
 //go:generate go-bindata -pkg anki -nocompress -prefix files -o data.go files
@@ -185,16 +171,4 @@ func quality(button studyview.Button) flashback.AnswerQuality {
 		return flashback.AnswerPerfect
 	}
 	return flashback.AnswerBlackout
-}
-
-// FuncMap returns a function map for Cloze templates.
-func (m *Cloze) FuncMap(card *fb.Card, face int) template.FuncMap {
-	var templateID uint32
-	if card != nil {
-		// Need to do this check, because card may be nil during template parsing
-		templateID = card.TemplateID()
-	}
-	return map[string]interface{}{
-		"cloze": cloze(templateID, face),
-	}
 }
