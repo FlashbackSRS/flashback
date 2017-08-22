@@ -20,38 +20,40 @@ const (
 	AnswerFace
 )
 
-// AnkiBasic is the controller for the Anki Basic model
-type AnkiBasic struct{}
+// Basic is the controller for the Anki Basic model
+type Basic struct{}
 
-var _ controllers.ModelController = &AnkiBasic{}
+var _ controllers.ModelController = &Basic{}
 
-type AnkiCloze struct {
-	*AnkiBasic
+// Cloze is the controller for the Anki Cloze model.
+type Cloze struct {
+	*Basic
 }
 
-var _ controllers.ModelController = &AnkiCloze{}
-var _ controllers.FuncMapper = &AnkiCloze{}
+var _ controllers.ModelController = &Cloze{}
+var _ controllers.FuncMapper = &Cloze{}
 
 func init() {
 	log.Debug("Registering anki models\n")
-	controllers.RegisterModelController(&AnkiBasic{})
-	controllers.RegisterModelController(&AnkiCloze{})
+	controllers.RegisterModelController(&Basic{})
+	controllers.RegisterModelController(&Cloze{})
 	log.Debug("Done registering anki models\n")
 }
 
 // Type returns the string "anki-basic", to identify this model handler's type.
-func (m *AnkiBasic) Type() string {
+func (m *Basic) Type() string {
 	return "anki-basic"
 }
 
-func (m *AnkiCloze) Type() string {
+// Type returns the string "anki-cloze", to identify this model handler's type.
+func (m *Cloze) Type() string {
 	return "anki-cloze"
 }
 
 //go:generate go-bindata -pkg anki -nocompress -prefix files -o data.go files
 
 // IframeScript returns JavaScript to run inside the iframe.
-func (m *AnkiBasic) IframeScript() []byte {
+func (m *Basic) IframeScript() []byte {
 	data, err := Asset("script.js")
 	if err != nil {
 		panic(err)
@@ -87,7 +89,7 @@ var buttonMaps = map[int]studyview.ButtonMap{
 }
 
 // Buttons returns the initial button state
-func (m *AnkiBasic) Buttons(face int) (studyview.ButtonMap, error) {
+func (m *Basic) Buttons(face int) (studyview.ButtonMap, error) {
 	buttons, ok := buttonMaps[face]
 	if !ok {
 		return nil, errors.Errorf("Invalid face %d", face)
@@ -101,7 +103,7 @@ type answer struct {
 }
 
 // Action responds to a card action, such as a button press
-func (m *AnkiBasic) Action(card *fb.Card, face *int, startTime time.Time, payload interface{}) (bool, error) {
+func (m *Basic) Action(card *fb.Card, face *int, startTime time.Time, payload interface{}) (bool, error) {
 	query := convertQuery(payload)
 	log.Debugf("Submit recieved for face %d: %v\n", *face, query)
 	button := studyview.Button(query.Submit)
@@ -186,7 +188,7 @@ func quality(button studyview.Button) flashback.AnswerQuality {
 }
 
 // FuncMap returns a function map for Cloze templates.
-func (m *AnkiCloze) FuncMap(card *fb.Card, face int) template.FuncMap {
+func (m *Cloze) FuncMap(card *fb.Card, face int) template.FuncMap {
 	var templateID uint32
 	if card != nil {
 		// Need to do this check, because card may be nil during template parsing
