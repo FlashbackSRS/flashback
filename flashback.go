@@ -1,6 +1,4 @@
-package model
-
-/* these probably belong somewhere else... not sure where though */
+package flashback
 
 // AnswerQuality represents the SM-2 quality of the answer. See here:
 // https://www.supermemo.com/english/ol/sm2.htm

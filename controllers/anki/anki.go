@@ -8,9 +8,9 @@ import (
 	"github.com/flimzy/log"
 	"github.com/pkg/errors"
 
+	"github.com/FlashbackSRS/flashback"
 	fb "github.com/FlashbackSRS/flashback-model"
 	"github.com/FlashbackSRS/flashback/controllers"
-	"github.com/FlashbackSRS/flashback/model"
 	"github.com/FlashbackSRS/flashback/webclient/views/studyview"
 )
 
@@ -176,18 +176,18 @@ func (m *AnkiBasic) Action(card *fb.Card, face *int, startTime time.Time, query 
 	*/
 }
 
-func quality(button studyview.Button) model.AnswerQuality {
+func quality(button studyview.Button) flashback.AnswerQuality {
 	switch button {
 	case studyview.ButtonLeft:
-		return model.AnswerBlackout
+		return flashback.AnswerBlackout
 	case studyview.ButtonCenterLeft:
-		return model.AnswerCorrectDifficult
+		return flashback.AnswerCorrectDifficult
 	case studyview.ButtonCenterRight:
-		return model.AnswerCorrect
+		return flashback.AnswerCorrect
 	case studyview.ButtonRight:
-		return model.AnswerPerfect
+		return flashback.AnswerPerfect
 	}
-	return model.AnswerBlackout
+	return flashback.AnswerBlackout
 }
 
 // FuncMap returns a function map for Cloze templates.
