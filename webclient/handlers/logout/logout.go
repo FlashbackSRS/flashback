@@ -1,20 +1,22 @@
 package logouthandler
 
 import (
-	"net/http"
 	"net/url"
-	"time"
+
+	"golang.org/x/net/context"
 
 	"github.com/flimzy/jqeventrouter"
 	"github.com/flimzy/log"
 	"github.com/gopherjs/gopherjs/js"
 	"github.com/gopherjs/jquery"
+
+	"github.com/FlashbackSRS/flashback/model"
 )
 
 var jQuery = jquery.NewJQuery
 
 // BeforeTransition prepares the logout page before display.
-func BeforeTransition() jqeventrouter.HandlerFunc {
+func BeforeTransition(repo *model.Repo) jqeventrouter.HandlerFunc {
 	return func(_ *jquery.Event, _ *js.Object, _ url.Values) bool {
 		log.Debugf("logout BEFORE\n")
 
@@ -22,12 +24,9 @@ func BeforeTransition() jqeventrouter.HandlerFunc {
 
 		button.On("click", func() {
 			log.Debugf("Trying to log out now\n")
-			expireTime, _ := time.Parse(time.RFC3339, "1900-01-01T00:00:00+00:00")
-			emptyCookie := &http.Cookie{
-				Name:    "AuthSession",
-				Expires: expireTime,
+			if err := repo.Logout(context.TODO()); err != nil {
+				log.Printf("Logout failure: %s\n", err)
 			}
-			js.Global.Get("document").Set("cookie", emptyCookie.String())
 			jQuery(":mobile-pagecontainer").Call("pagecontainer", "change", "/")
 		})
 		return true

@@ -4,11 +4,11 @@ import (
 	"net/url"
 	"strings"
 
-	"github.com/FlashbackSRS/flashback/util"
 	"github.com/flimzy/jqeventrouter"
-	"github.com/flimzy/log"
 	"github.com/gopherjs/gopherjs/js"
 	"github.com/gopherjs/jquery"
+
+	"github.com/FlashbackSRS/flashback/util"
 )
 
 // CleanFacebookURI cleans up the URL aftr a redirect from a Facebook login
@@ -35,7 +35,6 @@ func CleanFacebookURI(h jqeventrouter.Handler) jqeventrouter.Handler {
 func JQMRouteOnce(h jqeventrouter.Handler) jqeventrouter.Handler {
 	return jqeventrouter.HandlerFunc(func(event *jquery.Event, ui *js.Object, p url.Values) bool {
 		if ui.Get("_jqmrouteonce").Bool() {
-			log.Debug("pagecontainerbeforechange already ran. Skipping.\n")
 			return true
 		}
 		ui.Set("_jqmrouteonce", true)

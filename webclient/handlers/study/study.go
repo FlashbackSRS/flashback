@@ -3,6 +3,7 @@
 package studyhandler
 
 import (
+	"context"
 	"net/url"
 	"time"
 
@@ -12,15 +13,16 @@ import (
 	"github.com/gopherjs/jquery"
 	"github.com/pkg/errors"
 
+	"github.com/FlashbackSRS/flashback"
 	"github.com/FlashbackSRS/flashback/iframes"
-	"github.com/FlashbackSRS/flashback/repository"
+	"github.com/FlashbackSRS/flashback/model"
 	"github.com/FlashbackSRS/flashback/webclient/views/studyview"
 )
 
 var jQuery = jquery.NewJQuery
 
 type cardState struct {
-	Card      repo.Card
+	Card      flashback.CardView
 	StartTime time.Time
 	Face      int
 }
@@ -28,15 +30,14 @@ type cardState struct {
 var currentCard *cardState
 
 // BeforeTransition prepares the page to study
-func BeforeTransition() jqeventrouter.HandlerFunc {
+func BeforeTransition(repo *model.Repo) jqeventrouter.HandlerFunc {
 	return func(_ *jquery.Event, _ *js.Object, _ url.Values) bool {
-		u, err := repo.CurrentUser()
-		if err != nil {
+		if _, err := repo.CurrentUser(); err != nil {
 			log.Printf("No user logged in: %s\n", err)
 			return false
 		}
 		go func() {
-			if err := ShowCard(u); err != nil {
+			if err := ShowCard(repo); err != nil {
 				log.Printf("Error showing card: %v", err)
 			}
 		}()
@@ -45,31 +46,23 @@ func BeforeTransition() jqeventrouter.HandlerFunc {
 	}
 }
 
-func ShowCard(u *repo.User) error {
-	// Ensure the indexes are created before trying to use them
-	u.DB()
-
+func ShowCard(repo *model.Repo) error {
 	if currentCard == nil {
-		card, err := u.GetNextCard()
+		log.Debug("Fetching card\n")
+		card, err := repo.GetCardToStudy(context.TODO())
 		if err != nil {
 			return errors.Wrap(err, "fetch card")
 		}
 		if card == nil {
 			return errors.New("got a nil card")
 		}
-		go func() {
-			// Bury the related cards
-			if err := card.BuryRelated(); err != nil {
-				log.Printf("Error buring related cards: %s\n", err)
-			}
-		}()
 		currentCard = &cardState{
 			Card: card,
 		}
 	}
 	log.Debugf("Card ID: %s\n", currentCard.Card.DocID())
 
-	body, err := currentCard.Card.Body(currentCard.Face)
+	body, err := currentCard.Card.Body(context.TODO(), currentCard.Face)
 	if err != nil {
 		return errors.Wrap(err, "fetching body")
 	}
@@ -139,7 +132,9 @@ func ShowCard(u *repo.User) error {
 }
 
 func init() {
+	log.Debug("Registering iframes listener\n")
 	iframes.RegisterListener("submit", handleSubmit)
+	log.Debug("Done registering iframes listener\n")
 }
 
 func handleSubmit(cardID string, payload *js.Object, _ iframes.Respond) error {
@@ -148,7 +143,7 @@ func handleSubmit(cardID string, payload *js.Object, _ iframes.Respond) error {
 	if card.DocID() != cardID {
 		return errors.Errorf("received submit for unexpected card. Got %s, expected %s", cardID, card.DocID())
 	}
-	done, err := card.Action(&currentCard.Face, currentCard.StartTime, payload)
+	done, err := card.Action(context.TODO(), &currentCard.Face, currentCard.StartTime, payload)
 	if err != nil {
 		log.Printf("Error executing card action for face %d / %+v: %s", face, card, err)
 	}
@@ -159,6 +154,7 @@ func handleSubmit(cardID string, payload *js.Object, _ iframes.Respond) error {
 			log.Printf("face wasn't incremented!\n")
 		}
 	}
-	jQuery(":mobile-pagecontainer").Call("pagecontainer", "change", "/study.html")
+	// FIXME: Don't hard code /app here
+	jQuery(":mobile-pagecontainer").Call("pagecontainer", "change", "/app/study.html")
 	return nil
 }

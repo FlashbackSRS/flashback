@@ -1,7 +1,6 @@
 package util
 
 import (
-	"encoding/base64"
 	"net/url"
 	"strings"
 
@@ -11,42 +10,16 @@ import (
 
 // JqmTargetUri determines the target URI based on a jQuery Mobile event 'ui' object
 func JqmTargetUri(ui *js.Object) string {
-	rawUrl := ui.Get("toPage").String()
-	if rawUrl == "[object Object]" {
-		rawUrl = ui.Get("toPage").Call("jqmData", "url").String()
+	rawURL := ui.Get("toPage").String()
+	if rawURL == "[object Object]" {
+		rawURL = ui.Get("toPage").Call("jqmData", "url").String()
 	}
-	pageUrl, _ := url.Parse(rawUrl)
-	pageUrl.Path = strings.TrimPrefix(pageUrl.Path, "/android_asset/www")
-	pageUrl.Host = ""
-	pageUrl.User = nil
-	pageUrl.Scheme = ""
-	return pageUrl.String()
-}
-
-// UserFromCookie extracts a user name from the CouchDB cookie, which is set
-// during the authentication phase
-func CurrentUser() string {
-	value := GetCouchCookie(js.Global.Get("document").Get("cookie").String())
-	userid := ExtractUserID(value)
-	return userid
-}
-
-func GetCouchCookie(cookieHeader string) string {
-	cookies := strings.Split(cookieHeader, ";")
-	for _, cookie := range cookies {
-		nv := strings.Split(strings.TrimSpace(cookie), "=")
-		if nv[0] == "AuthSession" {
-			value, _ := url.QueryUnescape(nv[1])
-			return value
-		}
-	}
-	return ""
-}
-
-func ExtractUserID(cookieValue string) string {
-	decoded, _ := base64.StdEncoding.DecodeString(cookieValue)
-	values := strings.Split(string(decoded), ":")
-	return values[0]
+	pageURL, _ := url.Parse(rawURL)
+	pageURL.Path = strings.TrimPrefix(pageURL.Path, "/android_asset/www")
+	pageURL.Host = ""
+	pageURL.User = nil
+	pageURL.Scheme = ""
+	return pageURL.String()
 }
 
 func FlashbackHost() string {

@@ -2,18 +2,14 @@
 package anki
 
 import (
-	"fmt"
-	"html/template"
-	"strings"
 	"time"
 
-	"github.com/davecgh/go-spew/spew"
 	"github.com/flimzy/log"
-	"github.com/gopherjs/gopherjs/js"
 	"github.com/pkg/errors"
 
+	"github.com/FlashbackSRS/flashback"
 	"github.com/FlashbackSRS/flashback/diff"
-	repo "github.com/FlashbackSRS/flashback/repository"
+	"github.com/FlashbackSRS/flashback/model"
 	"github.com/FlashbackSRS/flashback/webclient/views/studyview"
 )
 
@@ -23,37 +19,27 @@ const (
 	AnswerFace
 )
 
-// AnkiBasic is the controller for the Anki Basic model
-type AnkiBasic struct{}
+// Basic is the controller for the Anki Basic model
+type Basic struct{}
 
-var _ repo.ModelController = &AnkiBasic{}
-
-type AnkiCloze struct {
-	*AnkiBasic
-}
-
-var _ repo.ModelController = &AnkiCloze{}
-var _ repo.FuncMapper = &AnkiCloze{}
+var _ model.ModelController = &Basic{}
 
 func init() {
 	log.Debug("Registering anki models\n")
-	repo.RegisterModelController(&AnkiBasic{})
-	repo.RegisterModelController(&AnkiCloze{})
+	model.RegisterModelController(&Basic{})
+	model.RegisterModelController(&Cloze{})
+	log.Debug("Done registering anki models\n")
 }
 
 // Type returns the string "anki-basic", to identify this model handler's type.
-func (m *AnkiBasic) Type() string {
+func (m *Basic) Type() string {
 	return "anki-basic"
-}
-
-func (m *AnkiCloze) Type() string {
-	return "anki-cloze"
 }
 
 //go:generate go-bindata -pkg anki -nocompress -prefix files -o data.go files
 
 // IframeScript returns JavaScript to run inside the iframe.
-func (m *AnkiBasic) IframeScript() []byte {
+func (m *Basic) IframeScript() []byte {
 	data, err := Asset("script.js")
 	if err != nil {
 		panic(err)
@@ -89,7 +75,7 @@ var buttonMaps = map[int]studyview.ButtonMap{
 }
 
 // Buttons returns the initial button state
-func (m *AnkiBasic) Buttons(face int) (studyview.ButtonMap, error) {
+func (m *Basic) Buttons(face int) (studyview.ButtonMap, error) {
 	buttons, ok := buttonMaps[face]
 	if !ok {
 		return nil, errors.Errorf("Invalid face %d", face)
@@ -103,9 +89,10 @@ type answer struct {
 }
 
 // Action responds to a card action, such as a button press
-func (m *AnkiBasic) Action(card *repo.PouchCard, face *int, startTime time.Time, query *js.Object) (bool, error) {
+func (m *Basic) Action(card *model.Card, face *int, startTime time.Time, payload interface{}) (bool, error) {
+	query := convertQuery(payload)
 	log.Debugf("Submit recieved for face %d: %v\n", *face, query)
-	button := studyview.Button(query.Get("submit").String())
+	button := studyview.Button(query.Submit)
 	log.Debugf("Button %s pressed\n", button)
 	switch *face {
 	case QuestionFace:
@@ -120,82 +107,51 @@ func (m *AnkiBasic) Action(card *repo.PouchCard, face *int, startTime time.Time,
 	switch *face {
 	case QuestionFace:
 		*face++
-		typedAnswers := make(map[string]string)
-		for _, k := range js.Keys(query) {
-			if strings.HasPrefix(k, "type:") {
-				typedAnswers[k] = query.Get(k).String()
-			}
-		}
+		typedAnswers := query.TypedAnswers
 		if len(typedAnswers) > 0 {
 			results := make(map[string]answer)
-			m, err := card.Model()
-			if err != nil {
-				return false, errors.Wrap(err, "failed to get model")
-			}
-			n, err := card.Note()
-			if err != nil {
-				return false, errors.Wrap(err, "failed to get note")
-			}
-			for i, field := range m.Fields {
-				fmt.Printf("field.Name = %s\n", field.Name)
-				if typedAnswer, ok := typedAnswers["type:"+field.Name]; ok {
-					fmt.Printf("Found one\n")
-					correctAnswer, err := n.FieldValues[i].Text()
-					if err != nil {
-						panic("no text for typed answer !!")
+			for _, fieldName := range card.Fields() {
+				if typedAnswer, ok := typedAnswers[fieldName]; ok {
+					fv := card.FieldValue(fieldName)
+					if fv == nil {
+						panic("No field value for field")
 					}
-					correct, d := diff.Diff(correctAnswer, typedAnswer)
-					results[field.Name] = answer{
+					correct, d := diff.Diff(fv.Text, typedAnswer)
+					results[fieldName] = answer{
 						Text:    d,
 						Correct: correct,
 					}
 				}
 			}
-			spew.Dump(results)
 			card.Context = map[string]interface{}{
 				"typedAnswers": results,
 			}
-			if err := card.Save(); err != nil {
-				return true, errors.Wrap(err, "save typedAnswers to card state")
-			}
+			return true, nil
 		}
 		return false, nil
 	case AnswerFace:
 		log.Debugf("Old schedule: Due %s, Interval: %s, Ease: %f, ReviewCount: %d\n", card.Due, card.Interval, card.EaseFactor, card.ReviewCount)
-		repo.Schedule(card, time.Now().Sub(startTime), quality(button))
+		if err := model.Schedule(card, time.Now().Sub(startTime), quality(button)); err != nil {
+			return false, err
+		}
 		log.Debugf("New schedule: Due %s, Interval: %s, Ease: %f, ReviewCount: %d\n", card.Due, card.Interval, card.EaseFactor, card.ReviewCount)
 		card.Context = nil // Clear any saved answers
-		if err := card.Save(); err != nil {
-			return true, errors.Wrap(err, "save card state")
-		}
 		return true, nil
 	}
 	log.Printf("Unexpected face/button combo: %d / %+v\n", *face, button)
 	return false, nil
 }
 
-func quality(button studyview.Button) repo.AnswerQuality {
+func quality(button studyview.Button) flashback.AnswerQuality {
 	switch button {
 	case studyview.ButtonLeft:
-		return repo.AnswerBlackout
+		return flashback.AnswerBlackout
 	case studyview.ButtonCenterLeft:
-		return repo.AnswerCorrectDifficult
+		return flashback.AnswerCorrectDifficult
 	case studyview.ButtonCenterRight:
-		return repo.AnswerCorrect
+		return flashback.AnswerCorrect
 	case studyview.ButtonRight:
-		return repo.AnswerPerfect
+		return flashback.AnswerPerfect
 	}
-	return repo.AnswerBlackout
-}
-
-// FuncMap returns a function map for Cloze templates.
-func (m *AnkiCloze) FuncMap(card *repo.PouchCard, face int) template.FuncMap {
-	var templateID uint32
-	if card != nil {
-		// Need to do this check, because card may be nil during template parsing
-		templateID = card.TemplateID()
-	}
-	return map[string]interface{}{
-		"cloze": cloze(templateID, face),
-	}
+	return flashback.AnswerBlackout
 }

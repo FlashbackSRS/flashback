@@ -30,7 +30,8 @@ const localeAttr = "data-locale"
 var translate *bundle.TranslateFunc
 var translateFallback *bundle.TranslateFunc
 
-func MobileInit() {
+// Init initializes the localization engine.
+func Init() {
 	initChan := make(chan struct{})
 	initDone = initChan
 	go func() {
@@ -65,8 +66,8 @@ func loadDictionary(locale string) (*bundle.TranslateFunc, error) {
 		return nil, err
 	}
 	bdl := bundle.New()
-	if err := bdl.ParseTranslationFileBytes(locale+".all.json", translations); err != nil {
-		return nil, err
+	if e := bdl.ParseTranslationFileBytes(locale+".all.json", translations); e != nil {
+		return nil, e
 	}
 	t, err := bdl.Tfunc(locale, locale) // stupid API, requires a second parameter
 	if err != nil {
@@ -97,10 +98,10 @@ func T(id string, args ...interface{}) string {
 func preferredLanguages() []language.Tag {
 	var langs []language.Tag
 	//	langs = append(langs, language.MustParse("es_MX"))
-	nav := js.Global.Get("navigator")
 	if cordova.IsMobile() {
 		var wg sync.WaitGroup
 		wg.Add(1)
+		nav := js.Global.Get("navigator")
 		nav.Get("globalization").Call("getPreferredLanguage",
 			func(l string) {
 				defer wg.Done()

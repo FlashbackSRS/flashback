@@ -1,13 +1,17 @@
 language: go
 sudo: required
 dist: trusty
+addons:
+  apt:
+    sources:
+      - sourceline: 'ppa:masterminds/glide'
+    packages:
+      - glide
 
 go:
     - 1.8.x
 
 before_install:
-    # To install glide
-    - sudo add-apt-repository -y ppa:masterminds/glide && sudo apt-get update
     # To install the latest version of Node.js
     - curl -sL https://deb.nodesource.com/setup_6.x | sudo -E bash -
     - sudo apt-get install nodejs glide

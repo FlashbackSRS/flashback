@@ -2,8 +2,6 @@
 package iframes
 
 import (
-	"fmt"
-
 	"github.com/flimzy/log"
 	"github.com/gopherjs/gopherjs/js"
 	"github.com/pkg/errors"
@@ -23,6 +21,7 @@ type Respond func(mtype string, payload interface{}, transferrable ...*js.Object
 
 // Init installs the event listener to receive messages from iframes.
 func Init() {
+	log.Debug("Initializing iframe handler\n")
 	js.Global.Call("addEventListener", "message", func(e *js.Object) {
 		go func() {
 			if err := receiveMessage(e); err != nil {
@@ -30,6 +29,7 @@ func Init() {
 			}
 		}()
 	})
+	log.Debug("iframe init complete\n")
 }
 
 // ListenerFunc is a function which responds to a parsed iframe message. It
@@ -77,7 +77,7 @@ var cardRegistry = map[string]string{}
 // be served. A Responder is returned, which may then be used to send messages
 // to the iframe.
 func RegisterIframe(iframeID, cardID string) (Respond, error) {
-	fmt.Printf("Registering %s for %s\n", iframeID, cardID)
+	log.Debugf("Registering %s for %s\n", iframeID, cardID)
 	if card, ok := cardRegistry[iframeID]; ok {
 		return nil, errors.Errorf("iframe already registered to card %s", card)
 	}

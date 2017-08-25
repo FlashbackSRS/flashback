@@ -2,6 +2,9 @@ package: github.com/FlashbackSRS/flashback
 ignore:
 - github.com/gopherjs/gopherjs
 import:
+- package: github.com/FlashbackSRS/flashback-model
+- package: github.com/flimzy/kivik
+  version: master
 - package: github.com/PuerkitoBio/goquery
   version: ^1.1.0
 - package: github.com/davecgh/go-spew
@@ -13,9 +16,8 @@ import:
   subpackages:
   - file
 - package: github.com/flimzy/jqeventrouter
-- package: github.com/flimzy/kivik
-  subpackages:
-  - driver/pouchdb
+- package: github.com/flimzy/pouchdb
+- package: github.com/go-kivik/pouchdb
 - package: github.com/flimzy/log
 - package: github.com/gopherjs/jquery
 - package: github.com/gopherjs/jsbuiltin

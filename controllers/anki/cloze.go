@@ -6,7 +6,34 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+
+	"github.com/FlashbackSRS/flashback/model"
 )
+
+// Cloze is the controller for the Anki Cloze model.
+type Cloze struct {
+	*Basic
+}
+
+var _ model.ModelController = &Cloze{}
+var _ model.FuncMapper = &Cloze{}
+
+// Type returns the string "anki-cloze", to identify this model handler's type.
+func (m *Cloze) Type() string {
+	return "anki-cloze"
+}
+
+// FuncMap returns a function map for Cloze templates.
+func (m *Cloze) FuncMap(card *model.Card, face int) template.FuncMap {
+	var templateID uint32
+	if card != nil {
+		// Need to do this check, because card may be nil during template parsing
+		templateID = card.TemplateID()
+	}
+	return map[string]interface{}{
+		"cloze": cloze(templateID, face),
+	}
+}
 
 const span = `<span class="cloze">%s</span>`
 
