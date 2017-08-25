@@ -9,7 +9,7 @@ import (
 	"github.com/pkg/errors"
 
 	fb "github.com/FlashbackSRS/flashback-model"
-	"github.com/flimzy/flashback-server2/auth"
+	"github.com/FlashbackSRS/flashback/oauth2/auth"
 )
 
 // stateDB is a local database, which is never synced, for storing of persistent
