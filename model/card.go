@@ -167,6 +167,7 @@ const (
 const limitPadding = 100
 
 func getCardsFromView(ctx context.Context, db querier, view string, limit, offset int) ([]*fb.Card, error) {
+	defer profile("getCardsFromView: " + view)()
 	if limit <= 0 {
 		return nil, errors.New("invalid limit")
 	}
@@ -174,6 +175,7 @@ func getCardsFromView(ctx context.Context, db querier, view string, limit, offse
 		"limit":        limit + limitPadding,
 		"offset":       offset,
 		"include_docs": true,
+		"sort":         map[string]string{"due": "desc", "created": "asc"},
 	})
 	if err != nil {
 		return nil, errors.Wrap(err, "query failed")
@@ -181,6 +183,7 @@ func getCardsFromView(ctx context.Context, db querier, view string, limit, offse
 	defer func() { _ = rows.Close() }()
 	cards := make([]*fb.Card, 0, limit)
 	var count int
+	defer rows.Close()
 	for rows.Next() {
 		count++
 		card := &fb.Card{}
@@ -333,10 +336,12 @@ func getCardToStudy(ctx context.Context, db querier) (*fb.Card, error) {
 	wg.Add(2)
 	go func() {
 		newCards, newErr = getCardsFromView(ctx, db, "newCards", newBatchSize, 0)
+		newErr = errors.Wrap(newErr, "newCards")
 		wg.Done()
 	}()
 	go func() {
 		oldCards, oldErr = getCardsFromView(ctx, db, "oldCards", oldBatchSize, 0)
+		oldErr = errors.Wrap(oldErr, "oldCards")
 		wg.Done()
 	}()
 	wg.Wait()
