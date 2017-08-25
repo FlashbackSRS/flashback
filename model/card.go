@@ -50,6 +50,7 @@ func (c *Card) MarshalJSON() ([]byte, error) {
 	return json.Marshal(card)
 }
 
+// Buttons returns the list of buttons to be made visible for the card face.
 func (c *Card) Buttons(face int) (studyview.ButtonMap, error) {
 	mc, err := GetModelController(c.model.Type)
 	if err != nil {
@@ -68,6 +69,7 @@ type cardData struct {
 	Fields  map[string]template.HTML
 }
 
+// Body produces the HTML body of the card to be displayed.
 func (c *Card) Body(ctx context.Context, face int) (body string, err error) {
 	defer profile("Body")()
 	cardFace, ok := faces[face]
@@ -121,6 +123,7 @@ func (c *Card) Body(ctx context.Context, face int) (body string, err error) {
 	return nbString, nil
 }
 
+// Action handles a card action produced by the user.
 func (c *Card) Action(face *int, startTime time.Time, query interface{}) (done bool, err error) {
 	mc, err := GetModelController(c.model.Type)
 	if err != nil {
