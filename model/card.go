@@ -378,3 +378,22 @@ func relatedKeyRange(cardID string) (startKey, endKey string) {
 	startKey = strings.TrimRight(cardID, "0123456789")
 	return startKey, startKey + string(rune(0x10FFFF))
 }
+
+// Fields returns a list of field names for the card.
+func (c *Card) Fields() []string {
+	fields := make([]string, len(c.model.Fields))
+	for i, field := range c.model.Fields {
+		fields[i] = field.Name
+	}
+	return fields
+}
+
+// FieldValue returns the card's value for the requested field.
+func (c *Card) FieldValue(fieldName string) *fb.FieldValue {
+	for i, field := range c.model.Fields {
+		if field.Name == fieldName {
+			return c.note.FieldValues[i]
+		}
+	}
+	return nil
+}
