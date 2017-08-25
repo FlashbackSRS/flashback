@@ -11,23 +11,21 @@ import (
 	"testing"
 
 	fb "github.com/FlashbackSRS/flashback-model"
-	"github.com/FlashbackSRS/flashback/controllers"
-	// _ "github.com/FlashbackSRS/flashback/controllers/anki"
 	"github.com/flimzy/diff"
 	"github.com/flimzy/kivik"
 )
 
 type basicCM struct {
-	controllers.ModelController
+	ModelController
 }
 
 func (cm *basicCM) Type() string         { return "basic" }
 func (cm *basicCM) IframeScript() []byte { return []byte("alert('Hi!');") }
 
-var _ controllers.ModelController = &basicCM{}
+var _ ModelController = &basicCM{}
 
 func init() {
-	controllers.RegisterModelController(&basicCM{})
+	RegisterModelController(&basicCM{})
 }
 
 var theme1 = func() *fb.Theme {
@@ -298,7 +296,7 @@ var FB = {
 }
 
 type funcMapperCM struct {
-	controllers.ModelController
+	ModelController
 }
 
 func (cm *funcMapperCM) Type() string { return "funcmapper" }
@@ -308,11 +306,11 @@ func (cm *funcMapperCM) FuncMap(card *fb.Card, face int) template.FuncMap {
 	}
 }
 
-var _ controllers.ModelController = &funcMapperCM{}
-var _ controllers.FuncMapper = &funcMapperCM{}
+var _ ModelController = &funcMapperCM{}
+var _ FuncMapper = &funcMapperCM{}
 
 func init() {
-	controllers.RegisterModelController(&funcMapperCM{})
+	RegisterModelController(&funcMapperCM{})
 }
 
 var nilFunc = func() {}

@@ -1,4 +1,4 @@
-package controllers
+package model
 
 import (
 	"testing"
@@ -48,7 +48,7 @@ func TestRegisterModelController(t *testing.T) {
 }
 
 func TestRegisteredModelControllers(t *testing.T) {
-	expected := []string{"foo"}
+	expected := []string{"basic", "funcmapper", "foo"}
 	result := RegisteredModelControllers()
 	if d := diff.Interface(expected, result); d != nil {
 		t.Error(d)

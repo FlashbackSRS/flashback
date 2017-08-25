@@ -9,7 +9,7 @@ import (
 
 	"github.com/FlashbackSRS/flashback"
 	fb "github.com/FlashbackSRS/flashback-model"
-	"github.com/FlashbackSRS/flashback/controllers"
+	"github.com/FlashbackSRS/flashback/model"
 	"github.com/FlashbackSRS/flashback/webclient/views/studyview"
 )
 
@@ -22,12 +22,12 @@ const (
 // Basic is the controller for the Anki Basic model
 type Basic struct{}
 
-var _ controllers.ModelController = &Basic{}
+var _ model.ModelController = &Basic{}
 
 func init() {
 	log.Debug("Registering anki models\n")
-	controllers.RegisterModelController(&Basic{})
-	controllers.RegisterModelController(&Cloze{})
+	model.RegisterModelController(&Basic{})
+	model.RegisterModelController(&Cloze{})
 	log.Debug("Done registering anki models\n")
 }
 

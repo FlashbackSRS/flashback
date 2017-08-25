@@ -19,7 +19,6 @@ import (
 
 	"github.com/FlashbackSRS/flashback"
 	fb "github.com/FlashbackSRS/flashback-model"
-	"github.com/FlashbackSRS/flashback/controllers"
 	"github.com/FlashbackSRS/flashback/webclient/views/studyview"
 )
 
@@ -53,7 +52,7 @@ func (c *fbCard) MarshalJSON() ([]byte, error) {
 }
 
 func (c *fbCard) Buttons(face int) (studyview.ButtonMap, error) {
-	mc, err := controllers.GetModelController(c.model.Type)
+	mc, err := GetModelController(c.model.Type)
 	if err != nil {
 		return nil, err
 	}
@@ -124,7 +123,7 @@ func (c *fbCard) Body(ctx context.Context, face int) (body string, err error) {
 }
 
 func (c *fbCard) Action(face *int, startTime time.Time, query interface{}) (done bool, err error) {
-	mc, err := controllers.GetModelController(c.model.Type)
+	mc, err := GetModelController(c.model.Type)
 	if err != nil {
 		return false, err
 	}

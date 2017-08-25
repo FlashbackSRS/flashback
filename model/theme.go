@@ -9,7 +9,6 @@ import (
 	"github.com/pkg/errors"
 
 	fb "github.com/FlashbackSRS/flashback-model"
-	"github.com/FlashbackSRS/flashback/controllers"
 )
 
 // fbModel is a wrapper around a *fb.Model
@@ -51,7 +50,7 @@ const mainCSS = "$main.css"
 
 func (m *fbModel) Template(ctx context.Context) (*template.Template, error) {
 	defer profile("Template")()
-	mc, err := controllers.GetModelController(m.Type)
+	mc, err := GetModelController(m.Type)
 	if err != nil {
 		return nil, err
 	}
@@ -71,7 +70,7 @@ func (m *fbModel) Template(ctx context.Context) (*template.Template, error) {
 	delete(templates, mainCSS)
 
 	var funcs template.FuncMap
-	if funcMapper, ok := mc.(controllers.FuncMapper); ok {
+	if funcMapper, ok := mc.(FuncMapper); ok {
 		funcs = funcMapper.FuncMap(nil, 0)
 	}
 	tmpl, err := template.New("template").Funcs(funcs).Parse(masterTemplate)
@@ -144,11 +143,11 @@ var FB = {
 `
 
 func (m *fbModel) FuncMap(card *fbCard, face int) (template.FuncMap, error) {
-	mc, err := controllers.GetModelController(m.Type)
+	mc, err := GetModelController(m.Type)
 	if err != nil {
 		return nil, err
 	}
-	if funcMapper, ok := mc.(controllers.FuncMapper); ok {
+	if funcMapper, ok := mc.(FuncMapper); ok {
 		// card may be nil during template creation
 		var c *fb.Card
 		if card != nil {
@@ -160,7 +159,7 @@ func (m *fbModel) FuncMap(card *fbCard, face int) (template.FuncMap, error) {
 }
 
 func (m *fbModel) IframeScript() ([]byte, error) {
-	mc, err := controllers.GetModelController(m.Type)
+	mc, err := GetModelController(m.Type)
 	if err != nil {
 		return nil, err
 	}

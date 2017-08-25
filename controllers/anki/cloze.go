@@ -8,7 +8,7 @@ import (
 	"strings"
 
 	fb "github.com/FlashbackSRS/flashback-model"
-	"github.com/FlashbackSRS/flashback/controllers"
+	"github.com/FlashbackSRS/flashback/model"
 )
 
 // Cloze is the controller for the Anki Cloze model.
@@ -16,8 +16,8 @@ type Cloze struct {
 	*Basic
 }
 
-var _ controllers.ModelController = &Cloze{}
-var _ controllers.FuncMapper = &Cloze{}
+var _ model.ModelController = &Cloze{}
+var _ model.FuncMapper = &Cloze{}
 
 // Type returns the string "anki-cloze", to identify this model handler's type.
 func (m *Cloze) Type() string {
