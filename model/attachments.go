@@ -22,7 +22,7 @@ func (r *Repo) FetchAttachment(ctx context.Context, cardID, filename string) (*f
 	if err != nil {
 		return nil, err
 	}
-	fbCard := &fbCard{Card: card}
+	fbCard := &Card{Card: card}
 	if err := fbCard.fetch(ctx, r.local); err != nil {
 		return nil, err
 	}

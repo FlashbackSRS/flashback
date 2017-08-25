@@ -9,7 +9,7 @@ import (
 )
 
 // Schedule implements the default scheduler.
-func Schedule(card *fbCard, answerDelay time.Duration, quality flashback.AnswerQuality) error {
+func Schedule(card *Card, answerDelay time.Duration, quality flashback.AnswerQuality) error {
 	ivl, ease := schedule(card, quality)
 	card.Due = fb.Due(now()).Add(ivl)
 	card.Interval = ivl
@@ -23,7 +23,7 @@ func Schedule(card *fbCard, answerDelay time.Duration, quality flashback.AnswerQ
 	return nil
 }
 
-func schedule(card *fbCard, quality flashback.AnswerQuality) (interval fb.Interval, easeFactor float32) {
+func schedule(card *Card, quality flashback.AnswerQuality) (interval fb.Interval, easeFactor float32) {
 	ease := card.EaseFactor
 	if ease == 0.0 {
 		ease = flashback.InitialEase

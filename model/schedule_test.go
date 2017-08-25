@@ -218,7 +218,7 @@ func TestScheduling(t *testing.T) {
 		now = func() time.Time {
 			return test.Now
 		}
-		rcard := &fbCard{
+		rcard := &Card{
 			Card: test.Card,
 		}
 		ivl, ease := schedule(rcard, test.Answer)

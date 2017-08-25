@@ -426,7 +426,7 @@ func TestGetCardToStudy(t *testing.T) {
 func TestCardButtons(t *testing.T) {
 	type cbTest struct {
 		name     string
-		card     *fbCard
+		card     *Card
 		face     int
 		expected studyview.ButtonMap
 		err      string
@@ -453,7 +453,7 @@ func TestCardButtons(t *testing.T) {
 func TestGetCardModel(t *testing.T) {
 	type cgmTest struct {
 		name     string
-		card     *fbCard
+		card     *Card
 		expected interface{}
 		err      string
 	}
@@ -478,14 +478,14 @@ func TestGetCardModel(t *testing.T) {
 // func TestGetNote(t *testing.T) {
 // 	type gnTest struct {
 // 		name     string
-// 		card     *fbCard
+// 		card     *Card
 // 		expected interface{}
 // 		err      string
 // 	}
 // 	tests := []gnTest{
 // 		{
 // 			name: "not logged in",
-// 			card: &fbCard{repo: &Repo{
+// 			card: &Card{repo: &Repo{
 // 				local: testClient(t),
 // 			}},
 // 			err: "not logged in",
@@ -518,46 +518,46 @@ func (c *cfClient) DB(_ context.Context, _ string, _ ...kivik.Options) (kivikDB,
 func TestCardFetch(t *testing.T) {
 	type cfTest struct {
 		name     string
-		card     *fbCard
+		card     *Card
 		client   kivikClient
-		expected *fbCard
+		expected *Card
 		err      string
 	}
 	tests := []cfTest{
 		{
 			name:     "already loaded",
-			card:     &fbCard{Card: &fb.Card{ID: "card-foo.bar.0"}, note: &fbNote{}},
-			expected: &fbCard{Card: &fb.Card{ID: "card-foo.bar.0"}, note: &fbNote{}},
+			card:     &Card{Card: &fb.Card{ID: "card-foo.bar.0"}, note: &fbNote{}},
+			expected: &Card{Card: &fb.Card{ID: "card-foo.bar.0"}, note: &fbNote{}},
 		},
 		{
 			name:   "db error",
-			card:   &fbCard{Card: &fb.Card{ID: "card-foo.bar.0"}},
+			card:   &Card{Card: &fb.Card{ID: "card-foo.bar.0"}},
 			client: &cfClient{dbErr: errors.New("db error")},
 			err:    "db error",
 		},
 		{
 			name:   "note err",
-			card:   &fbCard{Card: &fb.Card{ID: "card-foo.bar.0", ModelID: "theme-foo/0"}},
+			card:   &Card{Card: &fb.Card{ID: "card-foo.bar.0", ModelID: "theme-foo/0"}},
 			client: &cfClient{db: &gctsDB{note: "invalid json"}},
 			err:    "invalid character 'i' looking for beginning of value",
 		},
 		{
 			name:   "theme err",
-			card:   &fbCard{Card: &fb.Card{ID: "card-foo.bar.0", ModelID: "theme-foo/0"}},
+			card:   &Card{Card: &fb.Card{ID: "card-foo.bar.0", ModelID: "theme-foo/0"}},
 			client: &cfClient{db: &gctsDB{note: `{}`, theme: "bad json"}},
 			err:    "id required",
 		},
 		{
 			name:   "corrupt theme",
-			card:   &fbCard{Card: &fb.Card{ID: "card-foo.bar.0", ModelID: "theme-Zm9v/0"}},
+			card:   &Card{Card: &fb.Card{ID: "card-foo.bar.0", ModelID: "theme-Zm9v/0"}},
 			client: &cfClient{db: &gctsDB{note: `{"_id":"note-Zm9v", "created":"2017-01-01T01:01:01Z", "modified":"2017-01-01T01:01:01Z"}`, theme: `{"_id":"theme-Zm9v", "created":"2017-01-01T01:01:01Z", "modified":"2017-01-01T01:01:01Z", "_attachments":{}, "files":[], "modelSequence":1}`}},
 			err:    "card's theme has no model",
 		},
 		{
 			name:   "valid",
-			card:   &fbCard{Card: &fb.Card{ID: "card-foo.bar.0", ModelID: "theme-Zm9v/0"}},
+			card:   &Card{Card: &fb.Card{ID: "card-foo.bar.0", ModelID: "theme-Zm9v/0"}},
 			client: &cfClient{db: &gctsDB{note: `{"_id":"note-Zm9v", "theme":"theme-Zm9v", "created":"2017-01-01T01:01:01Z", "modified":"2017-01-01T01:01:01Z"}`, theme: `{"_id":"theme-Zm9v", "created":"2017-01-01T01:01:01Z", "modified":"2017-01-01T01:01:01Z", "_attachments":{}, "files":[], "modelSequence":1, "models":[{"id":0,"files":[], "modelType":"foo"}]}`}},
-			expected: func() *fbCard {
+			expected: func() *Card {
 				themeAtt := fb.NewFileCollection()
 				theme := &fb.Theme{
 					ID:            "theme-Zm9v",
@@ -574,7 +574,7 @@ func TestCardFetch(t *testing.T) {
 					Files: themeAtt.NewView(),
 				}
 				theme.Models = []*fb.Model{model}
-				return &fbCard{
+				return &Card{
 					Card: &fb.Card{ID: "card-foo.bar.0", ModelID: "theme-Zm9v/0"},
 					note: &fbNote{Note: &fb.Note{
 						ID:          "note-Zm9v",
@@ -614,7 +614,7 @@ func TestCardFetch(t *testing.T) {
 func TestCardBody(t *testing.T) {
 	tests := []struct {
 		name     string
-		card     *fbCard
+		card     *Card
 		face     int
 		expected string
 		err      string
@@ -626,12 +626,12 @@ func TestCardBody(t *testing.T) {
 		},
 		{
 			name: "unfetched card",
-			card: &fbCard{},
+			card: &Card{},
 			err:  "card hasn't been fetched",
 		},
 		{
 			name: "controller error",
-			card: &fbCard{
+			card: &Card{
 				note:  &fbNote{},
 				model: &fbModel{Model: &fb.Model{Type: "foo"}},
 			},
@@ -639,9 +639,9 @@ func TestCardBody(t *testing.T) {
 		},
 		{
 			name: "template error",
-			card: func() *fbCard {
+			card: func() *Card {
 				theme, _ := fb.NewTheme("theme-Zm9v")
-				return &fbCard{
+				return &Card{
 					note:  &fbNote{},
 					model: &fbModel{Model: &fb.Model{Type: "basic", Files: theme.Attachments.NewView()}},
 				}
@@ -650,7 +650,7 @@ func TestCardBody(t *testing.T) {
 		},
 		{
 			name: "success",
-			card: func() *fbCard {
+			card: func() *Card {
 				theme, _ := fb.NewTheme("theme-Zm9v")
 				modelFiles := theme.Attachments.NewView()
 				_ = modelFiles.AddFile("$template.0.html", "text/html", []byte(`<body><div class="question" data-id="0">foo</div></body>`))
@@ -659,7 +659,7 @@ func TestCardBody(t *testing.T) {
 					Type:  "basic",
 					Files: modelFiles,
 				}
-				return &fbCard{
+				return &Card{
 					Card: &fb.Card{
 						ID:       "card-foo.bar.0",
 						Created:  time.Now(),

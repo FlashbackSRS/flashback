@@ -142,7 +142,7 @@ var FB = {
 </html>
 `
 
-func (m *fbModel) FuncMap(card *fbCard, face int) (template.FuncMap, error) {
+func (m *fbModel) FuncMap(card *Card, face int) (template.FuncMap, error) {
 	mc, err := GetModelController(m.Type)
 	if err != nil {
 		return nil, err

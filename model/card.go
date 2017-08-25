@@ -22,9 +22,8 @@ import (
 	"github.com/FlashbackSRS/flashback/webclient/views/studyview"
 )
 
-// fbCard is a wrapper around *fb.Card, which provides convenience functions
-// like .Note(), .Model(), and .Body()
-type fbCard struct {
+// Card wraps an *fb.Card and its dependencies.
+type Card struct {
 	*fb.Card
 	note   *fbNote
 	model  *fbModel
@@ -32,7 +31,7 @@ type fbCard struct {
 	repo   *Repo
 }
 
-var _ flashback.CardView = &fbCard{}
+var _ flashback.CardView = &Card{}
 
 type jsCard struct {
 	ID      string      `json:"id"`
@@ -42,7 +41,7 @@ type jsCard struct {
 
 // MarshalJSON marshals a Card for the benefit of javascript context in HTML
 // templates.
-func (c *fbCard) MarshalJSON() ([]byte, error) {
+func (c *Card) MarshalJSON() ([]byte, error) {
 	card := &jsCard{
 		ID:      c.ID,
 		ModelID: c.ThemeModelID(),
@@ -51,7 +50,7 @@ func (c *fbCard) MarshalJSON() ([]byte, error) {
 	return json.Marshal(card)
 }
 
-func (c *fbCard) Buttons(face int) (studyview.ButtonMap, error) {
+func (c *Card) Buttons(face int) (studyview.ButtonMap, error) {
 	mc, err := GetModelController(c.model.Type)
 	if err != nil {
 		return nil, err
@@ -60,7 +59,7 @@ func (c *fbCard) Buttons(face int) (studyview.ButtonMap, error) {
 }
 
 type cardData struct {
-	Card *fbCard
+	Card *Card
 	Face int
 	Note *fbNote
 	// Model    *Model
@@ -69,7 +68,7 @@ type cardData struct {
 	Fields  map[string]template.HTML
 }
 
-func (c *fbCard) Body(ctx context.Context, face int) (body string, err error) {
+func (c *Card) Body(ctx context.Context, face int) (body string, err error) {
 	defer profile("Body")()
 	cardFace, ok := faces[face]
 	if !ok {
@@ -122,7 +121,7 @@ func (c *fbCard) Body(ctx context.Context, face int) (body string, err error) {
 	return nbString, nil
 }
 
-func (c *fbCard) Action(face *int, startTime time.Time, query interface{}) (done bool, err error) {
+func (c *Card) Action(face *int, startTime time.Time, query interface{}) (done bool, err error) {
 	mc, err := GetModelController(c.model.Type)
 	if err != nil {
 		return false, err
@@ -256,7 +255,7 @@ func (r *Repo) GetCardToStudy(ctx context.Context) (flashback.CardView, error) {
 }
 
 // getCardToStudy returns a card to display to the user to study.
-func (r *Repo) getCardToStudy(ctx context.Context) (*fbCard, error) {
+func (r *Repo) getCardToStudy(ctx context.Context) (*Card, error) {
 	udb, err := r.userDB(ctx)
 	if err != nil {
 		return nil, err
@@ -265,7 +264,7 @@ func (r *Repo) getCardToStudy(ctx context.Context) (*fbCard, error) {
 	if err != nil {
 		return nil, err
 	}
-	c := &fbCard{
+	c := &Card{
 		Card:   card,
 		appURL: r.appURL,
 		repo:   r,
@@ -273,7 +272,7 @@ func (r *Repo) getCardToStudy(ctx context.Context) (*fbCard, error) {
 	return c, c.fetch(ctx, r.local)
 }
 
-func (c *fbCard) fetch(ctx context.Context, client kivikClient) error {
+func (c *Card) fetch(ctx context.Context, client kivikClient) error {
 	if c.note != nil {
 		return nil
 	}

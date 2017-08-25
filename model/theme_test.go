@@ -319,7 +319,7 @@ func TestFuncMap(t *testing.T) {
 	tests := []struct {
 		name      string
 		modelType string
-		card      *fbCard
+		card      *Card
 		expected  template.FuncMap
 		err       string
 	}{
@@ -342,7 +342,7 @@ func TestFuncMap(t *testing.T) {
 		{
 			name:      "non nil card",
 			modelType: "funcmapper",
-			card:      &fbCard{Card: &fb.Card{}},
+			card:      &Card{Card: &fb.Card{}},
 			expected: template.FuncMap{
 				"foo": nilFunc,
 			},
