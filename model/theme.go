@@ -148,12 +148,7 @@ func (m *fbModel) FuncMap(card *Card, face int) (template.FuncMap, error) {
 		return nil, err
 	}
 	if funcMapper, ok := mc.(FuncMapper); ok {
-		// card may be nil during template creation
-		var c *fb.Card
-		if card != nil {
-			c = card.Card
-		}
-		return funcMapper.FuncMap(c, face), nil
+		return funcMapper.FuncMap(card, face), nil
 	}
 	return nil, nil
 }

@@ -7,7 +7,6 @@ import (
 	"strconv"
 	"strings"
 
-	fb "github.com/FlashbackSRS/flashback-model"
 	"github.com/FlashbackSRS/flashback/model"
 )
 
@@ -25,7 +24,7 @@ func (m *Cloze) Type() string {
 }
 
 // FuncMap returns a function map for Cloze templates.
-func (m *Cloze) FuncMap(card *fb.Card, face int) template.FuncMap {
+func (m *Cloze) FuncMap(card *model.Card, face int) template.FuncMap {
 	var templateID uint32
 	if card != nil {
 		// Need to do this check, because card may be nil during template parsing

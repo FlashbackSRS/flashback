@@ -5,7 +5,6 @@ import (
 	"html/template"
 	"time"
 
-	fb "github.com/FlashbackSRS/flashback-model"
 	"github.com/FlashbackSRS/flashback/webclient/views/studyview"
 )
 
@@ -24,7 +23,7 @@ type ModelController interface {
 	// `submit` key. If done is returned as true, the next card is selected. If
 	// done is false, the same card will be displayed, with the current value
 	// of face (possibly changed by the function)
-	Action(card *fb.Card, face *int, startTime time.Time, query interface{}) (done bool, err error)
+	Action(card *Card, face *int, startTime time.Time, query interface{}) (done bool, err error)
 }
 
 // FuncMapper is an optional interface that a ModelController may fulfill.
@@ -33,7 +32,7 @@ type FuncMapper interface {
 	// template.FuncMap which can be used when parsing the HTML templates for
 	// this note type. If card is nil, the function is fine to return only
 	// non-functional, placeholder methods.
-	FuncMap(card *fb.Card, face int) template.FuncMap
+	FuncMap(card *Card, face int) template.FuncMap
 }
 
 var modelControllers = map[string]ModelController{}

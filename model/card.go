@@ -129,7 +129,7 @@ func (c *Card) Action(face *int, startTime time.Time, query interface{}) (done b
 	if err != nil {
 		return false, err
 	}
-	return mc.Action(c.Card, face, startTime, query)
+	return mc.Action(c, face, startTime, query)
 }
 
 var now = time.Now

@@ -8,7 +8,6 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/FlashbackSRS/flashback"
-	fb "github.com/FlashbackSRS/flashback-model"
 	"github.com/FlashbackSRS/flashback/model"
 	"github.com/FlashbackSRS/flashback/webclient/views/studyview"
 )
@@ -89,7 +88,7 @@ type answer struct {
 }
 
 // Action responds to a card action, such as a button press
-func (m *Basic) Action(card *fb.Card, face *int, startTime time.Time, payload interface{}) (bool, error) {
+func (m *Basic) Action(card *model.Card, face *int, startTime time.Time, payload interface{}) (bool, error) {
 	query := convertQuery(payload)
 	log.Debugf("Submit recieved for face %d: %v\n", *face, query)
 	button := studyview.Button(query.Submit)

@@ -300,7 +300,7 @@ type funcMapperCM struct {
 }
 
 func (cm *funcMapperCM) Type() string { return "funcmapper" }
-func (cm *funcMapperCM) FuncMap(card *fb.Card, face int) template.FuncMap {
+func (cm *funcMapperCM) FuncMap(card *Card, face int) template.FuncMap {
 	return map[string]interface{}{
 		"foo": nilFunc,
 	}
