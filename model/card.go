@@ -19,6 +19,7 @@ import (
 
 	"github.com/FlashbackSRS/flashback"
 	fb "github.com/FlashbackSRS/flashback-model"
+	"github.com/FlashbackSRS/flashback/controllers/done"
 	"github.com/FlashbackSRS/flashback/webclient/views/studyview"
 )
 
@@ -258,6 +259,9 @@ func (r *Repo) GetCardToStudy(ctx context.Context) (flashback.CardView, error) {
 	if err != nil {
 		return nil, err
 	}
+	if err == nil && card == nil {
+		return done.GetCard(), nil
+	}
 	go func() {
 		// Bury related cards
 		if err := r.BuryRelatedCards(ctx, card.Card); err != nil {
@@ -275,7 +279,7 @@ func (r *Repo) getCardToStudy(ctx context.Context) (*Card, error) {
 		return nil, err
 	}
 	card, err := getCardToStudy(ctx, udb)
-	if err != nil {
+	if err != nil || card == nil {
 		return nil, err
 	}
 	c := &Card{

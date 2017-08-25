@@ -346,6 +346,17 @@ func TestRepoGetCardToStudy(t *testing.T) {
 			err: "query failed: kivik: not yet implemented in memory driver",
 		},
 		{
+			name: "no cards",
+			repo: &Repo{user: "mjxwe", local: &gctsClient{
+				db: &gctsDB{
+					q: &mockQuerier{rows: map[string]*mockRows{
+						"newCards": &mockRows{},
+						"oldCards": &mockRows{},
+					}},
+				}},
+			},
+		},
+		{
 			name: "success",
 			repo: &Repo{
 				user: "bob",
