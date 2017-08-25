@@ -362,7 +362,7 @@ func TestRepoGetCardToStudy(t *testing.T) {
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			result, err := test.repo.GetCardToStudy(context.Background())
+			result, err := test.repo.getCardToStudy(context.Background())
 			checkErr(t, test.err, err)
 			if err != nil {
 				return

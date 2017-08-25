@@ -35,11 +35,6 @@ type fbCard struct {
 
 var _ flashback.Card = &fbCard{}
 
-// BuryRelated is an ugly hacky wrapper around repo.BuryRelatedCards
-func (c *fbCard) BuryRelated(ctx context.Context) error {
-	return c.repo.BuryRelatedCards(ctx, c.Card)
-}
-
 type jsCard struct {
 	ID      string      `json:"id"`
 	ModelID int         `json:"model"`
@@ -244,8 +239,25 @@ func selectWeightedCard(cards []*fb.Card) *fb.Card {
 	return nil
 }
 
-// GetCardToStudy returns a card to display to the user to study.
+// GetCardToStudy returns a card to display to the user to study, and buries
+// related cards.
 func (r *Repo) GetCardToStudy(ctx context.Context) (flashback.Card, error) {
+	card, err := r.getCardToStudy(ctx)
+	if err != nil {
+		return nil, err
+	}
+	go func() {
+		// Bury related cards
+		if err := r.BuryRelatedCards(ctx, card.Card); err != nil {
+			log.Printf("Failed to bury cards: %s\n", err)
+		}
+	}()
+
+	return card, nil
+}
+
+// getCardToStudy returns a card to display to the user to study.
+func (r *Repo) getCardToStudy(ctx context.Context) (*fbCard, error) {
 	udb, err := r.userDB(ctx)
 	if err != nil {
 		return nil, err

@@ -52,5 +52,4 @@ type Card interface {
 	Buttons(face int) (studyview.ButtonMap, error)
 	Body(ctx context.Context, face int) (body string, err error)
 	Action(face *int, startTime time.Time, query interface{}) (done bool, err error)
-	BuryRelated(ctx context.Context) error
 }
