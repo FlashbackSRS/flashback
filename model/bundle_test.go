@@ -3,6 +3,7 @@ package model
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"strings"
 	"testing"
 
@@ -34,16 +35,10 @@ func TestSaveBundle(t *testing.T) {
 		},
 		{
 			name: "user db does not exist",
-			repo: func() *Repo {
-				local, err := localConnection()
-				if err != nil {
-					t.Fatal(err)
-				}
-				return &Repo{
-					local: local,
-					user:  "bob",
-				}
-			}(),
+			repo: &Repo{
+				user:  "bob",
+				local: &mockClient{err: errors.New("database does not exist")},
+			},
 			bundle: &fb.Bundle{ID: id, Created: now(), Modified: now(), Owner: "mjxwe"},
 			err:    "userDB: database does not exist",
 		},
@@ -135,6 +130,7 @@ func checkDoc(t *testing.T, db getter, doc interface{}) {
 	}
 	parts := strings.Split(result["_rev"].(string), "-")
 	result["_rev"] = parts[0]
+	delete(result, "_attachments")
 	if d := diff.AsJSON(doc, result); d != nil {
 		t.Error(d)
 	}

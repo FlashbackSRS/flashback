@@ -12,6 +12,8 @@ import (
 	"github.com/go-chi/chi"
 )
 
+const env = "go"
+
 func mockServer(_ *testing.T) *httptest.Server {
 	r := chi.NewRouter()
 	r.Get("/_session", func(w http.ResponseWriter, _ *http.Request) {

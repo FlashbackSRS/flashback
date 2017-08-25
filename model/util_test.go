@@ -173,7 +173,7 @@ func TestSaveDoc(t *testing.T) {
 				}
 				return db
 			}(),
-			doc:      &testDoc{ID: "foo", Rev: "1", ITime: now, MTime: now},
+			doc:      &testDoc{ID: "foo", Rev: "1-917fa2381192822767f010b95b45325b", ITime: now, MTime: now},
 			expected: map[string]interface{}{"_id": "foo", "_rev": "1", "imported_time": now, "modified_time": now},
 		},
 		{

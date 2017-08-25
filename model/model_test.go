@@ -2,7 +2,9 @@ package model
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"strings"
 	"sync/atomic"
 	"testing"
 
@@ -15,7 +17,7 @@ import (
 func TestNew(t *testing.T) {
 	t.Run("InvalidURL", func(t *testing.T) {
 		_, err := New(context.Background(), "http://foo.com/%xx", "")
-		if err == nil || err.Error() != `parse http://foo.com/%xx: invalid URL escape "%xx"` {
+		if err == nil || !strings.HasSuffix(err.Error(), `parse http://foo.com/%xx: invalid URL escape "%xx"`) {
 			t.Errorf("Unexpected error: %s", err)
 		}
 	})
@@ -241,15 +243,12 @@ func TestUserDB(t *testing.T) {
 		{
 			name: "Connect failure",
 			repo: func() *Repo {
-				local, err := localConnection()
-				if err != nil {
-					t.Fatal(err)
-				}
 				return &Repo{
 					user:  "bob",
-					local: local}
+					local: &mockClient{err: errors.New("connection error")},
+				}
 			}(),
-			err: "database does not exist",
+			err: "connection error",
 		},
 	}
 	for _, test := range tests {

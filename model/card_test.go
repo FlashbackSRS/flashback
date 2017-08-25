@@ -343,7 +343,12 @@ func TestRepoGetCardToStudy(t *testing.T) {
 				}
 				return c
 			}()},
-			err: "query failed: kivik: not yet implemented in memory driver",
+			err: func() string {
+				if env == "js" {
+					return "query failed: not_found: missing"
+				}
+				return "query failed: kivik: not yet implemented in memory driver"
+			}(),
 		},
 		{
 			name: "no cards",

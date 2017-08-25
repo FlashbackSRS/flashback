@@ -9,6 +9,8 @@ import (
 	"github.com/gopherjs/gopherjs/js"
 )
 
+const env = "js"
+
 func init() {
 	newPouch := js.Global.Get("PouchDB").Call("defaults", map[string]interface{}{
 		"db": js.Global.Call("require", "memdown"),

@@ -10,7 +10,7 @@ import (
 )
 
 func localConnection() (kivikClient, error) {
-	c, err := kivik.New(context.Background(), "memory", "local")
+	c, err := kivik.New(context.Background(), "memory", "")
 	if err != nil {
 		return nil, err
 	}

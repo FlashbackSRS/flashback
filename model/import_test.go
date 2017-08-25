@@ -163,7 +163,7 @@ func TestImport(t *testing.T) {
 				if err := local.CreateDB(context.Background(), "user-mjxwe"); err != nil {
 					t.Fatal(err)
 				}
-				if err := local.CreateDB(context.Background(), "bundle-aebagba"); err != nil {
+				if err := local.CreateDB(context.Background(), "bundle-aebagbb"); err != nil {
 					t.Fatal(err)
 				}
 				return &Repo{
@@ -175,7 +175,7 @@ func TestImport(t *testing.T) {
 				return strings.NewReader(`{
 					"version": 2,
 					"bundle": {
-						"_id": "bundle-aebagba",
+						"_id": "bundle-aebagbb",
 						"type": "bundle",
 						"created": "2016-07-31T15:08:24.730156517Z",
 						"modified": "2016-07-31T15:08:24.730156517Z",
@@ -270,7 +270,7 @@ func TestImport(t *testing.T) {
 				`)
 			}(),
 			expectedBundle: &fb.Bundle{
-				ID:       "bundle-aebagba",
+				ID:       "bundle-aebagbb",
 				Rev:      "1",
 				Owner:    "mjxwe",
 				Created:  ParseTime("2016-07-31T15:08:24.730156517Z"),

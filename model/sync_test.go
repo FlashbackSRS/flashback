@@ -11,9 +11,9 @@ import (
 func TestDbDSN(t *testing.T) {
 	db := testDB(t)
 	result := dbDSN(db)
-	expected := "local/" + db.Name()
+	expected := db.Name()
 	if result != expected {
-		t.Errorf("Unexpected result: %s\n", result)
+		t.Errorf("Expected: %s\n  Actual: %s\n", expected, result)
 	}
 }
 
@@ -52,7 +52,12 @@ func TestSync(t *testing.T) {
 					remote: remote,
 				}
 			}(),
-			err: "sync local to remote: kivik: driver does not support replication",
+			err: func() string {
+				if env == "js" {
+					return ""
+				}
+				return "sync local to remote: kivik: driver does not support replication"
+			}(),
 		},
 	}
 	for _, test := range tests {
