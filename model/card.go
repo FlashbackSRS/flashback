@@ -159,20 +159,13 @@ const (
 	oldBatchSize = 90
 )
 
-// limitPadding is a number added to the limit parameter passed to the
-// getCardsFromView function. This is added, because there's no automated way
-// to eliminate buried cards from the view, so they must be filtered in the
-// client, but this could lead to queries with no results, so we pad the number
-// of results to help reduce this chance.
-const limitPadding = 100
-
 func getCardsFromView(ctx context.Context, db querier, view string, limit, offset int) ([]*fb.Card, error) {
 	defer profile("getCardsFromView: " + view)()
 	if limit <= 0 {
 		return nil, errors.New("invalid limit")
 	}
 	rows, err := db.Query(context.TODO(), "index", view, map[string]interface{}{
-		"limit":        limit + limitPadding,
+		"limit":        limit,
 		"offset":       offset,
 		"include_docs": true,
 		"sort":         map[string]string{"due": "desc", "created": "asc"},
