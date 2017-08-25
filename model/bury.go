@@ -20,7 +20,7 @@ import (
 // 4. The maximum burial is MaxBuryRatio of the card's interval.
 func (r *Repo) BuryRelatedCards(ctx context.Context, card *fb.Card) error {
 	defer profile("BuryRelatedCards")()
-	db, err := r.newDB(ctx, card.BundleID())
+	db, err := r.userDB(ctx)
 	if err != nil {
 		return err
 	}
