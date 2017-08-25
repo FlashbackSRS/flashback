@@ -33,7 +33,7 @@ type fbCard struct {
 	repo   *Repo
 }
 
-var _ flashback.Card = &fbCard{}
+var _ flashback.CardView = &fbCard{}
 
 type jsCard struct {
 	ID      string      `json:"id"`
@@ -239,9 +239,9 @@ func selectWeightedCard(cards []*fb.Card) *fb.Card {
 	return nil
 }
 
-// GetCardToStudy returns a card to display to the user to study, and buries
+// GetCardToStudy returns a CardView to display to the user to study, and buries
 // related cards.
-func (r *Repo) GetCardToStudy(ctx context.Context) (flashback.Card, error) {
+func (r *Repo) GetCardToStudy(ctx context.Context) (flashback.CardView, error) {
 	card, err := r.getCardToStudy(ctx)
 	if err != nil {
 		return nil, err

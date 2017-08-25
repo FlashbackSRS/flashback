@@ -46,8 +46,8 @@ const (
 	LapseInterval = fb.Interval(10 * fb.Minute)
 )
 
-// Card represents a generic card-like object.
-type Card interface {
+// CardView represents a view of a card or card-like object.
+type CardView interface {
 	DocID() string
 	Buttons(face int) (studyview.ButtonMap, error)
 	Body(ctx context.Context, face int) (body string, err error)

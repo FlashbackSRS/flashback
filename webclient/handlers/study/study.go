@@ -22,7 +22,7 @@ import (
 var jQuery = jquery.NewJQuery
 
 type cardState struct {
-	Card      flashback.Card
+	Card      flashback.CardView
 	StartTime time.Time
 	Face      int
 }
