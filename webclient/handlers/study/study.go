@@ -51,7 +51,7 @@ func ShowCard(repo *model.Repo) error {
 		log.Debug("Fetching card\n")
 		card, err := repo.GetCardToStudy(context.TODO())
 		if err != nil {
-			return errors.Wrap(err, "fetch card")
+			return errors.Wrap(err, "get card to study")
 		}
 		if card == nil {
 			return errors.New("got a nil card")
