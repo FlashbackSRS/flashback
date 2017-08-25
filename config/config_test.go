@@ -14,7 +14,7 @@ func TestNewFromJSON(t *testing.T) {
 	expected := &Conf{
 		c: map[string]string{"foo": "bar"},
 	}
-	if d := diff.Interface(expected, c); d != "" {
+	if d := diff.Interface(expected, c); d != nil {
 		t.Error(d)
 	}
 }
@@ -31,7 +31,7 @@ func TestNew(t *testing.T) {
 	expected := &Conf{
 		c: map[string]string{"foo": "bar"},
 	}
-	if d := diff.Interface(expected, c); d != "" {
+	if d := diff.Interface(expected, c); d != nil {
 		t.Error(d)
 	}
 }
