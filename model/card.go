@@ -124,12 +124,23 @@ func (c *Card) Body(ctx context.Context, face int) (body string, err error) {
 }
 
 // Action handles a card action produced by the user.
-func (c *Card) Action(face *int, startTime time.Time, query interface{}) (done bool, err error) {
+func (c *Card) Action(ctx context.Context, face *int, startTime time.Time, query interface{}) (done bool, err error) {
 	mc, err := GetModelController(c.model.Type)
 	if err != nil {
 		return false, err
 	}
-	return mc.Action(c, face, startTime, query)
+	done, err = mc.Action(c, face, startTime, query)
+	if err != nil {
+		return false, err
+	}
+	if done {
+		db, err := c.repo.userDB(ctx)
+		if err != nil {
+			return false, err
+		}
+		return true, saveDoc(ctx, db, c.Card)
+	}
+	return false, nil
 }
 
 var now = time.Now

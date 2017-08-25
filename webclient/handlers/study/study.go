@@ -143,7 +143,7 @@ func handleSubmit(cardID string, payload *js.Object, _ iframes.Respond) error {
 	if card.DocID() != cardID {
 		return errors.Errorf("received submit for unexpected card. Got %s, expected %s", cardID, card.DocID())
 	}
-	done, err := card.Action(&currentCard.Face, currentCard.StartTime, payload)
+	done, err := card.Action(context.TODO(), &currentCard.Face, currentCard.StartTime, payload)
 	if err != nil {
 		log.Printf("Error executing card action for face %d / %+v: %s", face, card, err)
 	}
@@ -154,6 +154,7 @@ func handleSubmit(cardID string, payload *js.Object, _ iframes.Respond) error {
 			log.Printf("face wasn't incremented!\n")
 		}
 	}
-	jQuery(":mobile-pagecontainer").Call("pagecontainer", "change", "/study.html")
+	// FIXME: Don't hard code /app here
+	jQuery(":mobile-pagecontainer").Call("pagecontainer", "change", "/app/study.html")
 	return nil
 }

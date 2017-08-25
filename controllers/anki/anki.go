@@ -126,9 +126,7 @@ func (m *Basic) Action(card *model.Card, face *int, startTime time.Time, payload
 			card.Context = map[string]interface{}{
 				"typedAnswers": results,
 			}
-			// if err := card.Save(); err != nil {
-			// 	return true, errors.Wrap(err, "save typedAnswers to card state")
-			// }
+			return true, nil
 		}
 		return false, nil
 	case AnswerFace:
@@ -138,9 +136,6 @@ func (m *Basic) Action(card *model.Card, face *int, startTime time.Time, payload
 		}
 		log.Debugf("New schedule: Due %s, Interval: %s, Ease: %f, ReviewCount: %d\n", card.Due, card.Interval, card.EaseFactor, card.ReviewCount)
 		card.Context = nil // Clear any saved answers
-		// if err := card.Save(); err != nil {
-		// 	return true, errors.Wrap(err, "save card state")
-		// }
 		return true, nil
 	}
 	log.Printf("Unexpected face/button combo: %d / %+v\n", *face, button)
