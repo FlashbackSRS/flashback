@@ -1,6 +1,7 @@
 package anki
 
 import (
+	"html/template"
 	"time"
 
 	"github.com/FlashbackSRS/flashback/diff"
@@ -14,6 +15,7 @@ import (
 type Basic struct{}
 
 var _ model.ModelController = &Basic{}
+var _ model.FuncMapper = &Basic{}
 
 // Type returns the string "anki-basic", to identify this model handler's type.
 func (m *Basic) Type() string {
@@ -90,4 +92,9 @@ func (m *Basic) Action(card *model.Card, face *int, startTime time.Time, payload
 	}
 	log.Printf("Unexpected face/button combo: %d / %+v\n", *face, button)
 	return false, nil
+}
+
+// FuncMap returns a function map for Basic templates.
+func (m *Basic) FuncMap(_ *model.Card, _ int) template.FuncMap {
+	return defaultFuncMap
 }

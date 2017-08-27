@@ -2,6 +2,10 @@
 package anki
 
 import (
+	"fmt"
+	"html/template"
+	"net/url"
+
 	"github.com/flimzy/log"
 
 	"github.com/FlashbackSRS/flashback"
@@ -68,4 +72,12 @@ func quality(button studyview.Button) flashback.AnswerQuality {
 		return flashback.AnswerPerfect
 	}
 	return flashback.AnswerBlackout
+}
+
+var defaultFuncMap = map[string]interface{}{
+	"image": image,
+}
+
+func image(name string) template.HTML {
+	return template.HTML(fmt.Sprintf(`<img src="%s">`, url.PathEscape(name)))
 }
