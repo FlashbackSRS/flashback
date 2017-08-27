@@ -76,8 +76,13 @@ func quality(button studyview.Button) flashback.AnswerQuality {
 
 var defaultFuncMap = map[string]interface{}{
 	"image": image,
+	"audio": audio,
 }
 
 func image(name string) template.HTML {
 	return template.HTML(fmt.Sprintf(`<img src="%s">`, url.PathEscape(name)))
+}
+
+func audio(name, ctype string) template.HTML {
+	return template.HTML(fmt.Sprintf(`<audio src="%s" type="%s"></audio>`, url.PathEscape(name), ctype))
 }
