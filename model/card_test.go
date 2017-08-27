@@ -345,9 +345,9 @@ func TestRepoGetCardToStudy(t *testing.T) {
 			}()},
 			err: func() string {
 				if env == "js" {
-					return "query failed: not_found: missing"
+					return "newCards: query failed: not_found: missing"
 				}
-				return "query failed: kivik: not yet implemented in memory driver"
+				return "newCards: query failed: kivik: not yet implemented in memory driver"
 			}(),
 		},
 		{
@@ -407,14 +407,14 @@ func TestGetCardToStudy(t *testing.T) {
 			db: &mockQuerier{rows: map[string]*mockRows{
 				"newCards": &mockRows{rows: []string{"invalid json"}},
 			}},
-			err: `invalid character 'i' looking for beginning of value`,
+			err: `newCards: invalid character 'i' looking for beginning of value`,
 		},
 		{
 			name: "old query failure",
 			db: &mockQuerier{rows: map[string]*mockRows{
 				"oldCards": &mockRows{rows: []string{"invalid json"}},
 			}},
-			err: `invalid character 'i' looking for beginning of value`,
+			err: `oldCards: invalid character 'i' looking for beginning of value`,
 		},
 		{
 			name: "one new card",

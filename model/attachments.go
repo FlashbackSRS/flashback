@@ -37,13 +37,4 @@ func (r *Repo) FetchAttachment(ctx context.Context, cardID, filename string) (*f
 		}
 	}
 	return nil, nil
-	// u, err := repo.CurrentUser()
-	// if err != nil {
-	// 	return nil, errors.Wrap(err, "current user")
-	// }
-	// card, err := u.GetCard(cardID)
-	// if err != nil {
-	// 	return nil, errors.Wrap(err, "fetch card")
-	// }
-	// return card.GetAttachment(filename)
 }

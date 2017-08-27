@@ -159,21 +159,17 @@ const (
 	oldBatchSize = 90
 )
 
-// limitPadding is a number added to the limit parameter passed to the
-// getCardsFromView function. This is added, because there's no automated way
-// to eliminate buried cards from the view, so they must be filtered in the
-// client, but this could lead to queries with no results, so we pad the number
-// of results to help reduce this chance.
-const limitPadding = 100
-
 func getCardsFromView(ctx context.Context, db querier, view string, limit, offset int) ([]*fb.Card, error) {
+	defer profile("getCardsFromView: " + view)()
 	if limit <= 0 {
 		return nil, errors.New("invalid limit")
 	}
+	log.Debugf("Trying to fetch %d (%d) %s cards\n", limit, offset, view)
 	rows, err := db.Query(context.TODO(), "index", view, map[string]interface{}{
-		"limit":        limit + limitPadding,
+		"limit":        limit,
 		"offset":       offset,
 		"include_docs": true,
+		"sort":         map[string]string{"due": "desc", "created": "asc"},
 	})
 	if err != nil {
 		return nil, errors.Wrap(err, "query failed")
@@ -181,6 +177,7 @@ func getCardsFromView(ctx context.Context, db querier, view string, limit, offse
 	defer func() { _ = rows.Close() }()
 	cards := make([]*fb.Card, 0, limit)
 	var count int
+	defer rows.Close()
 	for rows.Next() {
 		count++
 		card := &fb.Card{}
@@ -202,10 +199,12 @@ func getCardsFromView(ctx context.Context, db querier, view string, limit, offse
 		}
 		cards = append(cards, card)
 		if len(cards) == limit {
+			log.Debugf("Got %d cards, early exiting", len(cards))
 			return cards, nil
 		}
 	}
 	if rows.TotalRows() > int64(limit+offset) {
+		log.Debugf("%d total rows > %d, reading more\n", rows.TotalRows(), limit+offset)
 		more, err := getCardsFromView(ctx, db, view, limit-len(cards), offset+count)
 		return append(cards, more...), err
 	}
@@ -242,9 +241,11 @@ func selectWeightedCard(cards []*fb.Card) *fb.Card {
 		weights += priority
 	}
 	r := rnd.Float64() * weights
+	log.Debugf("Selected r=%f of %f\n", r, weights)
 	for i, priority := range priorities {
 		r -= priority
 		if r < 0 {
+			log.Debugf("Selected card %d: %s\n", i, cards[i].ID)
 			return cards[i]
 		}
 	}
@@ -333,10 +334,12 @@ func getCardToStudy(ctx context.Context, db querier) (*fb.Card, error) {
 	wg.Add(2)
 	go func() {
 		newCards, newErr = getCardsFromView(ctx, db, "newCards", newBatchSize, 0)
+		newErr = errors.Wrap(newErr, "newCards")
 		wg.Done()
 	}()
 	go func() {
 		oldCards, oldErr = getCardsFromView(ctx, db, "oldCards", oldBatchSize, 0)
+		oldErr = errors.Wrap(oldErr, "oldCards")
 		wg.Done()
 	}()
 	wg.Wait()
