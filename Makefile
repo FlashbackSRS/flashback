@@ -85,7 +85,7 @@ images: $(PNG_FILES) $(WEBP_FILES) $(SVG_FILES) webclient/images/favicon.ico
 	cp webclient/images/favicon.ico www
 
 .PHONY: www
-www: javascript css images $(HTML_FILES) $(I18N_FILES)
+www: javascript css images $(HTML_FILES) $(I18N_FILES) generate
 	mkdir -p www/translations
 	cp $(HTML_FILES) www
 	cp $(I18N_FILES) www/translations
