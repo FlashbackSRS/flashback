@@ -78,7 +78,7 @@ func (m *Basic) Action(card *model.Card, face *int, startTime time.Time, payload
 			card.Context = map[string]interface{}{
 				"typedAnswers": results,
 			}
-			return true, nil
+			return false, nil
 		}
 		return false, nil
 	case AnswerFace:
