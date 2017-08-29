@@ -30,9 +30,13 @@ func (m *Cloze) FuncMap(card *model.Card, face int) template.FuncMap {
 		// Need to do this check, because card may be nil during template parsing
 		templateID = card.TemplateID()
 	}
-	return map[string]interface{}{
+	funcMap := map[string]interface{}{
 		"cloze": cloze(templateID, face),
 	}
+	for k, v := range defaultFuncMap {
+		funcMap[k] = v
+	}
+	return funcMap
 }
 
 const span = `<span class="cloze">%s</span>`

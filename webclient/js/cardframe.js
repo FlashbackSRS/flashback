@@ -127,7 +127,6 @@
                 fserve(e.data.payload);
                 break;
             case "submit":
-                console.log("got submit from parent");
                 var form = document.getElementById('mainform');
                 var input = document.createElement('input');
                 input.type = 'hidden';
@@ -150,7 +149,6 @@
         if (media.length == 0) {
             return;
         }
-        console.log(media[0].src);
         // Install 'ended' event handlers on all but the last media file, which
         // will trigger the following one to play.
         for (var i=0; i < media.length-1; i++) {
@@ -162,7 +160,6 @@
     }
 
     function playWhenReady(media) {
-        console.log(media);
         // A lazy way to check if the media file has been loaded yet.
         if ( media.src.match(/^blob:/) ) {
             media.play();
@@ -240,10 +237,8 @@
 
     function processForm(e) {
         if (e.preventDefault) e.preventDefault();
-        console.log("form submitted");
         var form = document.getElementById('mainform');
         var values = extractFormValues(form);
-        console.log(values);
         sendMessage('submit', values);
         return false;
     };

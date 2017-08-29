@@ -2,7 +2,6 @@
 docReady(function() {
     var face = FB.face == 0 ? 'question' : 'answer';
     if ( face == 'answer' && FB.card.context !== undefined ) {
-        console.log(FB.card);
         var answers = FB.card.context.typedAnswers;
         if ( answers !== undefined ) {
             for ( var key in answers ) {

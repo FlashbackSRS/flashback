@@ -134,14 +134,11 @@ func (c *Card) Action(ctx context.Context, face *int, startTime time.Time, query
 	if err != nil {
 		return false, err
 	}
-	if done {
-		db, err := c.repo.userDB(ctx)
-		if err != nil {
-			return false, err
-		}
-		return true, saveDoc(ctx, db, c.Card)
+	db, err := c.repo.userDB(ctx)
+	if err != nil {
+		return false, err
 	}
-	return false, nil
+	return done, saveDoc(ctx, db, c.Card)
 }
 
 var now = time.Now
@@ -177,7 +174,7 @@ func getCardsFromView(ctx context.Context, db querier, view string, limit, offse
 	defer func() { _ = rows.Close() }()
 	cards := make([]*fb.Card, 0, limit)
 	var count int
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 	for rows.Next() {
 		count++
 		card := &fb.Card{}
@@ -204,7 +201,7 @@ func getCardsFromView(ctx context.Context, db querier, view string, limit, offse
 		}
 	}
 	if rows.TotalRows() > int64(limit+offset) {
-		log.Debugf("%d total rows > %d, reading more\n", rows.TotalRows(), limit+offset)
+		log.Debugf("Read %d of %d, %d total rows > %d, reading more\n", len(cards), limit, rows.TotalRows(), limit+offset)
 		more, err := getCardsFromView(ctx, db, view, limit-len(cards), offset+count)
 		return append(cards, more...), err
 	}
