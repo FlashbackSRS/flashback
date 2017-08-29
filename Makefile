@@ -96,4 +96,4 @@ cordova-www: www
 	cat www/index.html | sed -e 's/<!-- Cordova Here -->/<script src="cordova.js"><\/script>/' > www/cordova.html
 
 generate:
-	go generate $(go list ./... | grep -v /vendor/)
+	go generate $$(go list ./... | grep -v /vendor/)
