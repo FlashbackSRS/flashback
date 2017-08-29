@@ -5,8 +5,6 @@ SVG_FILES = $(shell find webclient/images/ -type f -name '*.svg')
 WEBP_FILES = $(shell find webclient/images/ -type f -name '*.webp')
 I18N_FILES = $(wildcard translations/*.all.json)
 
-COUCH_SERVER = $(shell echo $$FLASHBACK_SERVERx | sed -e 's|//.*@|//|')
-
 server: www
 	go run ./server/*
 
