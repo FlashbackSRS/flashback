@@ -5,6 +5,11 @@ dist: trusty
 go:
     - 1.9.x
 
+env:
+    global:
+        - FLASHBACK_FACEBOOK_ID=12345
+        - FLASHBACK_SERVER=http://foo.com/
+
 before_install:
     # To install the latest version of Node.js
     - curl -sL https://deb.nodesource.com/setup_6.x | sudo -E bash -

@@ -83,12 +83,21 @@ images: $(PNG_FILES) $(WEBP_FILES) $(SVG_FILES) webclient/images/favicon.ico
 	cp webclient/images/favicon.ico www
 
 .PHONY: www
-www: javascript css images $(HTML_FILES) $(I18N_FILES) generate
+www: javascript css images $(HTML_FILES) $(I18N_FILES) generate check-env
 	mkdir -p www/translations
 	cp $(HTML_FILES) www
 	cp $(I18N_FILES) www/translations
 	sed -i -e 's|__API_SERVER__|$(FLASHBACK_SERVER)|g' www/index.html
 	sed -i -e 's|__FACEBOOK_ID__|$(FLASHBACK_FACEBOOK_ID)|g' www/index.html
+
+check-env:
+ifndef FLASHBACK_SERVER
+    $(error FLASHBACK_SERVER is undefined)
+endif
+ifndef FLASHBACK_FACEBOOK_ID
+    $(error FLASHBACK_FACEBOOK_ID is undefined)
+endif
+
 
 cordova-www: www
 	cat www/index.html | sed -e 's/<!-- Cordova Here -->/<script src="cordova.js"><\/script>/' > www/cordova.html
