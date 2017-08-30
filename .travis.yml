@@ -1,20 +1,19 @@
 language: go
 sudo: required
 dist: trusty
-addons:
-  apt:
-    sources:
-      - sourceline: 'ppa:masterminds/glide'
-    packages:
-      - glide
 
 go:
     - 1.9.x
 
+env:
+    global:
+        - FLASHBACK_FACEBOOK_ID=12345
+        - FLASHBACK_SERVER=http://foo.com/
+
 before_install:
     # To install the latest version of Node.js
     - curl -sL https://deb.nodesource.com/setup_6.x | sudo -E bash -
-    - sudo apt-get install nodejs glide
+    - sudo apt-get install nodejs
     # To ensure the default version of node/npm isn't used
     - rm -rf /home/travis/.nvm/v0.10.36 $HOME/.npmrc $HOME/.node-gyp
     - sudo npm install --global node-gyp
@@ -25,7 +24,6 @@ before_install:
     - go get -u github.com/jteeuwen/go-bindata/...
 
 install:
-    - glide update
     - go generate $(go list ./... | grep -v /vendor/)
 
 script:
