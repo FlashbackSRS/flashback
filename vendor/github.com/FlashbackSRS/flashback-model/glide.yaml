@@ -1,0 +1,12 @@
+package: github.com/FlashbackSRS/flashback-model
+import:
+- package: github.com/pborman/uuid
+  version: ^1.1.0
+- package: github.com/pkg/errors
+  version: ^0.8.0
+testImport:
+- package: github.com/flimzy/diff
+  version: ^0.1.1
+- package: github.com/flimzy/testify
+  subpackages:
+  - require

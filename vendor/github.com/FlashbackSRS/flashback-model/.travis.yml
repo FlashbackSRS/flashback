@@ -1,0 +1,33 @@
+language: go
+sudo: required
+dist: trusty
+
+go:
+    - 1.8.x
+
+addons:
+    apt:
+        sources:
+            - sourceline: 'ppa:masterminds/glide'
+        packages:
+            - glide
+
+before_install:
+    # To install the latest version of Node.js
+    - curl -sL https://deb.nodesource.com/setup_6.x | sudo -E bash -
+    - sudo apt-get install nodejs
+    # To ensure the default version of node/npm isn't used
+    - rm -rf /home/travis/.nvm/v0.10.36 $HOME/.npmrc $HOME/.node-gyp
+    - sudo npm install --global node-gyp
+    - go get -u github.com/gopherjs/gopherjs
+    # Provide syscall support for the GopherJS tests
+    - ( cd $GOPATH/src/github.com/gopherjs/gopherjs/node-syscall && node-gyp rebuild && mkdir -p ~/.node_libraries/ && cp build/Release/syscall.node ~/.node_libraries/syscall.node )
+
+install:
+    - npm install
+    - glide update
+    - go get -u github.com/gopherjs/gopherjs
+    - go get -u gopkg.in/alecthomas/gometalinter.v1 && gometalinter.v1 --install
+
+script:
+    - ./travis/test.sh

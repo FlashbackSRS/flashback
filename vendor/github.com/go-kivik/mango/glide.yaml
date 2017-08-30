@@ -1,0 +1,4 @@
+package: github.com/go-kivik/mango
+import: []
+testImport:
+- package: github.com/flimzy/diff

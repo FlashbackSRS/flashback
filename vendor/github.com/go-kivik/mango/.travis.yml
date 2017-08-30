@@ -1,0 +1,23 @@
+language: go
+
+addons:
+    apt:
+        sources:
+            - sourceline: 'ppa:masterminds/glide'
+        packages:
+            - glide
+
+go:
+    - 1.7.x
+    - 1.8.x
+    - master
+
+matrix:
+    allow_failures:
+        - go: master
+
+install:
+    - ./travis/install.sh
+
+script:
+    - ./travis/test.sh
