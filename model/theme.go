@@ -66,6 +66,7 @@ func (m *fbModel) Template(ctx context.Context) (*template.Template, error) {
 
 	// Rename to match the masterTemplate expectation
 	templates["template.html"] = templates[mainTemplate]
+	templates["style.css"] = templates[mainCSS]
 	delete(templates, mainTemplate)
 	delete(templates, mainCSS)
 
@@ -82,11 +83,6 @@ func (m *fbModel) Template(ctx context.Context) (*template.Template, error) {
 		content := fmt.Sprintf("{{define \"%s\"}}%s{{end}}", tmplName, t)
 		if _, err := tmpl.Parse(content); err != nil {
 			return nil, errors.Wrapf(err, "Error parsing template file `%s`", filename)
-		}
-	}
-	if css, ok := m.Theme.Files.GetFile(mainCSS); ok {
-		if _, err := tmpl.Parse(fmt.Sprintf(`{{define "style.css"}}%s{{end}}`, css.Content)); err != nil {
-			return nil, errors.Wrapf(err, "failed to parse "+mainCSS)
 		}
 	}
 	return tmpl, nil
