@@ -152,13 +152,23 @@
         // Create a 'play button' widget for the first media element (which will
         // control all other ones, too)
         var playButton = document.createTextNode("▶");
+        playButton.id = "playButton";
         media[0].parentNode.insertBefore(playButton, media[0].nextSibling)
 
         // And listen for keypress to replay audio
         document.onkeypress = function (e) {
+            if (document.activeElement.tagName == 'INPUT') {
+                return;
+            }
             if (e.key == 'r' || e.key == 'R') {
                 playWhenReady(media[0]);
             }
+        };
+        document.body.onclick = function(e) {
+            if (e.target.tagName == 'INPUT') {
+                return;
+            }
+            playWhenReady(media[0]);
         };
 
         // Install 'ended' event handlers on all but the last media file, which
