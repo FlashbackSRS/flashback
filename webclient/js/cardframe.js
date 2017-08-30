@@ -149,6 +149,10 @@
         if (media.length == 0) {
             return;
         }
+        // Create a 'play button' widget for the first media element (which will
+        // control all other ones, too)
+        var playButton = document.createTextNode("▶");
+        media[0].parentNode.insertBefore(playButton, media[0].nextSibling)
         // Install 'ended' event handlers on all but the last media file, which
         // will trigger the following one to play.
         for (var i=0; i < media.length-1; i++) {
