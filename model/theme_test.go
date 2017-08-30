@@ -142,7 +142,7 @@ var theme1 = func() *fb.Theme {
             },
             "$main.css": {
                 "content_type": "text/css",
-                "data": "LyogYW4gZW1wdHkgQ1NTIGZpbGUgKi8="
+                "data": "Zm9vCg=="
             }
         },
         "files": [
@@ -243,7 +243,7 @@ func TestModelTemplate(t *testing.T) {
 			name:    "invalid css",
 			theme:   theme2,
 			modelID: 0,
-			err:     "failed to parse $main.css: template: template:2: unexpected unclosed action in command",
+			err:     "Error parsing template file `style.css`: template: template:2: unexpected unclosed action in command",
 		},
 		{
 			name:    "single anki template",
@@ -266,7 +266,8 @@ var FB = {
 </script>
 <script type="text/javascript" src="js/cardframe.js"></script>
 <script type="text/javascript"></script>
-<style> </style>
+<style>foo
+</style>
 </head>
 <body>Boring template
 </body>
