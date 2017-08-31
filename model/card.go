@@ -157,9 +157,22 @@ const (
 )
 
 func getCardsFromView(ctx context.Context, db querier, view string, limit, offset int) ([]*fb.Card, error) {
+	cards, readRows, totalRows, err := queryView(ctx, db, view, limit, offset)
+	if err != nil {
+		return nil, err
+	}
+	if totalRows > limit+offset {
+		log.Debugf("Read %d of %d, %d total rows > %d, reading more\n", len(cards), limit, totalRows, limit+offset)
+		more, err := getCardsFromView(ctx, db, view, limit-len(cards), offset+readRows)
+		return append(cards, more...), err
+	}
+	return cards, nil
+}
+
+func queryView(ctx context.Context, db querier, view string, limit, offset int) (cards []*fb.Card, readRows, totalRows int, err error) {
 	defer profile("getCardsFromView: " + view)()
 	if limit <= 0 {
-		return nil, errors.New("invalid limit")
+		return nil, 0, 0, errors.New("invalid limit")
 	}
 	log.Debugf("Trying to fetch %d (%d) %s cards\n", limit, offset, view)
 	rows, err := db.Query(context.TODO(), "index", view, map[string]interface{}{
@@ -169,17 +182,17 @@ func getCardsFromView(ctx context.Context, db querier, view string, limit, offse
 		"sort":         map[string]string{"due": "desc", "created": "asc"},
 	})
 	if err != nil {
-		return nil, errors.Wrap(err, "query failed")
+		return nil, 0, 0, errors.Wrap(err, "query failed")
 	}
 	defer func() { _ = rows.Close() }()
-	cards := make([]*fb.Card, 0, limit)
+	cards = make([]*fb.Card, 0, limit)
 	var count int
 	defer func() { _ = rows.Close() }()
 	for rows.Next() {
 		count++
 		card := &fb.Card{}
 		if err := rows.ScanDoc(card); err != nil {
-			return nil, err
+			return nil, count, 0, err
 		}
 		if card.BuriedUntil.After(fb.Due(now())) {
 			continue
@@ -197,15 +210,10 @@ func getCardsFromView(ctx context.Context, db querier, view string, limit, offse
 		cards = append(cards, card)
 		if len(cards) == limit {
 			log.Debugf("Got %d cards, early exiting", len(cards))
-			return cards, nil
+			return cards, count, 0, nil
 		}
 	}
-	if rows.TotalRows() > int64(limit+offset) {
-		log.Debugf("Read %d of %d, %d total rows > %d, reading more\n", len(cards), limit, rows.TotalRows(), limit+offset)
-		more, err := getCardsFromView(ctx, db, view, limit-len(cards), offset+count)
-		return append(cards, more...), err
-	}
-	return cards, nil
+	return cards, count, int(rows.TotalRows()), nil
 }
 
 // cardPriority returns a number 0 or greater, as a priority to be used in
