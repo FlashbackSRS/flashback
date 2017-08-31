@@ -156,12 +156,12 @@ const (
 	oldBatchSize = 90
 )
 
-func getCardsFromView(ctx context.Context, db querier, view string, limit int) ([]*fb.Card, error) {
+func getCardsFromView(ctx context.Context, db querier, view string, limit int) ([]*cardSchedule, error) {
 	defer profile("getCardsFromView: " + view)()
 	if limit <= 0 {
 		return nil, errors.New("invalid limit")
 	}
-	cards := make([]*fb.Card, 0, limit)
+	cards := make([]*cardSchedule, 0, limit)
 	offset := 0
 	for i := 0; len(cards) < limit && i < 100; i++ {
 		result, readRows, totalRows, err := queryView(ctx, db, view, limit, offset)
@@ -182,7 +182,7 @@ func getCardsFromView(ctx context.Context, db querier, view string, limit int) (
 	return cards, nil
 }
 
-func queryView(ctx context.Context, db querier, view string, limit, offset int) (cards []*fb.Card, readRows, totalRows int, err error) {
+func queryView(ctx context.Context, db querier, view string, limit, offset int) (cards []*cardSchedule, readRows, totalRows int, err error) {
 	defer profile("queryView: " + view)()
 	if limit <= 0 {
 		return nil, 0, 0, errors.New("invalid limit")
@@ -198,12 +198,12 @@ func queryView(ctx context.Context, db querier, view string, limit, offset int) 
 		return nil, 0, 0, errors.Wrap(err, "query failed")
 	}
 	defer func() { _ = rows.Close() }()
-	cards = make([]*fb.Card, 0, limit)
+	cards = make([]*cardSchedule, 0, limit)
 	var count int
 	defer func() { _ = rows.Close() }()
 	for rows.Next() {
 		count++
-		card := &fb.Card{}
+		card := &cardSchedule{}
 		if err := rows.ScanDoc(card); err != nil {
 			return nil, count, 0, err
 		}
@@ -234,7 +234,7 @@ func cardPriority(due fb.Due, interval fb.Interval, now time.Time) float64 {
 
 var rnd = rand.New(rand.NewSource(time.Now().UnixNano()))
 
-func selectWeightedCard(cards []*fb.Card) string {
+func selectWeightedCard(cards []*cardSchedule) string {
 	switch len(cards) {
 	case 0:
 		return ""
@@ -334,9 +334,16 @@ func (c *Card) fetch(ctx context.Context, client kivikClient) error {
 	return c.note.SetModel(model)
 }
 
+type cardSchedule struct {
+	ID          string      `json:"_id"`
+	Interval    fb.Interval `json:"interval"`
+	Due         fb.Due      `json:"due"`
+	BuriedUntil fb.Due      `json:"buriedUntil"`
+}
+
 func getCardToStudy(ctx context.Context, db queryGetter) (*fb.Card, error) {
 	defer profile("getCardToStudy")()
-	var newCards, oldCards []*fb.Card
+	var newCards, oldCards []*cardSchedule
 	var newErr, oldErr error
 	var wg sync.WaitGroup
 	wg.Add(2)

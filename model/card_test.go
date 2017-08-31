@@ -98,16 +98,19 @@ func TestGetCardsFromView(t *testing.T) {
 			name:     "no results",
 			db:       &mockQuerier{rows: map[string]*mockRows{}},
 			limit:    1,
-			expected: []*fb.Card{},
+			expected: []*cardSchedule{},
 		},
 		{
 			name: "successful fetch",
 			db: &mockQuerier{rows: map[string]*mockRows{
 				"test": &mockRows{rows: storedCards},
 			}},
-			limit:    10,
-			view:     "test",
-			expected: expectedCards,
+			limit: 10,
+			view:  "test",
+			expected: []*cardSchedule{
+				{ID: "card-krsxg5baij2w4zdmmu.VGVzdCBOb3Rl.1"},
+				{ID: "card-krsxg5baij2w4zdmmu.VGVzdCBOb3Rl.2"},
+			},
 		},
 		{
 			name:  "limit 0",
@@ -120,9 +123,11 @@ func TestGetCardsFromView(t *testing.T) {
 			db: &mockQuerier{rows: map[string]*mockRows{
 				"test": &mockRows{rows: storedCards},
 			}},
-			limit:    1,
-			view:     "test",
-			expected: expectedCards[0:1],
+			limit: 1,
+			view:  "test",
+			expected: []*cardSchedule{
+				{ID: "card-krsxg5baij2w4zdmmu.VGVzdCBOb3Rl.1"},
+			},
 		},
 		{
 			name: "aggregate necessary",
@@ -135,9 +140,12 @@ func TestGetCardsFromView(t *testing.T) {
 					return append(rows, storedCards...)
 				}()},
 			}},
-			limit:    5,
-			view:     "test",
-			expected: expectedCards,
+			limit: 5,
+			view:  "test",
+			expected: []*cardSchedule{
+				{ID: "card-krsxg5baij2w4zdmmu.VGVzdCBOb3Rl.1"},
+				{ID: "card-krsxg5baij2w4zdmmu.VGVzdCBOb3Rl.2"},
+			},
 		},
 	}
 	for _, test := range tests {
@@ -147,7 +155,7 @@ func TestGetCardsFromView(t *testing.T) {
 			if err != nil {
 				return
 			}
-			if d := diff.AsJSON(test.expected, cards); d != nil {
+			if d := diff.Interface(test.expected, cards); d != nil {
 				t.Error(d)
 			}
 		})
@@ -220,52 +228,45 @@ func init() {
 func TestSelectWeightedCard(t *testing.T) {
 	type swcTest struct {
 		name     string
-		cards    []*fb.Card
-		expected int
+		cards    []*cardSchedule
+		expected string
 	}
 	tests := []swcTest{
 		{
-			name:     "no cards",
-			expected: -1,
+			name: "no cards",
 		},
 		{
 			name: "one card",
-			cards: []*fb.Card{
-				&fb.Card{Rev: "a"},
+			cards: []*cardSchedule{
+				{ID: "a"},
 			},
-			expected: 0,
+			expected: "a",
 		},
 		{
 			name: "two equal card",
-			cards: []*fb.Card{
-				&fb.Card{Rev: "a"},
-				&fb.Card{Rev: "b"},
+			cards: []*cardSchedule{
+				{ID: "a"},
+				{ID: "b"},
 			},
-			expected: 1,
+			expected: "b",
 		},
 		{
 			name: "three cards, different prios",
-			cards: []*fb.Card{
-				&fb.Card{Rev: "a"},
-				&fb.Card{Rev: "b"},
-				&fb.Card{
+			cards: []*cardSchedule{
+				{ID: "a"},
+				{ID: "b"},
+				{
 					Due:      parseDue(t, "2015-01-01"),
 					Interval: fb.Interval(20 * fb.Day),
-					Rev:      "c"},
+					ID:       "c"},
 			},
-			expected: 2,
+			expected: "c",
 		},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			result := selectWeightedCard(test.cards)
-			if test.expected == -1 {
-				if result != "" {
-					t.Errorf("Expected no result.")
-				}
-				return
-			}
-			if test.cards[test.expected].ID != result {
+			if test.expected != result {
 				t.Errorf("Unexpected result: %v", result)
 			}
 		})
