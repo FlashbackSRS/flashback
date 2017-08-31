@@ -200,11 +200,22 @@ func queryView(ctx context.Context, db querier, view string, limit, offset int) 
 	for rows.Next() {
 		count++
 		card := &cardSchedule{}
-		if err := rows.ScanValue(card); err != nil {
-			return nil, count, 0, err
+		if e := rows.ScanValue(card); e != nil {
+			return nil, count, 0, errors.Wrap(e, "ScanValue")
 		}
 		if card.BuriedUntil.After(fb.Due(now())) {
 			continue
+		}
+		var key []string
+		if e := rows.ScanKey(&key); e != nil {
+			return nil, count, 0, errors.Wrap(e, "ScanKey")
+		}
+		if key[0] != "" {
+			due, e := fb.ParseDue(key[0])
+			if e != nil {
+				return nil, count, 0, errors.Wrap(e, "ParseDue")
+			}
+			card.Due = due
 		}
 		card.ID = rows.ID()
 		cards = append(cards, card)

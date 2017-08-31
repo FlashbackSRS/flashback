@@ -46,7 +46,7 @@ func (db *mockQuerier) Query(ctx context.Context, ddoc, view string, options ...
 
 var storedCards = []string{
 	`{"type": "card", "_id": "card-krsxg5baij2w4zdmmu.VGVzdCBOb3Rl.0", "_rev": "1-6e1b6fb5352429cf3013eab5d692aac8", "created": "2016-07-31T15:08:24.730156517Z", "modified": "2016-07-15T15:07:24.730156517Z", "model": "theme-VGVzdCBUaGVtZQ/0", "buriedUntil": "2099-01-01"}`,
-	`{"type": "card", "_id": "card-krsxg5baij2w4zdmmu.VGVzdCBOb3Rl.1", "_rev": "1-6e1b6fb5352429cf3013eab5d692aac8", "created": "2016-07-31T15:08:24.730156517Z", "modified": "2016-07-31T15:08:24.730156517Z", "model": "theme-VGVzdCBUaGVtZQ/0"}`,
+	`{"type": "card", "_id": "card-krsxg5baij2w4zdmmu.VGVzdCBOb3Rl.1", "_rev": "1-6e1b6fb5352429cf3013eab5d692aac8", "created": "2016-07-31T15:08:24.730156517Z", "modified": "2016-07-31T15:08:24.730156517Z", "model": "theme-VGVzdCBUaGVtZQ/0", "due": "2019-01-01"}`,
 	`{"type": "card", "_id": "card-krsxg5baij2w4zdmmu.VGVzdCBOb3Rl.2", "_rev": "1-6e1b6fb5352429cf3013eab5d692aac8", "created": "2016-07-31T15:08:24.730156517Z", "modified": "2016-07-31T15:08:24.730156517Z", "model": "theme-VGVzdCBUaGVtZQ/0"}`,
 }
 
@@ -54,6 +54,12 @@ var storedCardValues = []string{
 	`{"buriedUntil": "2099-01-01"}`,
 	`{}`,
 	`{}`,
+}
+
+var storedCardKeys = []string{
+	`["2017-05-22 02:00:00","2016-05-04T19:04:23.000000126Z"]`,
+	`["2019-01-01","2015-03-17T04:33:51.00000029Z"]`,
+	`[null,"2017-05-28T18:32:44.000000978Z"]`,
 }
 
 var expectedCards = []map[string]interface{}{
@@ -64,6 +70,7 @@ var expectedCards = []map[string]interface{}{
 		"created":  "2016-07-31T15:08:24.730156517Z",
 		"modified": "2016-07-31T15:08:24.730156517Z",
 		"model":    "theme-VGVzdCBUaGVtZQ/0",
+		"due":      "2019-01-01",
 	},
 	{
 		"type":     "card",
@@ -98,7 +105,25 @@ func TestGetCardsFromView(t *testing.T) {
 			}},
 			limit: 1,
 			view:  "test",
-			err:   "invalid character 'o' in literal false (expecting 'a')",
+			err:   "ScanValue: invalid character 'o' in literal false (expecting 'a')",
+		},
+		{
+			name: "invalid key JSON",
+			db: &mockQuerier{rows: map[string]*mockRows{
+				"test": &mockRows{rows: []string{"foo"}, values: []string{"{}"}, keys: []string{"foo"}},
+			}},
+			limit: 1,
+			view:  "test",
+			err:   "ScanKey: invalid character 'o' in literal false (expecting 'a')",
+		},
+		{
+			name: "invalid due value",
+			db: &mockQuerier{rows: map[string]*mockRows{
+				"test": &mockRows{rows: []string{"foo"}, values: []string{"{}"}, keys: []string{`["foo"]`}},
+			}},
+			limit: 1,
+			view:  "test",
+			err:   "ParseDue: Unrecognized input: foo",
 		},
 		{
 			name:     "no results",
@@ -109,12 +134,12 @@ func TestGetCardsFromView(t *testing.T) {
 		{
 			name: "successful fetch",
 			db: &mockQuerier{rows: map[string]*mockRows{
-				"test": &mockRows{rows: storedCards, values: storedCardValues},
+				"test": &mockRows{rows: storedCards, values: storedCardValues, keys: storedCardKeys},
 			}},
 			limit: 10,
 			view:  "test",
 			expected: []*cardSchedule{
-				{ID: "card-krsxg5baij2w4zdmmu.VGVzdCBOb3Rl.1"},
+				{ID: "card-krsxg5baij2w4zdmmu.VGVzdCBOb3Rl.1", Due: parseDue(t, "2019-01-01")},
 				{ID: "card-krsxg5baij2w4zdmmu.VGVzdCBOb3Rl.2"},
 			},
 		},
@@ -127,12 +152,12 @@ func TestGetCardsFromView(t *testing.T) {
 		{
 			name: "limit reached",
 			db: &mockQuerier{rows: map[string]*mockRows{
-				"test": &mockRows{rows: storedCards, values: storedCardValues},
+				"test": &mockRows{rows: storedCards, values: storedCardValues, keys: storedCardKeys},
 			}},
 			limit: 1,
 			view:  "test",
 			expected: []*cardSchedule{
-				{ID: "card-krsxg5baij2w4zdmmu.VGVzdCBOb3Rl.1"},
+				{ID: "card-krsxg5baij2w4zdmmu.VGVzdCBOb3Rl.1", Due: parseDue(t, "2019-01-01")},
 			},
 		},
 		{
@@ -141,19 +166,22 @@ func TestGetCardsFromView(t *testing.T) {
 				"test": func() *mockRows {
 					rows := make([]string, 150)
 					values := make([]string, 150)
+					keys := make([]string, 150)
 					for i := 0; i < 150; i++ {
 						rows[i] = storedCards[0]
 						values[i] = storedCardValues[0]
+						keys[i] = storedCardKeys[0]
 					}
 					rows = append(rows, storedCards...)
 					values = append(values, storedCardValues...)
-					return &mockRows{rows: rows, values: values}
+					keys = append(keys, storedCardKeys...)
+					return &mockRows{rows: rows, values: values, keys: keys}
 				}(),
 			}},
 			limit: 5,
 			view:  "test",
 			expected: []*cardSchedule{
-				{ID: "card-krsxg5baij2w4zdmmu.VGVzdCBOb3Rl.1"},
+				{ID: "card-krsxg5baij2w4zdmmu.VGVzdCBOb3Rl.1", Due: parseDue(t, "2019-01-01")},
 				{ID: "card-krsxg5baij2w4zdmmu.VGVzdCBOb3Rl.2"},
 			},
 		},
@@ -363,6 +391,7 @@ func TestRepoGetCardToStudy(t *testing.T) {
 						q: &mockQuerier{rows: map[string]*mockRows{"newCards": &mockRows{
 							rows:   storedCards[1:2],
 							values: storedCardValues[1:2],
+							keys:   storedCardKeys[1:2],
 						}}},
 						card:  storedCards[1],
 						note:  `{"_id":"note-Zm9v", "theme":"theme-Zm9v", "created":"2017-01-01T01:01:01Z", "modified":"2017-01-01T01:01:01Z"}`,
@@ -404,20 +433,20 @@ func TestGetCardToStudy(t *testing.T) {
 			db: &mockQueryGetter{mockQuerier: &mockQuerier{rows: map[string]*mockRows{
 				"newCards": &mockRows{rows: []string{"invalid json"}, values: []string{"invalid json"}},
 			}}},
-			err: `newCards: invalid character 'i' looking for beginning of value`,
+			err: `newCards: ScanValue: invalid character 'i' looking for beginning of value`,
 		},
 		{
 			name: "old query failure",
 			db: &mockQueryGetter{mockQuerier: &mockQuerier{rows: map[string]*mockRows{
 				"oldCards": &mockRows{rows: []string{"invalid json"}, values: []string{"invalid json"}},
 			}}},
-			err: `oldCards: invalid character 'i' looking for beginning of value`,
+			err: `oldCards: ScanValue: invalid character 'i' looking for beginning of value`,
 		},
 		{
 			name: "one new card",
 			db: &mockQueryGetter{
 				mockQuerier: &mockQuerier{rows: map[string]*mockRows{
-					"newCards": &mockRows{rows: storedCards[1:2], values: storedCardValues[1:2]},
+					"newCards": &mockRows{rows: storedCards[1:2], values: storedCardValues[1:2], keys: storedCardKeys[1:2]},
 				}},
 				row: mockRow(storedCards[1]),
 			},
