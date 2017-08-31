@@ -136,7 +136,7 @@ func RouterInit() {
 	}
 
 	beforeTransition.HandleFunc(prefix+"/login.html", loginhandler.BeforeTransition(providers))
-	beforeTransition.HandleFunc(prefix+"/callback.html", loginhandler.BTCallback(repo))
+	beforeTransition.HandleFunc(prefix+"/callback.html", loginhandler.BTCallback(repo, providers))
 	beforeTransition.HandleFunc(prefix+"/logout.html", logouthandler.BeforeTransition(repo))
 	beforeTransition.HandleFunc(prefix+"/import.html", importhandler.BeforeTransition(repo))
 	beforeTransition.HandleFunc(prefix+"/study.html", studyhandler.BeforeTransition(repo))

@@ -300,6 +300,7 @@ func TestSchedule(t *testing.T) {
 				EaseFactor:  2.5,
 				Interval:    86400000000000,
 				Due:         fb.Due(now()).Add(86400000000000),
+				BuriedUntil: fb.Due(now()).Add(86400000000000),
 				ReviewCount: 1,
 			}},
 		},

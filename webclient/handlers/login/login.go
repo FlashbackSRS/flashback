@@ -6,6 +6,7 @@ import (
 	"context"
 	"fmt"
 	"net/url"
+	"strings"
 
 	"github.com/flimzy/go-cordova"
 	"github.com/flimzy/jqeventrouter"
@@ -71,7 +72,7 @@ func displayError(msg string) {
 	jQuery(".hide-until-load", container).Show()
 }
 
-func BTCallback(repo *model.Repo) jqeventrouter.HandlerFunc {
+func BTCallback(repo *model.Repo, providers map[string]string) jqeventrouter.HandlerFunc {
 	return func(event *jquery.Event, ui *js.Object, _ url.Values) bool {
 		log.Debug("Auth Callback")
 		provider, token, err := extractAuthToken(js.Global.Get("location").String())
@@ -81,7 +82,18 @@ func BTCallback(repo *model.Repo) jqeventrouter.HandlerFunc {
 		}
 		go func() {
 			if err := repo.Auth(context.TODO(), provider, token); err != nil {
-				displayError(err.Error())
+				msg := err.Error()
+				if strings.Contains(msg, "Session has expired on") {
+					for name, href := range providers {
+						if name == provider {
+							log.Debugf("Redirecting unauthenticated user to %s\n", href)
+							js.Global.Get("location").Call("replace", href)
+							event.StopImmediatePropagation()
+							return
+						}
+					}
+				}
+				displayError(msg)
 				return
 			}
 			fmt.Printf("Auth succeeded!\n")
