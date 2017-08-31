@@ -280,7 +280,7 @@ var FB = {
 			model := &fbModel{
 				Model: test.theme.Models[test.modelID],
 			}
-			result, err := model.Template(context.Background())
+			result, err := model.template(context.Background())
 			checkErr(t, test.err, err)
 			if err != nil {
 				return
@@ -462,5 +462,86 @@ func TestModelGetAttachment(t *testing.T) {
 				t.Error(d)
 			}
 		})
+	}
+}
+
+func TestTemplateCacheGet(t *testing.T) {
+	tests := []struct {
+		name     string
+		cache    templateCache
+		model    *fb.Model
+		expected *template.Template
+		cached   bool
+	}{
+		{
+			name:  "empty cache",
+			cache: make(templateCache),
+			model: &fb.Model{
+				Theme: &fb.Theme{ID: "theme-abcd"},
+			},
+			cached: false,
+		},
+		{
+			name: "valid cache",
+			cache: templateCache{
+				"theme-abcd 0": templateCacheItem{
+					rev:  "1-xxx",
+					tmpl: &template.Template{},
+				},
+			},
+			model: &fb.Model{
+				Theme: &fb.Theme{ID: "theme-abcd", Rev: "1-xxx"},
+			},
+			cached:   true,
+			expected: &template.Template{},
+		},
+		{
+			name: "different rev cache",
+			cache: templateCache{
+				"theme-abcd 0": templateCacheItem{
+					rev:  "1-xxx",
+					tmpl: &template.Template{},
+				},
+			},
+			model: &fb.Model{
+				Theme: &fb.Theme{ID: "theme-abcd", Rev: "2-xxx"},
+			},
+			cached: false,
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			result, cached := test.cache.Get(test.model)
+			if cached != test.cached {
+				t.Errorf("Expected: %t\n  Actual: %t\n", test.cached, cached)
+			}
+			if !cached {
+				return
+			}
+			if d := diff.Interface(test.expected, result); d != nil {
+				t.Error(d)
+			}
+		})
+	}
+}
+
+func TestTemplateCacheSet(t *testing.T) {
+	c := make(templateCache)
+	expected := templateCache(map[string]templateCacheItem{
+		"theme-abcd 2": templateCacheItem{
+			rev:  "3-xxx",
+			tmpl: &template.Template{},
+		},
+	})
+	m := &fb.Model{
+		ID: 2,
+		Theme: &fb.Theme{
+			ID:  "theme-abcd",
+			Rev: "3-xxx",
+		},
+	}
+	c.Set(m, &template.Template{})
+	if d := diff.Interface(expected, c); d != nil {
+		t.Error(d)
 	}
 }

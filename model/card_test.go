@@ -604,8 +604,11 @@ func TestCardBody(t *testing.T) {
 			card: func() *Card {
 				theme, _ := fb.NewTheme("theme-Zm9v")
 				return &Card{
-					note:  &fbNote{},
-					model: &fbModel{Model: &fb.Model{Type: "basic", Files: theme.Attachments.NewView()}},
+					note: &fbNote{},
+					model: &fbModel{Model: &fb.Model{
+						Type: "basic", Files: theme.Attachments.NewView(),
+						Theme: &fb.Theme{ID: "theme-Zm9v"},
+					}},
 				}
 			}(),
 			err: "failed to generate template: main template '$template.0.html' not found in model",
