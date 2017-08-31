@@ -17,7 +17,7 @@ func Schedule(card *Card, answerDelay time.Duration, quality flashback.AnswerQua
 	if quality <= flashback.AnswerIncorrectEasy {
 		card.ReviewCount = 0
 	} else {
-		card.LastReview = time.Now()
+		card.LastReview = now().UTC()
 		card.ReviewCount++
 	}
 	return nil

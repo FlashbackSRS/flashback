@@ -6,6 +6,7 @@ import (
 
 	"github.com/FlashbackSRS/flashback"
 	fb "github.com/FlashbackSRS/flashback-model"
+	"github.com/flimzy/diff"
 )
 
 const floatTolerance = 0.00001
@@ -279,5 +280,68 @@ func TestAdjustEase(t *testing.T) {
 		if result != test.Expected {
 			t.Errorf("Unexpected Ease result for %f/%d\n\tExpected: %f\n\t  Actual: %f\n", test.Ease, test.Quality, test.Expected, result)
 		}
+	}
+}
+
+func TestSchedule(t *testing.T) {
+	tests := []struct {
+		name     string
+		card     *Card
+		quality  flashback.AnswerQuality
+		expected *Card
+		err      string
+	}{
+		{
+			name:    "new card, correct answer",
+			card:    &Card{Card: &fb.Card{}},
+			quality: flashback.AnswerCorrect,
+			expected: &Card{Card: &fb.Card{
+				LastReview:  now().UTC(),
+				EaseFactor:  2.5,
+				Interval:    86400000000000,
+				Due:         fb.Due(now()).Add(86400000000000),
+				ReviewCount: 1,
+			}},
+		},
+		{
+			name:    "new card, incorrect answer",
+			card:    &Card{Card: &fb.Card{}},
+			quality: flashback.AnswerBlackout,
+			expected: &Card{Card: &fb.Card{
+				EaseFactor:  1.7,
+				Interval:    600000000000,
+				Due:         fb.Due(now()).Add(600000000000),
+				ReviewCount: 0,
+			}},
+		},
+		{
+			name: "mature card, correct answer, bury for one day",
+			card: &Card{Card: &fb.Card{
+				EaseFactor:  2.5,
+				Interval:    10 * fb.Day,
+				ReviewCount: 5,
+				Due:         fb.Due(now()),
+			}},
+			quality: flashback.AnswerCorrect,
+			expected: &Card{Card: &fb.Card{
+				LastReview:  now().UTC(),
+				EaseFactor:  2.5,
+				Interval:    2159999988006912,
+				Due:         fb.Due(now()).Add(2159999988006912),
+				ReviewCount: 6,
+			}},
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			err := Schedule(test.card, time.Second, test.quality)
+			checkErr(t, test.err, err)
+			if err != nil {
+				return
+			}
+			if d := diff.Interface(test.expected, test.card); d != nil {
+				t.Error(d)
+			}
+		})
 	}
 }
