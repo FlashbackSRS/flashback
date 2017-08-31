@@ -139,28 +139,6 @@ func TestGetCardsFromView(t *testing.T) {
 			view:     "test",
 			expected: expectedCards,
 		},
-		{
-			name: "ignore card seen today",
-			db: &mockQuerier{rows: map[string]*mockRows{
-				"test": &mockRows{rows: []string{
-					`{"type": "card", "_id": "card-krsxg5baij2w4zdmmu.VGVzdCBOb3Rl.1", "_rev": "1-6e1b6fb5352429cf3013eab5d692aac8", "created": "2016-07-31T15:08:24.730156517Z", "modified": "2016-07-31T15:08:24.730156517Z", "model": "theme-VGVzdCBUaGVtZQ/0", "interval": 5, "lastReview": "2017-01-01T11:50:00Z"}`,
-				}},
-			}},
-			limit:    5,
-			view:     "test",
-			expected: []int{},
-		},
-		{
-			name: "skip same-day forward fuzzing",
-			db: &mockQuerier{rows: map[string]*mockRows{
-				"test": &mockRows{rows: []string{
-					`{"type": "card", "_id": "card-krsxg5baij2w4zdmmu.VGVzdCBOb3Rl.1", "_rev": "1-6e1b6fb5352429cf3013eab5d692aac8", "created": "2016-07-31T15:08:24.730156517Z", "modified": "2016-07-31T15:08:24.730156517Z", "model": "theme-VGVzdCBUaGVtZQ/0", "interval": -1800, "due": "2017-01-01 12:01:00"}`,
-				}},
-			}},
-			limit:    5,
-			view:     "test",
-			expected: []int{},
-		},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {

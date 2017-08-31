@@ -311,6 +311,7 @@ func TestSchedule(t *testing.T) {
 				EaseFactor:  1.7,
 				Interval:    600000000000,
 				Due:         fb.Due(now()).Add(600000000000),
+				BuriedUntil: fb.Due(now()).Add(600000000000),
 				ReviewCount: 0,
 			}},
 		},
@@ -325,6 +326,7 @@ func TestSchedule(t *testing.T) {
 			quality: flashback.AnswerCorrect,
 			expected: &Card{Card: &fb.Card{
 				LastReview:  now().UTC(),
+				BuriedUntil: fb.Due(now().UTC()).Add(fb.Day),
 				EaseFactor:  2.5,
 				Interval:    2159999988006912,
 				Due:         fb.Due(now()).Add(2159999988006912),

@@ -210,16 +210,6 @@ func queryView(ctx context.Context, db querier, view string, limit, offset int) 
 		if card.BuriedUntil.After(fb.Due(now())) {
 			continue
 		}
-		if card.Interval != 0 {
-			// Skip cards we already saw today, with an interval >= 1d; they would make no progress.
-			if card.Interval.Days() >= 1 && !time.Time(fb.On(now())).After(card.LastReview) {
-				continue
-			}
-			// Skip sub-day intervals that aren't due yet. We only allow forward-fuzzing for intervals > 1day
-			if card.Interval.Days() == 0 && card.Due.After(fb.Due(now())) {
-				continue
-			}
-		}
 		cards = append(cards, card)
 		if len(cards) == limit {
 			log.Debugf("Got %d cards, early exiting", len(cards))
