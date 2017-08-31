@@ -164,7 +164,7 @@ func getCardsFromView(ctx context.Context, db querier, view string, limit, offse
 	log.Debugf("Trying to fetch %d (%d) %s cards\n", limit, offset, view)
 	rows, err := db.Query(context.TODO(), "index", view, map[string]interface{}{
 		"limit":        limit,
-		"offset":       offset,
+		"skip":         offset,
 		"include_docs": true,
 		"sort":         map[string]string{"due": "desc", "created": "asc"},
 	})

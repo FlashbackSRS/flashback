@@ -34,7 +34,7 @@ func (db *mockQuerier) Query(ctx context.Context, ddoc, view string, options ...
 		return nil, db.err
 	}
 	limit, _ := options[0]["limit"].(int)
-	offset, _ := options[0]["offset"].(int)
+	offset, _ := options[0]["skip"].(int)
 	rows, ok := db.rows[view]
 	if !ok {
 		return &mockRows{}, nil
