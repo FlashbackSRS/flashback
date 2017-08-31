@@ -164,7 +164,7 @@ func TestGetCardsFromView(t *testing.T) {
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			cards, err := getCardsFromView(context.Background(), test.db, test.view, test.limit, 0)
+			cards, err := getCardsFromView(context.Background(), test.db, test.view, test.limit)
 			checkErr(t, test.err, err)
 			if err != nil {
 				return

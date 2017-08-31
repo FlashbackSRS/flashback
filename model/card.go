@@ -156,21 +156,34 @@ const (
 	oldBatchSize = 90
 )
 
-func getCardsFromView(ctx context.Context, db querier, view string, limit, offset int) ([]*fb.Card, error) {
-	cards, readRows, totalRows, err := queryView(ctx, db, view, limit, offset)
-	if err != nil {
-		return nil, err
+func getCardsFromView(ctx context.Context, db querier, view string, limit int) ([]*fb.Card, error) {
+	defer profile("getCardsFromView: " + view)()
+	if limit <= 0 {
+		return nil, errors.New("invalid limit")
 	}
-	if totalRows > limit+offset {
-		log.Debugf("Read %d of %d, %d total rows > %d, reading more\n", len(cards), limit, totalRows, limit+offset)
-		more, err := getCardsFromView(ctx, db, view, limit-len(cards), offset+readRows)
-		return append(cards, more...), err
+	cards := make([]*fb.Card, 0, limit)
+	offset := 0
+	for i := 0; len(cards) < limit && i < 100; i++ {
+		result, readRows, totalRows, err := queryView(ctx, db, view, limit, offset)
+		if err != nil {
+			return nil, err
+		}
+		if len(result) > 0 {
+			cards = append(cards, result...)
+		}
+		if len(cards) == limit {
+			break
+		}
+		offset = offset + readRows
+		if totalRows <= offset {
+			break
+		}
 	}
 	return cards, nil
 }
 
 func queryView(ctx context.Context, db querier, view string, limit, offset int) (cards []*fb.Card, readRows, totalRows int, err error) {
-	defer profile("getCardsFromView: " + view)()
+	defer profile("queryView: " + view)()
 	if limit <= 0 {
 		return nil, 0, 0, errors.New("invalid limit")
 	}
@@ -338,12 +351,12 @@ func getCardToStudy(ctx context.Context, db querier) (*fb.Card, error) {
 	var wg sync.WaitGroup
 	wg.Add(2)
 	go func() {
-		newCards, newErr = getCardsFromView(ctx, db, "newCards", newBatchSize, 0)
+		newCards, newErr = getCardsFromView(ctx, db, "newCards", newBatchSize)
 		newErr = errors.Wrap(newErr, "newCards")
 		wg.Done()
 	}()
 	go func() {
-		oldCards, oldErr = getCardsFromView(ctx, db, "oldCards", oldBatchSize, 0)
+		oldCards, oldErr = getCardsFromView(ctx, db, "oldCards", oldBatchSize)
 		oldErr = errors.Wrap(oldErr, "oldCards")
 		wg.Done()
 	}()
