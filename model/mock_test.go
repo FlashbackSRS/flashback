@@ -39,9 +39,9 @@ func (db *mockAllDocer) AllDocs(_ context.Context, options ...kivik.Options) (ki
 }
 
 type mockRows struct {
-	rows     []string
-	i, limit int
-	err      error
+	rows, values, keys []string
+	i, limit           int
+	err                error
 }
 
 var _ kivikRows = &mockRows{}
@@ -63,18 +63,21 @@ func (r *mockRows) ID() string {
 	_ = json.Unmarshal([]byte(r.rows[r.i-1]), &doc)
 	return doc.ID
 }
-func (r *mockRows) ScanDoc(d interface{}) error {
+func (r *mockRows) scan(d interface{}, src []string) error {
 	if r.limit > 0 && r.i-1 > r.limit {
 		return io.EOF
 	}
-	if r.i-1 >= len(r.rows) {
+	if r.i-1 >= len(src) {
 		return io.EOF
 	}
-	if err := json.Unmarshal([]byte(r.rows[r.i-1]), &d); err != nil {
+	if err := json.Unmarshal([]byte(src[r.i-1]), &d); err != nil {
 		return err
 	}
 	return nil
 }
+func (r *mockRows) ScanDoc(d interface{}) error   { return r.scan(d, r.rows) }
+func (r *mockRows) ScanValue(d interface{}) error { return r.scan(d, r.values) }
+func (r *mockRows) ScanKey(d interface{}) error   { return r.scan(d, r.keys) }
 
 type mockBulkDocer struct {
 	results kivikBulkResults

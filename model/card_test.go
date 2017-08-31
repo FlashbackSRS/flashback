@@ -50,6 +50,12 @@ var storedCards = []string{
 	`{"type": "card", "_id": "card-krsxg5baij2w4zdmmu.VGVzdCBOb3Rl.2", "_rev": "1-6e1b6fb5352429cf3013eab5d692aac8", "created": "2016-07-31T15:08:24.730156517Z", "modified": "2016-07-31T15:08:24.730156517Z", "model": "theme-VGVzdCBUaGVtZQ/0"}`,
 }
 
+var storedCardValues = []string{
+	`{"buriedUntil": "2099-01-01"}`,
+	`{}`,
+	`{}`,
+}
+
 var expectedCards = []map[string]interface{}{
 	{
 		"type":     "card",
@@ -86,9 +92,9 @@ func TestGetCardsFromView(t *testing.T) {
 			err:   "query failed: query failed",
 		},
 		{
-			name: "invalid JSON",
+			name: "invalid value JSON",
 			db: &mockQuerier{rows: map[string]*mockRows{
-				"test": &mockRows{rows: []string{"foo"}},
+				"test": &mockRows{rows: []string{"foo"}, values: []string{"foo"}},
 			}},
 			limit: 1,
 			view:  "test",
@@ -103,7 +109,7 @@ func TestGetCardsFromView(t *testing.T) {
 		{
 			name: "successful fetch",
 			db: &mockQuerier{rows: map[string]*mockRows{
-				"test": &mockRows{rows: storedCards},
+				"test": &mockRows{rows: storedCards, values: storedCardValues},
 			}},
 			limit: 10,
 			view:  "test",
@@ -121,7 +127,7 @@ func TestGetCardsFromView(t *testing.T) {
 		{
 			name: "limit reached",
 			db: &mockQuerier{rows: map[string]*mockRows{
-				"test": &mockRows{rows: storedCards},
+				"test": &mockRows{rows: storedCards, values: storedCardValues},
 			}},
 			limit: 1,
 			view:  "test",
@@ -132,13 +138,17 @@ func TestGetCardsFromView(t *testing.T) {
 		{
 			name: "aggregate necessary",
 			db: &mockQuerier{rows: map[string]*mockRows{
-				"test": &mockRows{rows: func() []string {
+				"test": func() *mockRows {
 					rows := make([]string, 150)
+					values := make([]string, 150)
 					for i := 0; i < 150; i++ {
 						rows[i] = storedCards[0]
+						values[i] = storedCardValues[0]
 					}
-					return append(rows, storedCards...)
-				}()},
+					rows = append(rows, storedCards...)
+					values = append(values, storedCardValues...)
+					return &mockRows{rows: rows, values: values}
+				}(),
 			}},
 			limit: 5,
 			view:  "test",
@@ -350,7 +360,10 @@ func TestRepoGetCardToStudy(t *testing.T) {
 				user: "bob",
 				local: &gctsClient{
 					db: &gctsDB{
-						q:     &mockQuerier{rows: map[string]*mockRows{"newCards": &mockRows{rows: storedCards[1:2]}}},
+						q: &mockQuerier{rows: map[string]*mockRows{"newCards": &mockRows{
+							rows:   storedCards[1:2],
+							values: storedCardValues[1:2],
+						}}},
 						card:  storedCards[1],
 						note:  `{"_id":"note-Zm9v", "theme":"theme-Zm9v", "created":"2017-01-01T01:01:01Z", "modified":"2017-01-01T01:01:01Z"}`,
 						theme: `{"_id":"theme-Zm9v", "created":"2017-01-01T01:01:01Z", "modified":"2017-01-01T01:01:01Z", "_attachments":{}, "files":[], "modelSequence":1, "models": [{"id":0, "files":[], "modelType":"foo"}]}`,
@@ -389,14 +402,14 @@ func TestGetCardToStudy(t *testing.T) {
 		{
 			name: "new query failure",
 			db: &mockQueryGetter{mockQuerier: &mockQuerier{rows: map[string]*mockRows{
-				"newCards": &mockRows{rows: []string{"invalid json"}},
+				"newCards": &mockRows{rows: []string{"invalid json"}, values: []string{"invalid json"}},
 			}}},
 			err: `newCards: invalid character 'i' looking for beginning of value`,
 		},
 		{
 			name: "old query failure",
 			db: &mockQueryGetter{mockQuerier: &mockQuerier{rows: map[string]*mockRows{
-				"oldCards": &mockRows{rows: []string{"invalid json"}},
+				"oldCards": &mockRows{rows: []string{"invalid json"}, values: []string{"invalid json"}},
 			}}},
 			err: `oldCards: invalid character 'i' looking for beginning of value`,
 		},
@@ -404,7 +417,7 @@ func TestGetCardToStudy(t *testing.T) {
 			name: "one new card",
 			db: &mockQueryGetter{
 				mockQuerier: &mockQuerier{rows: map[string]*mockRows{
-					"newCards": &mockRows{rows: storedCards[1:2]},
+					"newCards": &mockRows{rows: storedCards[1:2], values: storedCardValues[1:2]},
 				}},
 				row: mockRow(storedCards[1]),
 			},

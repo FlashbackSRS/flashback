@@ -186,10 +186,9 @@ func queryView(ctx context.Context, db querier, view string, limit, offset int) 
 	defer profile("queryView: " + view)()
 	log.Debugf("Trying to fetch %d (%d) %s cards\n", limit, offset, view)
 	rows, err := db.Query(context.TODO(), "index", view, map[string]interface{}{
-		"limit":        limit,
-		"skip":         offset,
-		"include_docs": true,
-		"sort":         map[string]string{"due": "desc", "created": "asc"},
+		"limit": limit,
+		"skip":  offset,
+		"sort":  map[string]string{"due": "desc", "created": "asc"},
 	})
 	if err != nil {
 		return nil, 0, 0, errors.Wrap(err, "query failed")
@@ -201,12 +200,13 @@ func queryView(ctx context.Context, db querier, view string, limit, offset int) 
 	for rows.Next() {
 		count++
 		card := &cardSchedule{}
-		if err := rows.ScanDoc(card); err != nil {
+		if err := rows.ScanValue(card); err != nil {
 			return nil, count, 0, err
 		}
 		if card.BuriedUntil.After(fb.Due(now())) {
 			continue
 		}
+		card.ID = rows.ID()
 		cards = append(cards, card)
 		if len(cards) == limit {
 			log.Debugf("Got %d cards, early exiting", len(cards))
