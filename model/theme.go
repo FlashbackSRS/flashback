@@ -6,6 +6,7 @@ import (
 	"html/template"
 	"strings"
 
+	"github.com/flimzy/log"
 	"github.com/pkg/errors"
 
 	fb "github.com/FlashbackSRS/flashback-model"
@@ -46,10 +47,54 @@ func (m *fbModel) getAttachment(ctx context.Context, filename string) (*fb.Attac
 	return att, nil
 }
 
+type templateCacheItem struct {
+	rev  string
+	tmpl *template.Template
+}
+
+type templateCache map[string]templateCacheItem
+
+func templateCacheKey(m *fb.Model) string {
+	return fmt.Sprintf("%s %d", m.Theme.ID, m.ID)
+}
+
+func (c templateCache) Get(m *fb.Model) (*template.Template, bool) {
+	key := templateCacheKey(m)
+	tmpl, ok := c[key]
+	if !ok || tmpl.rev != m.Theme.Rev {
+		return nil, false
+	}
+	return tmpl.tmpl, true
+}
+
+func (c templateCache) Set(m *fb.Model, tmpl *template.Template) {
+	key := templateCacheKey(m)
+	c[key] = templateCacheItem{
+		rev:  m.Theme.Rev,
+		tmpl: tmpl,
+	}
+}
+
+var globalTemplateCache = make(templateCache)
+
 const mainCSS = "$main.css"
 
 func (m *fbModel) Template(ctx context.Context) (*template.Template, error) {
 	defer profile("Template")()
+	if tmpl, cached := globalTemplateCache.Get(m.Model); cached {
+		log.Debugf("Returning cached template")
+		return tmpl, nil
+	}
+	tmpl, err := m.template(ctx)
+	if err != nil {
+		return nil, err
+	}
+	globalTemplateCache.Set(m.Model, tmpl)
+	return tmpl, nil
+}
+
+func (m *fbModel) template(ctx context.Context) (*template.Template, error) {
+	defer profile("template")()
 	mc, err := GetModelController(m.Type)
 	if err != nil {
 		return nil, err
