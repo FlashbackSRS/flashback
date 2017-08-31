@@ -3,7 +3,6 @@ package model
 import (
 	"context"
 	"errors"
-	"fmt"
 	"testing"
 	"time"
 
@@ -209,9 +208,6 @@ func TestSetBurials(t *testing.T) {
 			result := setBurials(test.interval, test.cards)
 			if d := diff.Interface(test.expected, result); d != nil {
 				t.Error(d)
-			}
-			for _, x := range result {
-				fmt.Printf("%v\n", x.BuriedUntil)
 			}
 		})
 	}
