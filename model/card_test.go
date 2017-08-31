@@ -34,7 +34,7 @@ func (db *mockQuerier) Query(ctx context.Context, ddoc, view string, options ...
 		return nil, db.err
 	}
 	limit, _ := options[0]["limit"].(int)
-	offset, _ := options[0]["offset"].(int)
+	offset, _ := options[0]["skip"].(int)
 	rows, ok := db.rows[view]
 	if !ok {
 		return &mockRows{}, nil
@@ -46,8 +46,20 @@ func (db *mockQuerier) Query(ctx context.Context, ddoc, view string, options ...
 
 var storedCards = []string{
 	`{"type": "card", "_id": "card-krsxg5baij2w4zdmmu.VGVzdCBOb3Rl.0", "_rev": "1-6e1b6fb5352429cf3013eab5d692aac8", "created": "2016-07-31T15:08:24.730156517Z", "modified": "2016-07-15T15:07:24.730156517Z", "model": "theme-VGVzdCBUaGVtZQ/0", "buriedUntil": "2099-01-01"}`,
-	`{"type": "card", "_id": "card-krsxg5baij2w4zdmmu.VGVzdCBOb3Rl.1", "_rev": "1-6e1b6fb5352429cf3013eab5d692aac8", "created": "2016-07-31T15:08:24.730156517Z", "modified": "2016-07-31T15:08:24.730156517Z", "model": "theme-VGVzdCBUaGVtZQ/0"}`,
+	`{"type": "card", "_id": "card-krsxg5baij2w4zdmmu.VGVzdCBOb3Rl.1", "_rev": "1-6e1b6fb5352429cf3013eab5d692aac8", "created": "2016-07-31T15:08:24.730156517Z", "modified": "2016-07-31T15:08:24.730156517Z", "model": "theme-VGVzdCBUaGVtZQ/0", "due": "2019-01-01"}`,
 	`{"type": "card", "_id": "card-krsxg5baij2w4zdmmu.VGVzdCBOb3Rl.2", "_rev": "1-6e1b6fb5352429cf3013eab5d692aac8", "created": "2016-07-31T15:08:24.730156517Z", "modified": "2016-07-31T15:08:24.730156517Z", "model": "theme-VGVzdCBUaGVtZQ/0"}`,
+}
+
+var storedCardValues = []string{
+	`{"buriedUntil": "2099-01-01"}`,
+	`{}`,
+	`{}`,
+}
+
+var storedCardKeys = []string{
+	`["2017-05-22 02:00:00","2016-05-04T19:04:23.000000126Z"]`,
+	`["2019-01-01","2015-03-17T04:33:51.00000029Z"]`,
+	`[null,"2017-05-28T18:32:44.000000978Z"]`,
 }
 
 var expectedCards = []map[string]interface{}{
@@ -58,6 +70,7 @@ var expectedCards = []map[string]interface{}{
 		"created":  "2016-07-31T15:08:24.730156517Z",
 		"modified": "2016-07-31T15:08:24.730156517Z",
 		"model":    "theme-VGVzdCBUaGVtZQ/0",
+		"due":      "2019-01-01",
 	},
 	{
 		"type":     "card",
@@ -86,28 +99,49 @@ func TestGetCardsFromView(t *testing.T) {
 			err:   "query failed: query failed",
 		},
 		{
-			name: "invalid JSON",
+			name: "invalid value JSON",
 			db: &mockQuerier{rows: map[string]*mockRows{
-				"test": &mockRows{rows: []string{"foo"}},
+				"test": &mockRows{rows: []string{"foo"}, values: []string{"foo"}},
 			}},
 			limit: 1,
 			view:  "test",
-			err:   "invalid character 'o' in literal false (expecting 'a')",
+			err:   "ScanValue: invalid character 'o' in literal false (expecting 'a')",
+		},
+		{
+			name: "invalid key JSON",
+			db: &mockQuerier{rows: map[string]*mockRows{
+				"test": &mockRows{rows: []string{"foo"}, values: []string{"{}"}, keys: []string{"foo"}},
+			}},
+			limit: 1,
+			view:  "test",
+			err:   "ScanKey: invalid character 'o' in literal false (expecting 'a')",
+		},
+		{
+			name: "invalid due value",
+			db: &mockQuerier{rows: map[string]*mockRows{
+				"test": &mockRows{rows: []string{"foo"}, values: []string{"{}"}, keys: []string{`["foo"]`}},
+			}},
+			limit: 1,
+			view:  "test",
+			err:   "ParseDue: Unrecognized input: foo",
 		},
 		{
 			name:     "no results",
 			db:       &mockQuerier{rows: map[string]*mockRows{}},
 			limit:    1,
-			expected: []*fb.Card{},
+			expected: []*cardSchedule{},
 		},
 		{
 			name: "successful fetch",
 			db: &mockQuerier{rows: map[string]*mockRows{
-				"test": &mockRows{rows: storedCards},
+				"test": &mockRows{rows: storedCards, values: storedCardValues, keys: storedCardKeys},
 			}},
-			limit:    10,
-			view:     "test",
-			expected: expectedCards,
+			limit: 10,
+			view:  "test",
+			expected: []*cardSchedule{
+				{ID: "card-krsxg5baij2w4zdmmu.VGVzdCBOb3Rl.1", Due: parseDue(t, "2019-01-01")},
+				{ID: "card-krsxg5baij2w4zdmmu.VGVzdCBOb3Rl.2"},
+			},
 		},
 		{
 			name:  "limit 0",
@@ -118,58 +152,48 @@ func TestGetCardsFromView(t *testing.T) {
 		{
 			name: "limit reached",
 			db: &mockQuerier{rows: map[string]*mockRows{
-				"test": &mockRows{rows: storedCards},
+				"test": &mockRows{rows: storedCards, values: storedCardValues, keys: storedCardKeys},
 			}},
-			limit:    1,
-			view:     "test",
-			expected: expectedCards[0:1],
+			limit: 1,
+			view:  "test",
+			expected: []*cardSchedule{
+				{ID: "card-krsxg5baij2w4zdmmu.VGVzdCBOb3Rl.1", Due: parseDue(t, "2019-01-01")},
+			},
 		},
 		{
 			name: "aggregate necessary",
 			db: &mockQuerier{rows: map[string]*mockRows{
-				"test": &mockRows{rows: func() []string {
+				"test": func() *mockRows {
 					rows := make([]string, 150)
+					values := make([]string, 150)
+					keys := make([]string, 150)
 					for i := 0; i < 150; i++ {
 						rows[i] = storedCards[0]
+						values[i] = storedCardValues[0]
+						keys[i] = storedCardKeys[0]
 					}
-					return append(rows, storedCards...)
-				}()},
+					rows = append(rows, storedCards...)
+					values = append(values, storedCardValues...)
+					keys = append(keys, storedCardKeys...)
+					return &mockRows{rows: rows, values: values, keys: keys}
+				}(),
 			}},
-			limit:    5,
-			view:     "test",
-			expected: expectedCards,
-		},
-		{
-			name: "ignore card seen today",
-			db: &mockQuerier{rows: map[string]*mockRows{
-				"test": &mockRows{rows: []string{
-					`{"type": "card", "_id": "card-krsxg5baij2w4zdmmu.VGVzdCBOb3Rl.1", "_rev": "1-6e1b6fb5352429cf3013eab5d692aac8", "created": "2016-07-31T15:08:24.730156517Z", "modified": "2016-07-31T15:08:24.730156517Z", "model": "theme-VGVzdCBUaGVtZQ/0", "interval": 5, "lastReview": "2017-01-01T11:50:00Z"}`,
-				}},
-			}},
-			limit:    5,
-			view:     "test",
-			expected: []int{},
-		},
-		{
-			name: "skip same-day forward fuzzing",
-			db: &mockQuerier{rows: map[string]*mockRows{
-				"test": &mockRows{rows: []string{
-					`{"type": "card", "_id": "card-krsxg5baij2w4zdmmu.VGVzdCBOb3Rl.1", "_rev": "1-6e1b6fb5352429cf3013eab5d692aac8", "created": "2016-07-31T15:08:24.730156517Z", "modified": "2016-07-31T15:08:24.730156517Z", "model": "theme-VGVzdCBUaGVtZQ/0", "interval": -1800, "due": "2017-01-01 12:01:00"}`,
-				}},
-			}},
-			limit:    5,
-			view:     "test",
-			expected: []int{},
+			limit: 5,
+			view:  "test",
+			expected: []*cardSchedule{
+				{ID: "card-krsxg5baij2w4zdmmu.VGVzdCBOb3Rl.1", Due: parseDue(t, "2019-01-01")},
+				{ID: "card-krsxg5baij2w4zdmmu.VGVzdCBOb3Rl.2"},
+			},
 		},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			cards, err := getCardsFromView(context.Background(), test.db, test.view, test.limit, 0)
+			cards, err := getCardsFromView(context.Background(), test.db, test.view, test.limit)
 			checkErr(t, test.err, err)
 			if err != nil {
 				return
 			}
-			if d := diff.AsJSON(test.expected, cards); d != nil {
+			if d := diff.Interface(test.expected, cards); d != nil {
 				t.Error(d)
 			}
 		})
@@ -242,52 +266,45 @@ func init() {
 func TestSelectWeightedCard(t *testing.T) {
 	type swcTest struct {
 		name     string
-		cards    []*fb.Card
-		expected int
+		cards    []*cardSchedule
+		expected string
 	}
 	tests := []swcTest{
 		{
-			name:     "no cards",
-			expected: -1,
+			name: "no cards",
 		},
 		{
 			name: "one card",
-			cards: []*fb.Card{
-				&fb.Card{Rev: "a"},
+			cards: []*cardSchedule{
+				{ID: "a"},
 			},
-			expected: 0,
+			expected: "a",
 		},
 		{
 			name: "two equal card",
-			cards: []*fb.Card{
-				&fb.Card{Rev: "a"},
-				&fb.Card{Rev: "b"},
+			cards: []*cardSchedule{
+				{ID: "a"},
+				{ID: "b"},
 			},
-			expected: 1,
+			expected: "b",
 		},
 		{
 			name: "three cards, different prios",
-			cards: []*fb.Card{
-				&fb.Card{Rev: "a"},
-				&fb.Card{Rev: "b"},
-				&fb.Card{
+			cards: []*cardSchedule{
+				{ID: "a"},
+				{ID: "b"},
+				{
 					Due:      parseDue(t, "2015-01-01"),
 					Interval: fb.Interval(20 * fb.Day),
-					Rev:      "c"},
+					ID:       "c"},
 			},
-			expected: 2,
+			expected: "c",
 		},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			result := selectWeightedCard(test.cards)
-			if test.expected == -1 {
-				if result != nil {
-					t.Errorf("Expected no result.")
-				}
-				return
-			}
-			if test.cards[test.expected] != result {
+			if test.expected != result {
 				t.Errorf("Unexpected result: %v", result)
 			}
 		})
@@ -306,6 +323,7 @@ func (c *gctsClient) DB(_ context.Context, _ string, _ ...kivik.Options) (kivikD
 type gctsDB struct {
 	kivikDB
 	q     *mockQuerier
+	card  string
 	note  string
 	theme string
 }
@@ -315,6 +333,9 @@ func (db *gctsDB) Query(ctx context.Context, ddoc, view string, options ...kivik
 }
 
 func (db *gctsDB) Get(_ context.Context, id string, _ ...kivik.Options) (kivikRow, error) {
+	if strings.HasPrefix(id, "card-") {
+		return mockRow(db.card), nil
+	}
 	if strings.HasPrefix(id, "note-") {
 		return mockRow(db.note), nil
 	}
@@ -367,7 +388,12 @@ func TestRepoGetCardToStudy(t *testing.T) {
 				user: "bob",
 				local: &gctsClient{
 					db: &gctsDB{
-						q:     &mockQuerier{rows: map[string]*mockRows{"newCards": &mockRows{rows: storedCards[1:2]}}},
+						q: &mockQuerier{rows: map[string]*mockRows{"newCards": &mockRows{
+							rows:   storedCards[1:2],
+							values: storedCardValues[1:2],
+							keys:   storedCardKeys[1:2],
+						}}},
+						card:  storedCards[1],
 						note:  `{"_id":"note-Zm9v", "theme":"theme-Zm9v", "created":"2017-01-01T01:01:01Z", "modified":"2017-01-01T01:01:01Z"}`,
 						theme: `{"_id":"theme-Zm9v", "created":"2017-01-01T01:01:01Z", "modified":"2017-01-01T01:01:01Z", "_attachments":{}, "files":[], "modelSequence":1, "models": [{"id":0, "files":[], "modelType":"foo"}]}`,
 					},
@@ -393,34 +419,37 @@ func TestRepoGetCardToStudy(t *testing.T) {
 func TestGetCardToStudy(t *testing.T) {
 	type gctsTest struct {
 		name     string
-		db       querier
+		db       queryGetter
 		expected interface{}
 		err      string
 	}
 	tests := []gctsTest{
 		{
 			name: "no cards",
-			db:   &mockQuerier{rows: map[string]*mockRows{}},
+			db:   &mockQueryGetter{mockQuerier: &mockQuerier{rows: map[string]*mockRows{}}},
 		},
 		{
 			name: "new query failure",
-			db: &mockQuerier{rows: map[string]*mockRows{
-				"newCards": &mockRows{rows: []string{"invalid json"}},
-			}},
-			err: `newCards: invalid character 'i' looking for beginning of value`,
+			db: &mockQueryGetter{mockQuerier: &mockQuerier{rows: map[string]*mockRows{
+				"newCards": &mockRows{rows: []string{"invalid json"}, values: []string{"invalid json"}},
+			}}},
+			err: `newCards: ScanValue: invalid character 'i' looking for beginning of value`,
 		},
 		{
 			name: "old query failure",
-			db: &mockQuerier{rows: map[string]*mockRows{
-				"oldCards": &mockRows{rows: []string{"invalid json"}},
-			}},
-			err: `oldCards: invalid character 'i' looking for beginning of value`,
+			db: &mockQueryGetter{mockQuerier: &mockQuerier{rows: map[string]*mockRows{
+				"oldCards": &mockRows{rows: []string{"invalid json"}, values: []string{"invalid json"}},
+			}}},
+			err: `oldCards: ScanValue: invalid character 'i' looking for beginning of value`,
 		},
 		{
 			name: "one new card",
-			db: &mockQuerier{rows: map[string]*mockRows{
-				"newCards": &mockRows{rows: storedCards[1:2]},
-			}},
+			db: &mockQueryGetter{
+				mockQuerier: &mockQuerier{rows: map[string]*mockRows{
+					"newCards": &mockRows{rows: storedCards[1:2], values: storedCardValues[1:2], keys: storedCardKeys[1:2]},
+				}},
+				row: mockRow(storedCards[1]),
+			},
 			expected: expectedCards[0],
 		},
 	}
@@ -437,89 +466,6 @@ func TestGetCardToStudy(t *testing.T) {
 		})
 	}
 }
-
-/*
-func TestCardButtons(t *testing.T) {
-	type cbTest struct {
-		name     string
-		card     *Card
-		face     int
-		expected studyview.ButtonMap
-		err      string
-	}
-	tests := []cbTest{
-
-	}
-	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) {
-			result, err := test.card.Buttons(test.face)
-			checkErr(t, test.err, err)
-			if err != nil {
-				return
-			}
-			if d := diff.Interface(test.expected, result); d != nil {
-				t.Error(d)
-			}
-		})
-	}
-}
-*/
-
-/*
-func TestGetCardModel(t *testing.T) {
-	type cgmTest struct {
-		name     string
-		card     *Card
-		expected interface{}
-		err      string
-	}
-	tests := []cgmTest{
-		{}
-	}
-	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) {
-			result, err := test.card.model(context.Background())
-			checkErr(t, test.err, err)
-			if err != nil {
-				return
-			}
-			if d := diff.AsJSON(test.expected, result); d != nil {
-				t.Error(d)
-			}
-		})
-	}
-}
-*/
-
-// func TestGetNote(t *testing.T) {
-// 	type gnTest struct {
-// 		name     string
-// 		card     *Card
-// 		expected interface{}
-// 		err      string
-// 	}
-// 	tests := []gnTest{
-// 		{
-// 			name: "not logged in",
-// 			card: &Card{repo: &Repo{
-// 				local: testClient(t),
-// 			}},
-// 			err: "not logged in",
-// 		},
-// 	}
-// 	for _, test := range tests {
-// 		t.Run(test.name, func(t *testing.T) {
-// 			result, err := test.card.getNote(context.Background())
-// 			checkErr(t, test.err, err)
-// 			if err != nil {
-// 				return
-// 			}
-// 			if d := diff.AsJSON(test.expected, result); d != nil {
-// 				t.Error(d)
-// 			}
-// 		})
-// 	}
-// }
 
 type cfClient struct {
 	kivikClient

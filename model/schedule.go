@@ -17,9 +17,22 @@ func Schedule(card *Card, answerDelay time.Duration, quality flashback.AnswerQua
 	if quality <= flashback.AnswerIncorrectEasy {
 		card.ReviewCount = 0
 	} else {
-		card.LastReview = time.Now()
+		card.LastReview = now().UTC()
 		card.ReviewCount++
 	}
+
+	// Bury cards we already saw today, with an interval >= 1d; they would
+	// make no progress if re-studied.
+	if card.Interval > fb.Day {
+		card.BuriedUntil = fb.Due(now().UTC()).Add(fb.Day)
+	}
+
+	// Bury cards with sub-day intervals until they are due. We only allow
+	// forward-fuzzing for intervals > 1 day
+	if card.Interval.Days() == 0 {
+		card.BuriedUntil = card.Due
+	}
+
 	return nil
 }
 

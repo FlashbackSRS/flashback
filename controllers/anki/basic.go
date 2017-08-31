@@ -4,11 +4,12 @@ import (
 	"html/template"
 	"time"
 
+	"github.com/flimzy/log"
+	"github.com/pkg/errors"
+
 	"github.com/FlashbackSRS/flashback/diff"
 	"github.com/FlashbackSRS/flashback/model"
 	"github.com/FlashbackSRS/flashback/webclient/views/studyview"
-	"github.com/flimzy/log"
-	"github.com/pkg/errors"
 )
 
 // Basic is the controller for the Anki Basic model

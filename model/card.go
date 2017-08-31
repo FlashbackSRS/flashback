@@ -156,56 +156,75 @@ const (
 	oldBatchSize = 90
 )
 
-func getCardsFromView(ctx context.Context, db querier, view string, limit, offset int) ([]*fb.Card, error) {
+func getCardsFromView(ctx context.Context, db querier, view string, limit int) ([]*cardSchedule, error) {
 	defer profile("getCardsFromView: " + view)()
 	if limit <= 0 {
 		return nil, errors.New("invalid limit")
 	}
+	cards := make([]*cardSchedule, 0, limit)
+	offset := 0
+	for i := 0; len(cards) < limit && i < 100; i++ {
+		result, readRows, totalRows, err := queryView(ctx, db, view, limit, offset)
+		if err != nil {
+			return nil, err
+		}
+		if len(result) > 0 {
+			cards = append(cards, result...)
+		}
+		if len(cards) == limit {
+			break
+		}
+		offset = offset + readRows
+		if totalRows <= offset {
+			break
+		}
+	}
+	return cards, nil
+}
+
+func queryView(ctx context.Context, db querier, view string, limit, offset int) (cards []*cardSchedule, readRows, totalRows int, err error) {
+	defer profile("queryView: " + view)()
 	log.Debugf("Trying to fetch %d (%d) %s cards\n", limit, offset, view)
 	rows, err := db.Query(context.TODO(), "index", view, map[string]interface{}{
-		"limit":        limit,
-		"offset":       offset,
-		"include_docs": true,
-		"sort":         map[string]string{"due": "desc", "created": "asc"},
+		"limit": limit,
+		"skip":  offset,
+		"sort":  map[string]string{"due": "desc", "created": "asc"},
 	})
 	if err != nil {
-		return nil, errors.Wrap(err, "query failed")
+		return nil, 0, 0, errors.Wrap(err, "query failed")
 	}
 	defer func() { _ = rows.Close() }()
-	cards := make([]*fb.Card, 0, limit)
+	cards = make([]*cardSchedule, 0, limit)
 	var count int
 	defer func() { _ = rows.Close() }()
 	for rows.Next() {
 		count++
-		card := &fb.Card{}
-		if err := rows.ScanDoc(card); err != nil {
-			return nil, err
+		card := &cardSchedule{}
+		if e := rows.ScanValue(card); e != nil {
+			return nil, count, 0, errors.Wrap(e, "ScanValue")
 		}
 		if card.BuriedUntil.After(fb.Due(now())) {
 			continue
 		}
-		if card.Interval != 0 {
-			// Skip cards we already saw today, with an interval >= 1d; they would make no progress.
-			if card.Interval.Days() >= 1 && !time.Time(fb.On(now())).After(card.LastReview) {
-				continue
-			}
-			// Skip sub-day intervals that aren't due yet. We only allow forward-fuzzing for intervals > 1day
-			if card.Interval.Days() == 0 && card.Due.After(fb.Due(now())) {
-				continue
-			}
+		var key []string
+		if e := rows.ScanKey(&key); e != nil {
+			return nil, count, 0, errors.Wrap(e, "ScanKey")
 		}
+		if key[0] != "" {
+			due, e := fb.ParseDue(key[0])
+			if e != nil {
+				return nil, count, 0, errors.Wrap(e, "ParseDue")
+			}
+			card.Due = due
+		}
+		card.ID = rows.ID()
 		cards = append(cards, card)
 		if len(cards) == limit {
 			log.Debugf("Got %d cards, early exiting", len(cards))
-			return cards, nil
+			return cards, count, 0, nil
 		}
 	}
-	if rows.TotalRows() > int64(limit+offset) {
-		log.Debugf("Read %d of %d, %d total rows > %d, reading more\n", len(cards), limit, rows.TotalRows(), limit+offset)
-		more, err := getCardsFromView(ctx, db, view, limit-len(cards), offset+count)
-		return append(cards, more...), err
-	}
-	return cards, nil
+	return cards, count, int(rows.TotalRows()), nil
 }
 
 // cardPriority returns a number 0 or greater, as a priority to be used in
@@ -223,12 +242,12 @@ func cardPriority(due fb.Due, interval fb.Interval, now time.Time) float64 {
 
 var rnd = rand.New(rand.NewSource(time.Now().UnixNano()))
 
-func selectWeightedCard(cards []*fb.Card) *fb.Card {
+func selectWeightedCard(cards []*cardSchedule) string {
 	switch len(cards) {
 	case 0:
-		return nil
+		return ""
 	case 1:
-		return cards[0]
+		return cards[0].ID
 	}
 	var weights float64
 	priorities := make([]float64, len(cards))
@@ -243,11 +262,11 @@ func selectWeightedCard(cards []*fb.Card) *fb.Card {
 		r -= priority
 		if r < 0 {
 			log.Debugf("Selected card %d: %s\n", i, cards[i].ID)
-			return cards[i]
+			return cards[i].ID
 		}
 	}
 	// should never happen
-	return nil
+	return ""
 }
 
 // GetCardToStudy returns a CardView to display to the user to study, and buries
@@ -323,19 +342,26 @@ func (c *Card) fetch(ctx context.Context, client kivikClient) error {
 	return c.note.SetModel(model)
 }
 
-func getCardToStudy(ctx context.Context, db querier) (*fb.Card, error) {
+type cardSchedule struct {
+	ID          string      `json:"_id"`
+	Interval    fb.Interval `json:"interval"`
+	Due         fb.Due      `json:"due"`
+	BuriedUntil fb.Due      `json:"buriedUntil"`
+}
+
+func getCardToStudy(ctx context.Context, db queryGetter) (*fb.Card, error) {
 	defer profile("getCardToStudy")()
-	var newCards, oldCards []*fb.Card
+	var newCards, oldCards []*cardSchedule
 	var newErr, oldErr error
 	var wg sync.WaitGroup
 	wg.Add(2)
 	go func() {
-		newCards, newErr = getCardsFromView(ctx, db, "newCards", newBatchSize, 0)
+		newCards, newErr = getCardsFromView(ctx, db, "newCards", newBatchSize)
 		newErr = errors.Wrap(newErr, "newCards")
 		wg.Done()
 	}()
 	go func() {
-		oldCards, oldErr = getCardsFromView(ctx, db, "oldCards", oldBatchSize, 0)
+		oldCards, oldErr = getCardsFromView(ctx, db, "oldCards", oldBatchSize)
 		oldErr = errors.Wrap(oldErr, "oldCards")
 		wg.Done()
 	}()
@@ -343,7 +369,17 @@ func getCardToStudy(ctx context.Context, db querier) (*fb.Card, error) {
 	if err := firstErr(newErr, oldErr); err != nil {
 		return nil, err
 	}
-	return selectWeightedCard(append(newCards, oldCards...)), nil
+	cardID := selectWeightedCard(append(newCards, oldCards...))
+	if cardID == "" {
+		return nil, nil
+	}
+	row, err := db.Get(ctx, cardID)
+	if err != nil {
+		return nil, err
+	}
+	card := &fb.Card{}
+	err = row.ScanDoc(&card)
+	return card, err
 }
 
 const (
