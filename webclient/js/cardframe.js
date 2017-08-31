@@ -184,11 +184,19 @@
     function playWhenReady(media) {
         // A lazy way to check if the media file has been loaded yet.
         if ( media.src.match(/^blob:/) ) {
-            media.play();
+            try {
+                media.play();
+            } catch (e) {
+                console.log(e);
+            }
             return;
         }
         media.addEventListener('canplay', function() {
-            media.play();
+            try {
+                media.play();
+            } catch (e) {
+                console.log(e);
+            }
         });
     }
 
