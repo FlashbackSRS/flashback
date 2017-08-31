@@ -159,6 +159,8 @@ type kivikRows interface {
 	Close() error
 	Next() bool
 	ScanDoc(dest interface{}) error
+	ScanValue(dest interface{}) error
+	ScanKey(dest interface{}) error
 	TotalRows() int64
 	ID() string
 	Err() error
