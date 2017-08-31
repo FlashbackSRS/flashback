@@ -260,12 +260,12 @@ func TestSelectWeightedCard(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			result := selectWeightedCard(test.cards)
 			if test.expected == -1 {
-				if result != nil {
+				if result != "" {
 					t.Errorf("Expected no result.")
 				}
 				return
 			}
-			if test.cards[test.expected] != result {
+			if test.cards[test.expected].ID != result {
 				t.Errorf("Unexpected result: %v", result)
 			}
 		})
@@ -284,6 +284,7 @@ func (c *gctsClient) DB(_ context.Context, _ string, _ ...kivik.Options) (kivikD
 type gctsDB struct {
 	kivikDB
 	q     *mockQuerier
+	card  string
 	note  string
 	theme string
 }
@@ -293,6 +294,9 @@ func (db *gctsDB) Query(ctx context.Context, ddoc, view string, options ...kivik
 }
 
 func (db *gctsDB) Get(_ context.Context, id string, _ ...kivik.Options) (kivikRow, error) {
+	if strings.HasPrefix(id, "card-") {
+		return mockRow(db.card), nil
+	}
 	if strings.HasPrefix(id, "note-") {
 		return mockRow(db.note), nil
 	}
@@ -346,6 +350,7 @@ func TestRepoGetCardToStudy(t *testing.T) {
 				local: &gctsClient{
 					db: &gctsDB{
 						q:     &mockQuerier{rows: map[string]*mockRows{"newCards": &mockRows{rows: storedCards[1:2]}}},
+						card:  storedCards[1],
 						note:  `{"_id":"note-Zm9v", "theme":"theme-Zm9v", "created":"2017-01-01T01:01:01Z", "modified":"2017-01-01T01:01:01Z"}`,
 						theme: `{"_id":"theme-Zm9v", "created":"2017-01-01T01:01:01Z", "modified":"2017-01-01T01:01:01Z", "_attachments":{}, "files":[], "modelSequence":1, "models": [{"id":0, "files":[], "modelType":"foo"}]}`,
 					},
@@ -371,34 +376,37 @@ func TestRepoGetCardToStudy(t *testing.T) {
 func TestGetCardToStudy(t *testing.T) {
 	type gctsTest struct {
 		name     string
-		db       querier
+		db       queryGetter
 		expected interface{}
 		err      string
 	}
 	tests := []gctsTest{
 		{
 			name: "no cards",
-			db:   &mockQuerier{rows: map[string]*mockRows{}},
+			db:   &mockQueryGetter{mockQuerier: &mockQuerier{rows: map[string]*mockRows{}}},
 		},
 		{
 			name: "new query failure",
-			db: &mockQuerier{rows: map[string]*mockRows{
+			db: &mockQueryGetter{mockQuerier: &mockQuerier{rows: map[string]*mockRows{
 				"newCards": &mockRows{rows: []string{"invalid json"}},
-			}},
+			}}},
 			err: `newCards: invalid character 'i' looking for beginning of value`,
 		},
 		{
 			name: "old query failure",
-			db: &mockQuerier{rows: map[string]*mockRows{
+			db: &mockQueryGetter{mockQuerier: &mockQuerier{rows: map[string]*mockRows{
 				"oldCards": &mockRows{rows: []string{"invalid json"}},
-			}},
+			}}},
 			err: `oldCards: invalid character 'i' looking for beginning of value`,
 		},
 		{
 			name: "one new card",
-			db: &mockQuerier{rows: map[string]*mockRows{
-				"newCards": &mockRows{rows: storedCards[1:2]},
-			}},
+			db: &mockQueryGetter{
+				mockQuerier: &mockQuerier{rows: map[string]*mockRows{
+					"newCards": &mockRows{rows: storedCards[1:2]},
+				}},
+				row: mockRow(storedCards[1]),
+			},
 			expected: expectedCards[0],
 		},
 	}

@@ -234,12 +234,12 @@ func cardPriority(due fb.Due, interval fb.Interval, now time.Time) float64 {
 
 var rnd = rand.New(rand.NewSource(time.Now().UnixNano()))
 
-func selectWeightedCard(cards []*fb.Card) *fb.Card {
+func selectWeightedCard(cards []*fb.Card) string {
 	switch len(cards) {
 	case 0:
-		return nil
+		return ""
 	case 1:
-		return cards[0]
+		return cards[0].ID
 	}
 	var weights float64
 	priorities := make([]float64, len(cards))
@@ -254,11 +254,11 @@ func selectWeightedCard(cards []*fb.Card) *fb.Card {
 		r -= priority
 		if r < 0 {
 			log.Debugf("Selected card %d: %s\n", i, cards[i].ID)
-			return cards[i]
+			return cards[i].ID
 		}
 	}
 	// should never happen
-	return nil
+	return ""
 }
 
 // GetCardToStudy returns a CardView to display to the user to study, and buries
@@ -334,7 +334,7 @@ func (c *Card) fetch(ctx context.Context, client kivikClient) error {
 	return c.note.SetModel(model)
 }
 
-func getCardToStudy(ctx context.Context, db querier) (*fb.Card, error) {
+func getCardToStudy(ctx context.Context, db queryGetter) (*fb.Card, error) {
 	defer profile("getCardToStudy")()
 	var newCards, oldCards []*fb.Card
 	var newErr, oldErr error
@@ -354,7 +354,17 @@ func getCardToStudy(ctx context.Context, db querier) (*fb.Card, error) {
 	if err := firstErr(newErr, oldErr); err != nil {
 		return nil, err
 	}
-	return selectWeightedCard(append(newCards, oldCards...)), nil
+	cardID := selectWeightedCard(append(newCards, oldCards...))
+	if cardID == "" {
+		return nil, nil
+	}
+	row, err := db.Get(ctx, cardID)
+	if err != nil {
+		return nil, err
+	}
+	card := &fb.Card{}
+	err = row.ScanDoc(&card)
+	return card, err
 }
 
 const (

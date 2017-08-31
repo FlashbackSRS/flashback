@@ -39,6 +39,11 @@ func wrapClient(c *kivik.Client) kivikClient {
 	return &clientWrapper{Client: c}
 }
 
+type queryGetter interface {
+	querier
+	getter
+}
+
 type querier interface {
 	Query(ctx context.Context, ddoc, view string, options ...kivik.Options) (kivikRows, error)
 }

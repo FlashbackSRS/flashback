@@ -253,14 +253,6 @@ func (db *mockGetter) Get(ctx context.Context, docID string, options ...kivik.Op
 	return db.row, db.err
 }
 
-type mockRow string
-
-var _ kivikRow = mockRow("")
-
-func (r mockRow) ScanDoc(i interface{}) error {
-	return json.Unmarshal([]byte(r), &i)
-}
-
 func TestGetDoc(t *testing.T) {
 	type gdTest struct {
 		name     string

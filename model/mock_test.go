@@ -121,3 +121,23 @@ var _ kivikClient = &mockClient{}
 func (c *mockClient) DB(_ context.Context, _ string, _ ...kivik.Options) (kivikDB, error) {
 	return nil, c.err
 }
+
+type mockQueryGetter struct {
+	*mockQuerier
+	row kivikRow
+	err error
+}
+
+var _ queryGetter = &mockQueryGetter{}
+
+func (db *mockQueryGetter) Get(_ context.Context, docID string, _ ...kivik.Options) (kivikRow, error) {
+	return db.row, db.err
+}
+
+type mockRow string
+
+var _ kivikRow = mockRow("")
+
+func (r mockRow) ScanDoc(i interface{}) error {
+	return json.Unmarshal([]byte(r), &i)
+}
