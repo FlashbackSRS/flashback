@@ -184,9 +184,6 @@ func getCardsFromView(ctx context.Context, db querier, view string, limit int) (
 
 func queryView(ctx context.Context, db querier, view string, limit, offset int) (cards []*cardSchedule, readRows, totalRows int, err error) {
 	defer profile("queryView: " + view)()
-	if limit <= 0 {
-		return nil, 0, 0, errors.New("invalid limit")
-	}
 	log.Debugf("Trying to fetch %d (%d) %s cards\n", limit, offset, view)
 	rows, err := db.Query(context.TODO(), "index", view, map[string]interface{}{
 		"limit":        limit,
