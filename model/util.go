@@ -92,7 +92,8 @@ func firstErr(errs ...error) error {
 }
 
 func getAttachment(ctx context.Context, db attachmentGetter, docID, filename string) (*fb.Attachment, error) {
-	att, err := db.GetAttachment(ctx, docID, "", filename)
+	pouchFilename := fb.EscapeFilename(filename)
+	att, err := db.GetAttachment(ctx, docID, "", pouchFilename)
 	if err != nil {
 		return nil, err
 	}
