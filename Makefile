@@ -46,15 +46,19 @@ npm-install: package.json
 javascript: www/js/flashback.js www/js/worker.sql.js www/js/cardframe.js
 www/js/flashback.js: package.json webclient/main.js main.js npm-install
 	mkdir -p www/js
-#	browserify js/main.js > $@ || ( stats=$?; rm -f $@; exit $? )
 	browserify --exclude pouchdb-all-dbs --exclude xhr2 --debug . -o pre-bundle.js
 	cat pre-bundle.js | exorcist bundle.js.map > bundle.js
+ifdef FLASHBACK_PROD
+	cp bundle.js $@
+		# uglifyjs bundle.js -c -m -o $@ \
+		# 	--stats \
+		# 	--source-map $@.map \
+		# 	--source-map-root /js \
+		# 	--source-map-url /js/flashback.js.map \
+		# 	--in-source-map bundle.js.map
+else
 	cp pre-bundle.js $@
-# 	uglifyjs bundle.js -c -m -o $@ \
-# 		--source-map $@.map \
-# 		--source-map-root /js \
-# 		--source-map-url /js/flashback.js.map \
-# 		--in-source-map bundle.js.map
+endif
 
 www/js/worker.sql.js: webclient/vendor/sql.js/worker.sql.js
 	cp $< $@
@@ -64,7 +68,11 @@ www/js/cardframe.js: webclient/js/cardframe.js
 
 .PHONY: main.js
 main.js: preclean generate
+ifdef FLASHBACK_PROD
+	gopherjs build -m ./webclient/*.go
+else
 	gopherjs build --tags=debug ./webclient/*.go
+endif
 # 	uglifyjs main.js -c -m -o $@
 
 css: webclient/vendor/jquery.mobile-1.4.5/jquery.mobile.inline-svg-1.4.5.min.css webclient/vendor/jquery.mobile-1.4.5/images/ajax-loader.gif $(CSS_FILES)
