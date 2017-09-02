@@ -152,8 +152,8 @@ const newPriority = 0.5
 // a big problem due to fetching and prioritizing many cards we don't actually
 // use.
 const (
-	newBatchSize = 10
-	oldBatchSize = 90
+	newBatchSize = 5
+	oldBatchSize = 45
 
 	// limitPadding is added to the query limit, to reduce the total number of
 	// queries which must be performed.
