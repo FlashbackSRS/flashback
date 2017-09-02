@@ -8,8 +8,8 @@ fi
 
 glide update
 
-# Only run GopherJS tests and Linter tests on Linux/Go 1.8
-if [[ ${TRAVIS_OS_NAME} == "linux" && ${TRAVIS_GO_VERSION} == 1.8.* ]]; then
+# Only run GopherJS tests and Linter tests on Linux/Go 1.9
+if [[ ${TRAVIS_OS_NAME} == "linux" && ${TRAVIS_GO_VERSION} == 1.9* ]]; then
     if [ "$TRAVIS_OS_NAME" == "linux" ]; then
         # Install nodejs and dependencies, but only for Linux
         curl -sL https://deb.nodesource.com/setup_6.x | sudo -E bash -

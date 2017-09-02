@@ -14,8 +14,8 @@ function join_list {
 
 go test -race $(go list ./... | grep -v /vendor/)
 
-# Only run GopherJS tests,  Linter and coveragetests on Linux/Go 1.8
-if [[ ${TRAVIS_OS_NAME} == "linux" && ${TRAVIS_GO_VERSION} == 1.8.* ]]; then
+# Only run GopherJS tests,  Linter and coveragetests on Linux/Go 1.9
+if [[ ${TRAVIS_OS_NAME} == "linux" && ${TRAVIS_GO_VERSION} == 1.9* ]]; then
     gopherjs test $(go list ./... | grep -v /vendor/)
 
     # Linter
