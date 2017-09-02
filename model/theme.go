@@ -146,14 +146,18 @@ func (m *fbModel) extractTemplateFiles(ctx context.Context) (map[string]string, 
 		if err != nil {
 			return nil, err
 		}
-		templates[filename] = string(att.Content)
+		if _, ok := templateTypes[att.ContentType]; ok {
+			templates[filename] = string(att.Content)
+		}
 	}
 	for _, filename := range m.Theme.Files.FileList() {
 		att, err := m.getAttachment(ctx, filename)
 		if err != nil {
 			return nil, err
 		}
-		templates[filename] = string(att.Content)
+		if _, ok := templateTypes[att.ContentType]; ok {
+			templates[filename] = string(att.Content)
+		}
 	}
 	return templates, nil
 }

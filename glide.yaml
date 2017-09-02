@@ -1,0 +1,43 @@
+package: github.com/FlashbackSRS/flashback
+ignore:
+- github.com/gopherjs/gopherjs
+import:
+- package: github.com/FlashbackSRS/flashback-model
+  version: master
+- package: github.com/PuerkitoBio/goquery
+  version: ^1.1.0
+- package: github.com/flimzy/go-cordova
+- package: github.com/flimzy/goweb
+  subpackages:
+  - file
+- package: github.com/flimzy/jqeventrouter
+- package: github.com/flimzy/kivik
+  version: ^1.1.0
+  subpackages:
+  - driver/couchdb/chttp
+  - errors
+- package: github.com/flimzy/log
+- package: github.com/go-kivik/memorydb
+- package: github.com/go-kivik/pouchdb
+  version: ^1.0.6
+- package: github.com/gopherjs/jquery
+- package: github.com/gopherjs/jsbuiltin
+- package: github.com/hashicorp/go-multierror
+- package: github.com/nicksnyder/go-i18n
+  version: ^1.8.1
+  subpackages:
+  - i18n/bundle
+- package: github.com/pkg/errors
+  version: ^0.8.0
+- package: github.com/sergi/go-diff
+  subpackages:
+  - diffmatchpatch
+- package: golang.org/x/text
+  subpackages:
+  - language
+- package: honnef.co/go/js/console
+testImport:
+- package: github.com/flimzy/diff
+  version: ^0.1.2
+- package: github.com/go-chi/chi
+  version: ^3.2.1

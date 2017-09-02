@@ -41,11 +41,11 @@ func TestEscapeFilename(t *testing.T) {
 		},
 	}
 	for _, test := range tests {
-		result := escapeFilename(test.Filename)
+		result := EscapeFilename(test.Filename)
 		if result != test.Expected {
 			t.Errorf("Escape filename '%s' failed.\n\tExpected: %s\n\t  Actual: %s\n", test.Filename, test.Expected, result)
 		}
-		unResult := unescapeFilename(result)
+		unResult := UnescapeFilename(result)
 		if unResult != test.Filename {
 			t.Errorf("Unescape filename '%s' failed.\n\tExpected: %s\n\t  Actual: %s\n", result, test.Filename, unResult)
 		}

@@ -152,8 +152,12 @@ const newPriority = 0.5
 // a big problem due to fetching and prioritizing many cards we don't actually
 // use.
 const (
-	newBatchSize = 10
-	oldBatchSize = 90
+	newBatchSize = 5
+	oldBatchSize = 45
+
+	// limitPadding is added to the query limit, to reduce the total number of
+	// queries which must be performed.
+	limitPadding = 20
 )
 
 func getCardsFromView(ctx context.Context, db querier, view string, limit int) ([]*cardSchedule, error) {
@@ -186,7 +190,7 @@ func queryView(ctx context.Context, db querier, view string, limit, offset int) 
 	defer profile("queryView: " + view)()
 	log.Debugf("Trying to fetch %d (%d) %s cards\n", limit, offset, view)
 	rows, err := db.Query(context.TODO(), "index", view, map[string]interface{}{
-		"limit": limit,
+		"limit": limit + limitPadding,
 		"skip":  offset,
 		"sort":  map[string]string{"due": "desc", "created": "asc"},
 	})
@@ -261,7 +265,7 @@ func selectWeightedCard(cards []*cardSchedule) string {
 	for i, priority := range priorities {
 		r -= priority
 		if r < 0 {
-			log.Debugf("Selected card %d: %s\n", i, cards[i].ID)
+			log.Debugf("Selected card %d: %s (prio: %f, %0.2f%% chance)\n", i, cards[i].ID, priority, priority/weights*100)
 			return cards[i].ID
 		}
 	}

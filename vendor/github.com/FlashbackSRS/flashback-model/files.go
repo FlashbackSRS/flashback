@@ -104,12 +104,12 @@ func (fc *FileCollection) RemoveFile(name string) {
 // appear rarely in filenames.
 const filenameEscapeChar = '^'
 
-// escapeFilename and unescapeFilename convert filenames to legal PouchDB
+// EscapeFilename and UnescapeFilename convert filenames to legal PouchDB
 // representations. In particular, this means non-ASCII and special characters
 // are URL-encoded, and leading '_' characters as well, as these upset PouchDB.
 // Any '_' characters found elsewhere in the filename are left alone, to
 // preserve a few bytes of space (woot!).
-func escapeFilename(filename string) string {
+func EscapeFilename(filename string) string {
 	if len(filename) == 0 {
 		return filename
 	}
@@ -120,7 +120,9 @@ func escapeFilename(filename string) string {
 	return filename
 }
 
-func unescapeFilename(escaped string) string {
+// UnescapeFilename converts a filename from its PouchDB reprsentation to its
+// original form.
+func UnescapeFilename(escaped string) string {
 	return strings.TrimPrefix(escaped, string(filenameEscapeChar))
 }
 
@@ -128,7 +130,7 @@ func unescapeFilename(escaped string) string {
 func (fc *FileCollection) MarshalJSON() ([]byte, error) {
 	escaped := make(map[string]*Attachment)
 	for filename, attachment := range fc.files {
-		escaped[escapeFilename(filename)] = attachment
+		escaped[EscapeFilename(filename)] = attachment
 	}
 	return json.Marshal(escaped)
 }
@@ -142,7 +144,7 @@ func (fc *FileCollection) UnmarshalJSON(data []byte) error {
 	fc.files = make(map[string]*Attachment)
 	fc.views = make([]*FileCollectionView, 0)
 	for escapedName, attachment := range escaped {
-		filename := unescapeFilename(escapedName)
+		filename := UnescapeFilename(escapedName)
 		fc.files[filename] = attachment
 	}
 	return nil
