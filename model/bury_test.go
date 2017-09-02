@@ -40,6 +40,13 @@ func TestBuryInterval(t *testing.T) {
 			new:      false,
 			expected: 1 * fb.Day,
 		},
+		{
+			name:     "maxiaml burial",
+			bury:     20 * fb.Day,
+			interval: 90 * fb.Day,
+			new:      false,
+			expected: 10 * fb.Day,
+		},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {

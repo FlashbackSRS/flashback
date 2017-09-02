@@ -85,25 +85,31 @@ func fetchRelatedCards(ctx context.Context, db allDocer, cardID string) ([]*fb.C
 	return cards, nil
 }
 
-// NewBuryTime sets the time to bury related new cards.
-const NewBuryTime = 7 * fb.Day
+const (
+	// NewBuryTime sets the time to bury related new cards.
+	NewBuryTime = 7 * fb.Day
 
-// MinBuryTime is the minimal burial time.
-const MinBuryTime = 1 * fb.Day
+	// MinBuryTime is the minimal burial time.
+	MinBuryTime = 1 * fb.Day
 
-// MaxBuryRatio is the maximum burial-time / interval ratio.
-const MaxBuryRatio = 0.20
+	// MaxBuryTime is the maximal burial time.
+	MaxBuryTime = 10 * fb.Day
+
+	// MaxBuryRatio is the maximum burial-time / interval ratio.
+	MaxBuryRatio = 0.20
+)
 
 func buryInterval(bury fb.Interval, ivl fb.Interval, new bool) fb.Interval {
 	if new {
 		return NewBuryTime
 	}
-	var maxBury fb.Interval
 	if ivl > 0 {
-		maxBury = fb.Interval(float64(ivl) * MaxBuryRatio)
+		if maxBury := fb.Interval(float64(ivl) * MaxBuryRatio); bury > maxBury {
+			bury = maxBury
+		}
 	}
-	if bury > maxBury {
-		bury = maxBury
+	if bury > MaxBuryTime {
+		bury = MaxBuryTime
 	}
 	if bury < MinBuryTime {
 		bury = MinBuryTime
