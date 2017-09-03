@@ -62,7 +62,6 @@ bundle.js
 bundle.js.map
 main.js
 main.js.map
-.phonegap-facebook-plugin
 
 # go-bindata
 controllers/anki/data.go
