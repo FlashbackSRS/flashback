@@ -46,17 +46,18 @@ npm-install: package.json
 javascript: www/js/flashback.js www/js/worker.sql.js www/js/cardframe.js
 www/js/flashback.js: package.json webclient/main.js main.js npm-install
 	mkdir -p www/js
-	browserify --exclude pouchdb-all-dbs --exclude xhr2 --debug . -o pre-bundle.js
-	cat pre-bundle.js | exorcist bundle.js.map > bundle.js
 ifdef FLASHBACK_PROD
-	cp bundle.js $@
-		# uglifyjs bundle.js -c -m -o $@ \
-		# 	--stats \
-		# 	--source-map $@.map \
-		# 	--source-map-root /js \
-		# 	--source-map-url /js/flashback.js.map \
-		# 	--in-source-map bundle.js.map
+	browserify --exclude pouchdb-all-dbs --exclude xhr2 . -o bundle.js
+	uglifyjs bundle.js -m -o $@ --stats
+	# uglifyjs bundle.js -c -m -o $@ --stats
+	# \
+	# 	--stats \
+	# 	--source-map $@.map \
+	# 	--source-map-root /js \
+	# 	--source-map-url /js/flashback.js.map \
+	# 	--in-source-map bundle.js.map
 else
+	browserify --exclude pouchdb-all-dbs --exclude xhr2 --debug . -o pre-bundle.js
 	cp pre-bundle.js $@
 endif
 
@@ -69,11 +70,11 @@ www/js/cardframe.js: webclient/js/cardframe.js
 .PHONY: main.js
 main.js: preclean generate
 ifdef FLASHBACK_PROD
-	gopherjs build -m ./webclient/*.go
+	gopherjs build -m ./webclient -o main.js
+	# uglifyjs main.js -c -m -o $@
 else
-	gopherjs build --tags=debug ./webclient/*.go
+	gopherjs build --tags=debug ./webclient -o main.js
 endif
-# 	uglifyjs main.js -c -m -o $@
 
 css: webclient/vendor/jquery.mobile-1.4.5/jquery.mobile.inline-svg-1.4.5.min.css webclient/vendor/jquery.mobile-1.4.5/images/ajax-loader.gif $(CSS_FILES)
 	mkdir -p www/css/images
