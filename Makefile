@@ -5,25 +5,8 @@ SVG_FILES = $(shell find webclient/images/ -type f -name '*.svg')
 WEBP_FILES = $(shell find webclient/images/ -type f -name '*.webp')
 I18N_FILES = $(wildcard translations/*.all.json)
 
-server: www
-	go run ./server/*
-
-plugins: www .phonegap-facebook-plugin
-	mkdir -p plugins
-	cordova plugin add https://git-wip-us.apache.org/repos/asf/cordova-plugin-console.git
-	cordova plugin add .phonegap-facebook-plugin --variable APP_ID=$(FLASHBACK_FACEBOOK_ID) --variable APP_NAME="$(FLASHBACK_FACEBOOK_NAME)"
-#	cordova plugin add https://git-wip-us.apache.org/repos/asf/cordova-plugin-device.git
-
-.phonegap-facebook-plugin:
-	git clone https://github.com/Wizcorp/phonegap-facebook-plugin.git .phonegap-facebook-plugin
-
-platforms: www
-	mkdir -p platforms
-	cordova platform | grep -q Installed.*android || cordova platform add android
-
-cordova-init: plugins platforms
-
-android: cordova-init cordova-www
+android: cordova-www
+	cordova prepare
 	cordova run android
 
 go-test: preclean npm-install generate
