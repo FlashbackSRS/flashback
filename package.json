@@ -13,7 +13,8 @@
         "pouchdb-find": "*",
         "browserify-shim": "*",
         "inherits": "*",
-        "memdown": "*"
+        "memdown": "*",
+        "cordova-plugin-whitelist": "1"
     },
     "browser": {
         "jquery-mobile": "./webclient/vendor/jquery.mobile-1.4.5/jquery.mobile-1.4.5.js",
@@ -21,7 +22,9 @@
         "main": "./main.js"
     },
     "browserify": {
-        "transform": [ "browserify-shim" ]
+        "transform": [
+            "browserify-shim"
+        ]
     },
     "browserify-shim": {
         "jquery": {
@@ -29,7 +32,14 @@
         },
         "jquery-mobile": {
             "exports": "$.mobile",
-            "depends": [ "jquery:$" ]
+            "depends": [
+                "jquery:$"
+            ]
+        }
+    },
+    "cordova": {
+        "plugins": {
+            "cordova-plugin-whitelist": {}
         }
     }
 }
