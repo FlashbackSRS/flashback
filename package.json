@@ -9,13 +9,14 @@
         "url": "https://github.com/FlashbackSRS/flashback"
     },
     "dependencies": {
-        "pouchdb": ">=5.3.2",
-        "pouchdb-find": "*",
         "browserify-shim": "*",
+        "cordova-android": "^6.2.3",
+        "cordova-plugin-console": "~1.0.7",
+        "cordova-plugin-whitelist": "1",
         "inherits": "*",
         "memdown": "*",
-        "cordova-plugin-whitelist": "1",
-        "cordova-plugin-console": "~1.0.7"
+        "pouchdb": ">=5.3.2",
+        "pouchdb-find": "*"
     },
     "browser": {
         "jquery-mobile": "./webclient/vendor/jquery.mobile-1.4.5/jquery.mobile-1.4.5.js",
@@ -42,6 +43,9 @@
         "plugins": {
             "cordova-plugin-whitelist": {},
             "cordova-plugin-console": {}
-        }
+        },
+        "platforms": [
+            "android"
+        ]
     }
 }
