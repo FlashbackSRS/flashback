@@ -11,7 +11,9 @@
     "dependencies": {
         "browserify-shim": "*",
         "cordova-android": "^6.2.3",
+        "cordova-plugin-compat": "^1.1.0",
         "cordova-plugin-console": "~1.0.7",
+        "cordova-plugin-file": "^4.3.3",
         "cordova-plugin-globalization": "^1.0.7",
         "cordova-plugin-whitelist": "1",
         "inherits": "*",
@@ -44,7 +46,8 @@
         "plugins": {
             "cordova-plugin-whitelist": {},
             "cordova-plugin-console": {},
-            "cordova-plugin-globalization": {}
+            "cordova-plugin-globalization": {},
+            "cordova-plugin-file": {}
         },
         "platforms": [
             "android"
