@@ -12,6 +12,7 @@
         "browserify-shim": "*",
         "cordova-android": "^6.2.3",
         "cordova-plugin-console": "~1.0.7",
+        "cordova-plugin-globalization": "^1.0.7",
         "cordova-plugin-whitelist": "1",
         "inherits": "*",
         "memdown": "*",
@@ -42,7 +43,8 @@
     "cordova": {
         "plugins": {
             "cordova-plugin-whitelist": {},
-            "cordova-plugin-console": {}
+            "cordova-plugin-console": {},
+            "cordova-plugin-globalization": {}
         },
         "platforms": [
             "android"
