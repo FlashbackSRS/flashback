@@ -1,14 +1,11 @@
 package l10n_handler
 
 import (
-	"fmt"
 	"io/ioutil"
 	"net/http"
 	"net/url"
-	"strings"
 	"sync"
 
-	"github.com/nicksnyder/go-i18n/i18n/bundle"
 	"golang.org/x/text/language"
 
 	"github.com/flimzy/go-cordova"
@@ -17,82 +14,24 @@ import (
 	"github.com/gopherjs/gopherjs/js"
 	"github.com/gopherjs/jquery"
 
+	"github.com/FlashbackSRS/flashback/l10n"
 	"github.com/FlashbackSRS/flashback/util"
 )
 
-var localeName string
 var jQuery = jquery.NewJQuery
-var initDone <-chan struct{}
 
 const langTagAttr = "data-lt"
 const localeAttr = "data-locale"
 
-var translate *bundle.TranslateFunc
-var translateFallback *bundle.TranslateFunc
-
 // Init initializes the localization engine.
-func Init() {
-	initChan := make(chan struct{})
-	initDone = initChan
-	go func() {
-		defer close(initChan)
-		langs := preferredLanguages()
-		log.Debugf("PREFERRED LANGUAGES: %v\n", langs)
-		matcher := language.NewMatcher([]language.Tag{
-			language.MustParse("en_US"),
-			language.MustParse("es_MX"),
-		})
-		tag, idx, conf := matcher.Match(langs...)
-		log.Debugf("I think we'll go with %s (%d th place choice with %s confidence)\n", tag, idx, conf)
-		if locale := tag.String(); locale != "en-us" {
-			t, err := loadDictionary(locale)
-			if err != nil {
-				panic(fmt.Sprintf("Cannot load '%s': %s", locale, err))
-			}
-			translate = t
-		}
-		if t, err := loadDictionary("en-us"); err != nil {
-			panic(fmt.Sprintf("Cannot load 'en-us': %s", err))
-		} else {
-			translateFallback = t
-		}
-	}()
-}
-
-func loadDictionary(locale string) (*bundle.TranslateFunc, error) {
-	locale = strings.ToLower(locale)
-	translations, err := fetchTranslations(locale)
+func Init() *l10n.Set {
+	langs := preferredLanguages()
+	log.Debugf("PREFERRED LANGUAGES: %v\n", langs)
+	set, err := l10n.New(langs, fetchTranslations)
 	if err != nil {
-		return nil, err
+		panic(err)
 	}
-	bdl := bundle.New()
-	if e := bdl.ParseTranslationFileBytes(locale+".all.json", translations); e != nil {
-		return nil, e
-	}
-	t, err := bdl.Tfunc(locale, locale) // stupid API, requires a second parameter
-	if err != nil {
-		return nil, err
-	}
-	return &t, nil
-}
-
-func T(id string, args ...interface{}) string {
-	if translate != nil {
-		t := *translate
-		// If dictionary == nil, it means the requested language is the default
-		if result := t(id, args...); result != id {
-			return result
-		}
-		log.Debugf("No result looking up tag '%s'\n", id)
-		// TODO: Log the missing translation
-	}
-	t := *translateFallback
-	if result := t(id, args...); result != id {
-		return result
-	}
-	log.Debugf("No result looking up fallback tag '%s'\n", id)
-	// TODO: *really* log the missing translation!
-	return id
+	return set
 }
 
 func preferredLanguages() []language.Tag {
@@ -139,16 +78,20 @@ func fetchTranslations(lang string) ([]byte, error) {
 	return content, nil
 }
 
-func LocalizePage(h jqeventrouter.Handler) jqeventrouter.Handler {
+// LocalizePage localizes all language tags on the page.
+func LocalizePage(set *l10n.Set, h jqeventrouter.Handler) jqeventrouter.Handler {
 	return jqeventrouter.HandlerFunc(func(event *jquery.Event, ui *js.Object, p url.Values) bool {
-		go localize()
+		go localize(set)
 		return h.HandleEvent(event, ui, p)
 	})
 }
 
-func localize() {
-	<-initDone // Make sure the dictionary is ready before we try translating
-	elements := jQuery("[" + langTagAttr + "]").Not("[" + localeAttr + "='" + localeName + "']")
+func localize(set *l10n.Set) {
+	T, err := set.Tfunc()
+	if err != nil {
+		panic(err)
+	}
+	elements := jQuery("[" + langTagAttr + "]").Not("[" + localeAttr + "='" + set.Locale + "']")
 	if elements.Length == 0 {
 		log.Debugf("Nothing to localize, early exiting\n")
 		return

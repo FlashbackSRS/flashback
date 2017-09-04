@@ -116,10 +116,11 @@ func RouterInit() {
 
 	fserve.Register(repo)
 
+	langSet := l10n_handler.Init()
+
 	// mobileinit
 	jQuery(document).On("mobileinit", func() {
 		MobileInit()
-		l10n_handler.Init()
 	})
 
 	// beforechange -- Just check auth
@@ -145,7 +146,7 @@ func RouterInit() {
 	// beforeshow
 	beforeShow := jqeventrouter.NullHandler()
 	setupSyncButton := synchandler.SetupSyncButton(repo)
-	jqeventrouter.Listen("pagecontainerbeforeshow", l10n_handler.LocalizePage(setupSyncButton(beforeShow)))
+	jqeventrouter.Listen("pagecontainerbeforeshow", l10n_handler.LocalizePage(langSet, setupSyncButton(beforeShow)))
 	log.Debug("Router init complete\n")
 }
 
