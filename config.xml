@@ -27,4 +27,8 @@
     <plugin name="cordova-plugin-globalization" spec="^1.0.7" />
     <plugin name="cordova-plugin-whitelist" spec="1" />
     <plugin name="cordova-plugin-file" spec="^4.3.3" />
+    <plugin name="cordova-plugin-facebook4" spec="^1.9.1">
+        <variable name="APP_ID" value="867403039963514" />
+        <variable name="APP_NAME" value="FlashbackSRS" />
+    </plugin>
 </widget>
