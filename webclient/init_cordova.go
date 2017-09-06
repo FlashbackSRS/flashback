@@ -17,3 +17,8 @@ func initCordova(wg *sync.WaitGroup) {
 	}, false)
 	log.Debug("Cordova init complete\n")
 }
+
+// urlPrefix returns the URL prefix for routing purposes.
+func urlPrefix(_ string) string {
+	return ""
+}
