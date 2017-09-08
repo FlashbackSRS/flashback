@@ -16,10 +16,12 @@ import (
 	"github.com/pkg/errors"
 )
 
-func setLoginHandler(container jquery.JQuery, rel, href string) {
+func setLoginHandler(_ *model.Repo, container jquery.JQuery, rel, href string, cancel func()) {
 	li := jQuery("li."+rel, container)
 	li.Show()
-	jQuery("a", li).SetAttr("href", href)
+	a := jQuery("a", li)
+	a.SetAttr("href", href)
+	a.On("click", cancel)
 }
 
 // BTCallback handles web logins.
@@ -79,10 +81,24 @@ func extractAuthToken(uri string) (provider, token string, err error) {
 	return provider, token, nil
 }
 
-func displayError(msg string) {
-	log.Printf("Authentication error: %s\n", msg)
-	container := jQuery(":mobile-pagecontainer")
-	jQuery("#auth_fail_reason", container).SetText(msg)
-	jQuery(".show-until-load", container).Hide()
-	jQuery(".hide-until-load", container).Show()
+// checkLoginStatus checks for auth in the background
+func checkLoginStatus(repo *model.Repo) func() {
+	log.Debug("checkLoginStatus\n")
+	defer log.Debug("return from checkLoginStatus\n")
+	ctx, cancel := context.WithCancel(context.Background())
+	go func() {
+		defer cancel()
+		if _, err := repo.CurrentUser(); err != nil {
+			log.Debugf("(cls) repo err: %s", err)
+			return
+		}
+		if e := checkCtx(ctx); e != nil {
+			log.Debugf("(cls) ctx err: %s", e)
+			return
+		}
+
+		log.Debugln("(cls) Already authenticated")
+		js.Global.Get("jQuery").Get("mobile").Call("changePage", "index.html")
+	}()
+	return cancel
 }

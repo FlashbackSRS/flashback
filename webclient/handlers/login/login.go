@@ -1,28 +1,50 @@
 package loginhandler
 
 import (
+	"context"
 	"net/url"
 
 	"github.com/flimzy/jqeventrouter"
+	"github.com/flimzy/log"
 	"github.com/gopherjs/gopherjs/js"
 	"github.com/gopherjs/jquery"
-	"honnef.co/go/js/console"
+
+	"github.com/FlashbackSRS/flashback/model"
 )
 
 var jQuery = jquery.NewJQuery
 
 // BeforeTransition prepares the logout page before display.
-func BeforeTransition(providers map[string]string) jqeventrouter.HandlerFunc {
+func BeforeTransition(repo *model.Repo, providers map[string]string) jqeventrouter.HandlerFunc {
 	return func(_ *jquery.Event, _ *js.Object, _ url.Values) bool {
-		console.Log("login BEFORE")
+		log.Debug("login BEFORE")
+
+		cancel := checkLoginStatus(repo)
 
 		container := jQuery(":mobile-pagecontainer")
 		for rel, href := range providers {
-			setLoginHandler(container, rel, href)
+			setLoginHandler(repo, container, rel, href, cancel)
 		}
 		jQuery(".show-until-load", container).Hide()
 		jQuery(".hide-until-load", container).Show()
 
 		return true
 	}
+}
+
+func checkCtx(ctx context.Context) error {
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	default:
+		return nil
+	}
+}
+
+func displayError(msg string) {
+	log.Printf("Authentication error: %s\n", msg)
+	container := jQuery(":mobile-pagecontainer")
+	jQuery("#auth_fail_reason", container).SetText(msg)
+	jQuery(".show-until-load", container).Hide()
+	jQuery(".hide-until-load", container).Show()
 }
