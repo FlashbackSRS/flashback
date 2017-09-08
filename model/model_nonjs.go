@@ -6,6 +6,7 @@ import (
 	"context"
 
 	"github.com/flimzy/kivik"
+	"github.com/go-kivik/couchdb/chttp"
 	_ "github.com/go-kivik/memorydb" // Kivik Memory driver
 )
 
@@ -24,3 +25,6 @@ func remoteConnection(_ string) (kivikClient, error) {
 	}
 	return wrapClient(c), nil
 }
+
+// setTransport does nothing for non-JS builds
+func setTransport(_ *chttp.Client) {}
