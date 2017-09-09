@@ -96,12 +96,12 @@ www: javascript css images $(HTML_FILES) $(I18N_FILES) generate check-env
 	mkdir -p www/translations
 	cp $(HTML_FILES) www
 	cp $(I18N_FILES) www/translations
-	sed -i -e 's|__API_SERVER__|$(FLASHBACK_SERVER)|g' www/index.html
+	sed -i -e 's|__API_SERVER__|$(FLASHBACK_BASEURI)|g' www/index.html
 	sed -i -e 's|__FACEBOOK_ID__|$(FLASHBACK_FACEBOOK_ID)|g' www/index.html
 
 check-env:
-ifndef FLASHBACK_SERVER
-    $(error FLASHBACK_SERVER is undefined)
+ifndef FLASHBACK_BASEURI
+    $(error FLASHBACK_BASEURI is undefined)
 endif
 ifndef FLASHBACK_FACEBOOK_ID
     $(error FLASHBACK_FACEBOOK_ID is undefined)
