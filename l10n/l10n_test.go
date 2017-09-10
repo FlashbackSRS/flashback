@@ -3,52 +3,71 @@ package l10n
 import (
 	"errors"
 	"testing"
-
-	"golang.org/x/text/language"
 )
 
 const testID = "foo"
 
+type mockSource struct {
+	langs func() ([]string, error)
+	fetch func(string) ([]byte, error)
+}
+
+func (s *mockSource) Languages() ([]string, error) {
+	return s.langs()
+}
+
+func (s *mockSource) FetchLanguage(lang string) ([]byte, error) {
+	return s.fetch(lang)
+}
+
 func TestNew(t *testing.T) {
 	tests := []struct {
-		name      string
-		prefLangs []language.Tag
-		fetch     FetchCallback
-		err       string
-		initErr   string
-		expected  string
+		name     string
+		src      Source
+		err      string
+		initErr  string
+		expected string
 	}{
 		{
-			name: "No callback",
-			err:  "fetch callback required",
+			name: "No langs callback",
+			err:  "src required",
 		},
 		{
-			name:     "No preference",
-			fetch:    func(string) ([]byte, error) { return []byte(`[{"id":"foo","translation":"Foo"}]`), nil },
+			name: "No preference",
+			src: &mockSource{
+				langs: func() ([]string, error) { return nil, nil },
+				fetch: func(string) ([]byte, error) { return []byte(`[{"id":"foo","translation":"Foo"}]`), nil },
+			},
 			expected: "Foo",
 		},
 		{
-			name:      "Preference is default",
-			prefLangs: []language.Tag{language.MustParse("en_US")},
-			fetch:     func(_ string) ([]byte, error) { return []byte(`[{"id":"foo","translation":"Foo"}]`), nil },
-			expected:  "Foo",
+			name: "Preference is default",
+			src: &mockSource{
+				langs: func() ([]string, error) { return []string{"en_US"}, nil },
+				fetch: func(_ string) ([]byte, error) { return []byte(`[{"id":"foo","translation":"Foo"}]`), nil },
+			},
+			expected: "Foo",
 		},
 		{
-			name:      "Spanish preference",
-			prefLangs: []language.Tag{language.MustParse("es_MX")},
-			fetch:     func(_ string) ([]byte, error) { return []byte(`[{"id":"foo","translation":"Fóó"}]`), nil },
-			expected:  "Fóó",
+			name: "Spanish preference",
+			src: &mockSource{
+				langs: func() ([]string, error) { return []string{"es_MX"}, nil },
+				fetch: func(_ string) ([]byte, error) { return []byte(`[{"id":"foo","translation":"Fóó"}]`), nil },
+			},
+			expected: "Fóó",
 		},
 		{
-			name:      "Unsupported preference",
-			prefLangs: []language.Tag{language.MustParse("de")},
-			fetch:     func(_ string) ([]byte, error) { return []byte(`[{"id":"foo","translation":"Foo"}]`), nil },
-			expected:  "Foo",
+			name: "Unsupported preference",
+			src: &mockSource{
+				langs: func() ([]string, error) { return []string{"de"}, nil },
+				fetch: func(_ string) ([]byte, error) { return []byte(`[{"id":"foo","translation":"Foo"}]`), nil },
+			},
+			expected: "Foo",
 		},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			set, err := New(test.prefLangs, test.fetch)
+			set, err := New(test.src)
 			var errMsg string
 			if err != nil {
 				errMsg = err.Error()
@@ -83,38 +102,44 @@ func TestLoadDictionary(t *testing.T) {
 	tests := []struct {
 		name     string
 		locale   string
-		fetch    FetchCallback
+		src      Source
 		expected string
 		err      string
 	}{
 		{
 			name:   "fetch error",
 			locale: "foo",
-			fetch: func(_ string) ([]byte, error) {
-				return nil, errors.New("fetch error")
+			src: &mockSource{
+				fetch: func(_ string) ([]byte, error) {
+					return nil, errors.New("fetch error")
+				},
 			},
 			err: "fetch error",
 		},
 		{
 			name:   "invalid translation data",
 			locale: "foo",
-			fetch: func(_ string) ([]byte, error) {
-				return []byte("foo"), nil
+			src: &mockSource{
+				fetch: func(_ string) ([]byte, error) {
+					return []byte("foo"), nil
+				},
 			},
 			err: `no language found in "foo.all.json"`,
 		},
 		{
 			name:   "success",
 			locale: "en-us",
-			fetch: func(_ string) ([]byte, error) {
-				return []byte(`[{"id":"foo","translation":"Foo"}]`), nil
+			src: &mockSource{
+				fetch: func(_ string) ([]byte, error) {
+					return []byte(`[{"id":"foo","translation":"Foo"}]`), nil
+				},
 			},
 			expected: "Foo",
 		},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			T, err := loadDictionary(test.locale, test.fetch)
+			T, err := loadDictionary(test.locale, test.src)
 			var errMsg string
 			if err != nil {
 				errMsg = err.Error()

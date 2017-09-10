@@ -25,38 +25,60 @@ type Set struct {
 	err           error
 }
 
-// FetchCallback receives the name of a locale, and must return the translation
-// rules (in JSON) for that locale.
-type FetchCallback func(locale string) ([]byte, error)
+// Source is a language information source.
+type Source interface {
+	// FetchLanguage receives the name of a language and must return the
+	// translation dictionary (in JSON) for that language.
+	FetchLanguage(lang string) ([]byte, error)
+	// Languages returns a list of language tags, in order of user preference.
+	Languages() ([]string, error)
+}
 
 // New initializes a new language set.
-func New(preferredLanguages []language.Tag, fetch FetchCallback) (*Set, error) {
-	if fetch == nil {
-		return nil, errors.New("fetch callback required")
+func New(src Source) (*Set, error) {
+	if src == nil {
+		return nil, errors.New("src required")
 	}
-	tag, idx, conf := matcher.Match(preferredLanguages...)
-	log.Debugf("Selected language %s (preference choice %d with %s confidence)", tag, idx, conf)
-	s := &Set{
-		Locale: strings.ToLower(tag.String()),
-	}
+	s := &Set{}
 	s.initWG.Add(1)
-	go s.init(tag, fetch)
+	go s.init(src)
 	return s, nil
 }
 
-func (s *Set) init(tag language.Tag, fetch FetchCallback) {
+func (s *Set) init(src Source) {
+	defer log.Debug("l10n init complete")
 	defer s.initWG.Done()
+	tags, err := src.Languages()
+	if err != nil {
+		log.Debugf("langs cb failed: %s", err)
+		s.err = err
+		return
+	}
+	log.Debugf("Preferred languages: %v", tags)
+	langs := make([]language.Tag, 0, len(tags))
+	for _, tag := range tags {
+		if tag, err := language.Parse(tag); err == nil {
+			langs = append(langs, tag)
+		}
+	}
+	tag, idx, conf := matcher.Match(langs...)
+	log.Debugf("Selected language %s (preference choice %d with %s confidence)", tag, idx, conf)
+	s.Locale = strings.ToLower(tag.String())
 	if s.Locale != "en-us" {
-		s.tfunc, s.err = loadDictionary(s.Locale, fetch)
+		s.tfunc, s.err = loadDictionary(s.Locale, src)
 		if s.err != nil {
+			log.Debugf("load dict failed: %s", s.err)
 			return
 		}
 	}
-	s.fallbackTfunc, s.err = loadDictionary("en-us", fetch)
+	s.fallbackTfunc, s.err = loadDictionary("en-us", src)
+	if s.err != nil {
+		log.Debugf("load dict 2 failed: %s", s.err)
+	}
 }
 
-func loadDictionary(locale string, fetch FetchCallback) (bundle.TranslateFunc, error) {
-	translations, err := fetch(locale)
+func loadDictionary(locale string, src Source) (bundle.TranslateFunc, error) {
+	translations, err := src.FetchLanguage(locale)
 	if err != nil {
 		return nil, err
 	}
