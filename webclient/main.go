@@ -39,6 +39,11 @@ var document *js.Object = js.Global.Get("document")
 
 func main() {
 	log.Debug("Starting main()\n")
+	var wg sync.WaitGroup
+
+	// Call any async init functions first
+	initCordova(&wg)
+	// meanwhile, all the synchronous ones
 
 	confJSON := document.Call("getElementById", "config").Get("innerText").String()
 	conf, err := config.NewFromJSON([]byte(confJSON))
@@ -55,21 +60,19 @@ func main() {
 		panic(err)
 	}
 
-	var wg sync.WaitGroup
+	fserve.Register(repo)
 
-	// Call any async init functions first
-	initCordova(&wg)
-	// meanwhile, all the synchronous ones
 	initjQuery()
 	iframes.Init()
 
-	// Wait for the above modules to initialize before we initialize jQuery Mobile
+	// Wait for the above modules to initialize before we initialize the router
+	// and jQuery Mobile
 	wg.Wait()
 
 	RouterInit(repo, conf)
 
-	// This is what actually loads jQuery Mobile. We have to register our 'mobileinit'
-	// event handler above first, though, as part of RouterInit
+	// This is what actually loads jQuery Mobile. We have to register our
+	//  'mobileinit' event handler above first, though, as part of RouterInit
 	js.Global.Call("loadjqueryMobile")
 	log.Debug("main() finished\n")
 }
@@ -105,8 +108,6 @@ func RouterInit(repo *model.Repo, conf *config.Conf) {
 		panic(err)
 	}
 	prefix := strings.TrimSuffix(appURL.Path, "/")
-
-	fserve.Register(repo)
 
 	langSet := l10n_handler.Init(conf.GetString("flashback_app"))
 
