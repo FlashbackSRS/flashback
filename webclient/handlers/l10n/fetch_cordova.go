@@ -4,11 +4,8 @@ package l10n_handler
 
 import (
 	"fmt"
-	"io/ioutil"
-	"net/http"
 	"sync"
 
-	"github.com/FlashbackSRS/flashback/util"
 	cordova "github.com/flimzy/go-cordova"
 	"github.com/flimzy/log"
 	"github.com/gopherjs/gopherjs/js"
@@ -93,16 +90,4 @@ func fetchTranslations(lang string) ([]byte, error) {
 	}, errHandler)
 	wg.Wait()
 	return content, err
-}
-
-func fetchTranslations(lang string) ([]byte, error) {
-	resp, err := http.Get(util.BaseURI() + "translations/" + lang + ".all.json")
-	if err != nil {
-		return []byte{}, err
-	}
-	content, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return []byte{}, err
-	}
-	return content, nil
 }
