@@ -50,6 +50,11 @@ func main() {
 		MobileInit()
 	})
 
+	repo, err := model.New(context.TODO(), conf.GetString("flashback_api"), conf.GetString("flashback_app"))
+	if err != nil {
+		panic(err)
+	}
+
 	var wg sync.WaitGroup
 
 	// Call any async init functions first
@@ -61,7 +66,7 @@ func main() {
 	// Wait for the above modules to initialize before we initialize jQuery Mobile
 	wg.Wait()
 
-	RouterInit(conf)
+	RouterInit(repo, conf)
 
 	// This is what actually loads jQuery Mobile. We have to register our 'mobileinit'
 	// event handler above first, though, as part of RouterInit
@@ -93,18 +98,13 @@ func resizeContent() {
 	jQuery(".ui-content").SetHeight(strconv.Itoa(screenHt - headerHt - footerHt))
 }
 
-func RouterInit(conf *config.Conf) {
+func RouterInit(repo *model.Repo, conf *config.Conf) {
 	log.Debug("Initializing router\n")
 	appURL, err := url.Parse(conf.GetString("flashback_app"))
 	if err != nil {
 		panic(err)
 	}
 	prefix := strings.TrimSuffix(appURL.Path, "/")
-
-	repo, err := model.New(context.TODO(), conf.GetString("flashback_api"), conf.GetString("flashback_app"))
-	if err != nil {
-		panic(err)
-	}
 
 	fserve.Register(repo)
 
