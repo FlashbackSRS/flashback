@@ -17,6 +17,7 @@ import (
 	"github.com/FlashbackSRS/flashback/config"
 	"github.com/FlashbackSRS/flashback/fserve"
 	"github.com/FlashbackSRS/flashback/iframes"
+	"github.com/FlashbackSRS/flashback/l10n"
 	"github.com/FlashbackSRS/flashback/model"
 	"github.com/FlashbackSRS/flashback/oauth2"
 	"github.com/FlashbackSRS/flashback/util"
@@ -69,7 +70,11 @@ func main() {
 	// and jQuery Mobile
 	wg.Wait()
 
-	RouterInit(repo, conf)
+	// This must happen after cordova init, because it uses cordova to read
+	// translation files.
+	langSet := l10n_handler.Init(conf.GetString("flashback_app"))
+
+	RouterInit(repo, langSet, conf)
 
 	// This is what actually loads jQuery Mobile. We have to register our
 	//  'mobileinit' event handler above first, though, as part of RouterInit
@@ -101,15 +106,13 @@ func resizeContent() {
 	jQuery(".ui-content").SetHeight(strconv.Itoa(screenHt - headerHt - footerHt))
 }
 
-func RouterInit(repo *model.Repo, conf *config.Conf) {
+func RouterInit(repo *model.Repo, langSet *l10n.Set, conf *config.Conf) {
 	log.Debug("Initializing router\n")
 	appURL, err := url.Parse(conf.GetString("flashback_app"))
 	if err != nil {
 		panic(err)
 	}
 	prefix := strings.TrimSuffix(appURL.Path, "/")
-
-	langSet := l10n_handler.Init(conf.GetString("flashback_app"))
 
 	// beforechange -- Just check auth
 	beforeChange := jqeventrouter.NullHandler()
