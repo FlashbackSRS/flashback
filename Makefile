@@ -5,25 +5,22 @@ SVG_FILES = $(shell find webclient/images/ -type f -name '*.svg')
 WEBP_FILES = $(shell find webclient/images/ -type f -name '*.webp')
 I18N_FILES = $(wildcard translations/*.all.json)
 
-server: www
-	go run ./server/*
+# Borrowed from https://stackoverflow.com/questions/9551416/gnu-make-how-to-join-list-and-separate-it-with-separator
+# A literal space.
+space :=
+space +=
+comma := ,
 
-plugins: www .phonegap-facebook-plugin
-	mkdir -p plugins
-	cordova plugin add https://git-wip-us.apache.org/repos/asf/cordova-plugin-console.git
-	cordova plugin add .phonegap-facebook-plugin --variable APP_ID=$(FLASHBACK_FACEBOOK_ID) --variable APP_NAME="$(FLASHBACK_FACEBOOK_NAME)"
-#	cordova plugin add https://git-wip-us.apache.org/repos/asf/cordova-plugin-device.git
+# Joins elements of the list in arg 2 with the given separator.
+#   1. Element separator.
+#   2. The list.
+join-with = $(subst $(space),$1,$(strip $2))
 
-.phonegap-facebook-plugin:
-	git clone https://github.com/Wizcorp/phonegap-facebook-plugin.git .phonegap-facebook-plugin
+all: www android
 
-platforms: www
-	mkdir -p platforms
-	cordova platform | grep -q Installed.*android || cordova platform add android
-
-cordova-init: plugins platforms
-
-android: cordova-init cordova-www
+android: GOTAGS = cordova
+android: cordova-www
+	cordova prepare
 	cordova run android
 
 go-test: preclean npm-install generate
@@ -70,10 +67,10 @@ www/js/cardframe.js: webclient/js/cardframe.js
 .PHONY: main.js
 main.js: preclean generate
 ifdef FLASHBACK_PROD
-	gopherjs build -m ./webclient -o main.js
+	gopherjs build --tags=$(call join-with,$(comma),$(GOTAGS)) -m ./webclient -o main.js
 	# uglifyjs main.js -c -m -o $@
 else
-	gopherjs build --tags=debug ./webclient -o main.js
+	gopherjs build --tags=$(call join-with,$(comma),$(GOTAGS) debug) ./webclient -o main.js
 endif
 
 css: webclient/vendor/jquery.mobile-1.4.5/jquery.mobile.inline-svg-1.4.5.min.css webclient/vendor/jquery.mobile-1.4.5/images/ajax-loader.gif $(CSS_FILES)
@@ -106,7 +103,6 @@ endif
 ifndef FLASHBACK_FACEBOOK_ID
     $(error FLASHBACK_FACEBOOK_ID is undefined)
 endif
-
 
 cordova-www: www
 	cat www/index.html | sed -e 's/<!-- Cordova Here -->/<script src="cordova.js"><\/script>/' > www/cordova.html
