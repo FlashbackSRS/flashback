@@ -27,10 +27,13 @@ func (src *source) Languages() ([]string, error) {
 	var err error
 	var wg sync.WaitGroup
 	wg.Add(1)
-	nav := js.Global.Get("navigator")
-	nav.Get("globalization").Call("getPreferredLanguage",
-		func(l string) {
-			langs = append(langs, l)
+	globalization := js.Global.Get("navigator").Get("globalization")
+	if globalization == js.Undefined {
+		return nil, errors.New("cannot find globalization object; is cordova-plugin-globalization loaded?")
+	}
+	globalization.Call("getPreferredLanguage",
+		func(l *js.Object) {
+			langs = append(langs, l.Get("value").String())
 			wg.Done()
 		}, func(e *js.Object) {
 			err = errors.New(e.Call("toString").String())
@@ -42,6 +45,9 @@ func (src *source) Languages() ([]string, error) {
 }
 
 func (src *source) FetchLanguage(lang string) ([]byte, error) {
+	if js.Global.Get("resolveLocalFileSystemURL") == js.Undefined {
+		return nil, errors.New("resolveLocalFileSystemURL function undefined; is cordova-plugin-file loaded?")
+	}
 	var content []byte
 	var err error
 	var wg sync.WaitGroup
