@@ -74,7 +74,7 @@ func main() {
 	// translation files.
 	langSet := l10n_handler.Init(conf.GetString("flashback_app"))
 
-	RouterInit(repo, langSet, conf)
+	RouterInit(conf.GetString("flashback_app"), conf.GetString("facebook_client_id"), repo, langSet)
 
 	// This is what actually loads jQuery Mobile. We have to register our
 	//  'mobileinit' event handler above first, though, as part of RouterInit
@@ -106,9 +106,9 @@ func resizeContent() {
 	jQuery(".ui-content").SetHeight(strconv.Itoa(screenHt - headerHt - footerHt))
 }
 
-func RouterInit(repo *model.Repo, langSet *l10n.Set, conf *config.Conf) {
+func RouterInit(baseURL, facebookID string, repo *model.Repo, langSet *l10n.Set) {
 	log.Debug("Initializing router\n")
-	appURL, err := url.Parse(conf.GetString("flashback_app"))
+	appURL, err := url.Parse(baseURL)
 	if err != nil {
 		panic(err)
 	}
@@ -124,7 +124,7 @@ func RouterInit(repo *model.Repo, langSet *l10n.Set, conf *config.Conf) {
 	beforeTransition.SetUriFunc(getJqmUri)
 
 	providers := map[string]string{
-		"facebook": oauth2.FacebookURL(conf.GetString("facebook_client_id"), conf.GetString("flashback_app")),
+		"facebook": oauth2.FacebookURL(facebookID, baseURL),
 	}
 
 	beforeTransition.HandleFunc(prefix+"/login.html", loginhandler.BeforeTransition(providers))
