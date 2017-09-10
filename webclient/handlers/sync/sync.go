@@ -20,7 +20,7 @@ var syncInProgress = false
 func SetupSyncButton(repo *model.Repo) func(jqeventrouter.Handler) jqeventrouter.Handler {
 	return func(h jqeventrouter.Handler) jqeventrouter.Handler {
 		return jqeventrouter.HandlerFunc(func(event *jquery.Event, ui *js.Object, p url.Values) bool {
-			log.Debugf("Setting up the button\n")
+			log.Debugf("Setting up sync button\n")
 			btn := jQuery("[data-id='syncbutton']")
 			btn.Off("click")
 			btn.On("click", func() {
