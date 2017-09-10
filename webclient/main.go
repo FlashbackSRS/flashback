@@ -40,6 +40,12 @@ var document *js.Object = js.Global.Get("document")
 func main() {
 	log.Debug("Starting main()\n")
 
+	confJSON := document.Call("getElementById", "config").Get("innerText").String()
+	conf, err := config.NewFromJSON([]byte(confJSON))
+	if err != nil {
+		panic(err)
+	}
+
 	jQuery(document).On("mobileinit", func() {
 		MobileInit()
 	})
@@ -55,7 +61,7 @@ func main() {
 	// Wait for the above modules to initialize before we initialize jQuery Mobile
 	wg.Wait()
 
-	RouterInit()
+	RouterInit(conf)
 
 	// This is what actually loads jQuery Mobile. We have to register our 'mobileinit'
 	// event handler above first, though, as part of RouterInit
@@ -87,13 +93,8 @@ func resizeContent() {
 	jQuery(".ui-content").SetHeight(strconv.Itoa(screenHt - headerHt - footerHt))
 }
 
-func RouterInit() {
+func RouterInit(conf *config.Conf) {
 	log.Debug("Initializing router\n")
-	confJSON := document.Call("getElementById", "config").Get("innerText").String()
-	conf, err := config.NewFromJSON([]byte(confJSON))
-	if err != nil {
-		panic(err)
-	}
 	appURL, err := url.Parse(conf.GetString("flashback_app"))
 	if err != nil {
 		panic(err)
