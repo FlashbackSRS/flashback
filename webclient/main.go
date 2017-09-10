@@ -39,6 +39,11 @@ var document *js.Object = js.Global.Get("document")
 
 func main() {
 	log.Debug("Starting main()\n")
+
+	jQuery(document).On("mobileinit", func() {
+		MobileInit()
+	})
+
 	RouterInit()
 
 	var wg sync.WaitGroup
@@ -103,11 +108,6 @@ func RouterInit() {
 	fserve.Register(repo)
 
 	langSet := l10n_handler.Init()
-
-	// mobileinit
-	jQuery(document).On("mobileinit", func() {
-		MobileInit()
-	})
 
 	// beforechange -- Just check auth
 	beforeChange := jqeventrouter.NullHandler()
