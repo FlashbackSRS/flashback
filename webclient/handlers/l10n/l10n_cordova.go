@@ -41,7 +41,7 @@ func (src *source) Languages() ([]string, error) {
 	return langs, err
 }
 
-func (src *Source) FetchLanguage(lang string) ([]byte, error) {
+func (src *source) FetchLanguage(lang string) ([]byte, error) {
 	var content []byte
 	var err error
 	var wg sync.WaitGroup

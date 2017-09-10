@@ -9,7 +9,6 @@ I18N_FILES = $(wildcard translations/*.all.json)
 # A literal space.
 space :=
 space +=
-comma := ,
 
 # Joins elements of the list in arg 2 with the given separator.
 #   1. Element separator.
@@ -67,10 +66,10 @@ www/js/cardframe.js: webclient/js/cardframe.js
 .PHONY: main.js
 main.js: preclean generate
 ifdef FLASHBACK_PROD
-	gopherjs build --tags=$(call join-with,$(comma),$(GOTAGS)) -m ./webclient -o main.js
+	gopherjs build --tags="$(call join-with,$(space),$(GOTAGS))" -m ./webclient -o main.js
 	# uglifyjs main.js -c -m -o $@
 else
-	gopherjs build --tags=$(call join-with,$(comma),$(GOTAGS) debug) ./webclient -o main.js
+	gopherjs build --tags="$(call join-with,$(space),$(GOTAGS) debug)" ./webclient -o main.js
 endif
 
 css: webclient/vendor/jquery.mobile-1.4.5/jquery.mobile.inline-svg-1.4.5.min.css webclient/vendor/jquery.mobile-1.4.5/images/ajax-loader.gif $(CSS_FILES)
