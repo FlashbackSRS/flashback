@@ -9,7 +9,6 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/flimzy/go-cordova"
 	"github.com/flimzy/jqeventrouter"
 	"github.com/flimzy/log"
 	"github.com/gopherjs/gopherjs/js"
@@ -66,19 +65,6 @@ func initjQuery() {
 	jQuery(js.Global).On("orentationchange", resizeContent)
 	jQuery(document).On("pagecontainertransition", resizeContent)
 	log.Debug("jQuery init complete\n")
-}
-
-func initCordova(wg *sync.WaitGroup) {
-	log.Debug("Initializing Cordova extensions\n")
-	if !cordova.IsMobile() {
-		return
-	}
-	wg.Add(1)
-	document.Call("addEventListener", "deviceready", func() {
-		// TODO: Don't defer; and perhaps even pass wg.Done directly to the Call method?
-		defer wg.Done()
-	}, false)
-	log.Debug("Cordova init complete\n")
 }
 
 func resizeContent() {

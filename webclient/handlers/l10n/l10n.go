@@ -4,11 +4,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/url"
-	"sync"
 
-	"golang.org/x/text/language"
-
-	"github.com/flimzy/go-cordova"
 	"github.com/flimzy/jqeventrouter"
 	"github.com/flimzy/log"
 	"github.com/gopherjs/gopherjs/js"
@@ -32,38 +28,6 @@ func Init() *l10n.Set {
 		panic(err)
 	}
 	return set
-}
-
-func preferredLanguages() []language.Tag {
-	var langs []language.Tag
-	//	langs = append(langs, language.MustParse("es_MX"))
-	if cordova.IsMobile() {
-		var wg sync.WaitGroup
-		wg.Add(1)
-		nav := js.Global.Get("navigator")
-		nav.Get("globalization").Call("getPreferredLanguage",
-			func(l string) {
-				defer wg.Done()
-				if tag, err := language.Parse(l); err == nil {
-					langs = append(langs, tag)
-				}
-			}, func() {
-				defer wg.Done()
-				// ignore any error
-			})
-		wg.Wait()
-	}
-	if languages := js.Global.Get("navigator").Get("languages"); languages != nil {
-		for i := 0; i < languages.Length(); i++ {
-			if tag, err := language.Parse(languages.Index(i).String()); err == nil {
-				langs = append(langs, tag)
-			}
-		}
-	}
-	if tag, err := language.Parse(js.Global.Get("navigator").Get("language").String()); err == nil {
-		langs = append(langs, tag)
-	}
-	return langs
 }
 
 func fetchTranslations(lang string) ([]byte, error) {
