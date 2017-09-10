@@ -107,7 +107,7 @@ func RouterInit() {
 
 	fserve.Register(repo)
 
-	langSet := l10n_handler.Init()
+	langSet := l10n_handler.Init(conf.GetString("flashback_app"))
 
 	// beforechange -- Just check auth
 	beforeChange := jqeventrouter.NullHandler()

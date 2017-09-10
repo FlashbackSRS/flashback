@@ -17,8 +17,8 @@ const langTagAttr = "data-lt"
 const localeAttr = "data-locale"
 
 // Init initializes the localization engine.
-func Init() *l10n.Set {
-	set, err := l10n.New(preferredLanguages, fetchTranslations)
+func Init(appURL string) *l10n.Set {
+	set, err := l10n.New(langSource(appURL))
 	if err != nil {
 		panic(err)
 	}
