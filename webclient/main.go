@@ -44,8 +44,6 @@ func main() {
 		MobileInit()
 	})
 
-	RouterInit()
-
 	var wg sync.WaitGroup
 
 	// Call any async init functions first
@@ -56,6 +54,8 @@ func main() {
 
 	// Wait for the above modules to initialize before we initialize jQuery Mobile
 	wg.Wait()
+
+	RouterInit()
 
 	// This is what actually loads jQuery Mobile. We have to register our 'mobileinit'
 	// event handler above first, though, as part of RouterInit
