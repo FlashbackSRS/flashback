@@ -4,21 +4,16 @@ package l10n_handler
 
 import (
 	"github.com/gopherjs/gopherjs/js"
-	"golang.org/x/text/language"
 )
 
-func preferredLanguages() []language.Tag {
-	var langs []language.Tag
+func preferredLanguages() ([]string, error) {
+	var langs []string
 
 	if languages := js.Global.Get("navigator").Get("languages"); languages != nil {
 		for i := 0; i < languages.Length(); i++ {
-			if tag, err := language.Parse(languages.Index(i).String()); err == nil {
-				langs = append(langs, tag)
-			}
+			langs = append(langs, languages.Index(i).String())
 		}
 	}
-	if tag, err := language.Parse(js.Global.Get("navigator").Get("language").String()); err == nil {
-		langs = append(langs, tag)
-	}
-	return langs
+	langs = append(langs, js.Global.Get("navigator").Get("language").String())
+	return langs, nil
 }

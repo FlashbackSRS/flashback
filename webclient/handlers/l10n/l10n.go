@@ -1,8 +1,6 @@
 package l10n_handler
 
 import (
-	"io/ioutil"
-	"net/http"
 	"net/url"
 
 	"github.com/flimzy/jqeventrouter"
@@ -11,7 +9,6 @@ import (
 	"github.com/gopherjs/jquery"
 
 	"github.com/FlashbackSRS/flashback/l10n"
-	"github.com/FlashbackSRS/flashback/util"
 )
 
 var jQuery = jquery.NewJQuery
@@ -21,25 +18,11 @@ const localeAttr = "data-locale"
 
 // Init initializes the localization engine.
 func Init() *l10n.Set {
-	langs := preferredLanguages()
-	log.Debugf("PREFERRED LANGUAGES: %v\n", langs)
-	set, err := l10n.New(langs, fetchTranslations)
+	set, err := l10n.New(preferredLanguages, fetchTranslations)
 	if err != nil {
 		panic(err)
 	}
 	return set
-}
-
-func fetchTranslations(lang string) ([]byte, error) {
-	resp, err := http.Get(util.BaseURI() + "translations/" + lang + ".all.json")
-	if err != nil {
-		return []byte{}, err
-	}
-	content, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return []byte{}, err
-	}
-	return content, nil
 }
 
 // LocalizePage localizes all language tags on the page.

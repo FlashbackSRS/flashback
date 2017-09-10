@@ -3,52 +3,56 @@ package l10n
 import (
 	"errors"
 	"testing"
-
-	"golang.org/x/text/language"
 )
 
 const testID = "foo"
 
 func TestNew(t *testing.T) {
 	tests := []struct {
-		name      string
-		prefLangs []language.Tag
-		fetch     FetchCallback
-		err       string
-		initErr   string
-		expected  string
+		name     string
+		langs    LangsCallback
+		fetch    FetchCallback
+		err      string
+		initErr  string
+		expected string
 	}{
 		{
-			name: "No callback",
-			err:  "fetch callback required",
+			name: "No langs callback",
+			err:  "langs callback required",
+		},
+		{
+			name:  "No fetch callback",
+			langs: func() ([]string, error) { return nil, nil },
+			err:   "fetch callback required",
 		},
 		{
 			name:     "No preference",
+			langs:    func() ([]string, error) { return nil, nil },
 			fetch:    func(string) ([]byte, error) { return []byte(`[{"id":"foo","translation":"Foo"}]`), nil },
 			expected: "Foo",
 		},
 		{
-			name:      "Preference is default",
-			prefLangs: []language.Tag{language.MustParse("en_US")},
-			fetch:     func(_ string) ([]byte, error) { return []byte(`[{"id":"foo","translation":"Foo"}]`), nil },
-			expected:  "Foo",
+			name:     "Preference is default",
+			langs:    func() ([]string, error) { return []string{"en_US"}, nil },
+			fetch:    func(_ string) ([]byte, error) { return []byte(`[{"id":"foo","translation":"Foo"}]`), nil },
+			expected: "Foo",
 		},
 		{
-			name:      "Spanish preference",
-			prefLangs: []language.Tag{language.MustParse("es_MX")},
-			fetch:     func(_ string) ([]byte, error) { return []byte(`[{"id":"foo","translation":"Fóó"}]`), nil },
-			expected:  "Fóó",
+			name:     "Spanish preference",
+			langs:    func() ([]string, error) { return []string{"es_MX"}, nil },
+			fetch:    func(_ string) ([]byte, error) { return []byte(`[{"id":"foo","translation":"Fóó"}]`), nil },
+			expected: "Fóó",
 		},
 		{
-			name:      "Unsupported preference",
-			prefLangs: []language.Tag{language.MustParse("de")},
-			fetch:     func(_ string) ([]byte, error) { return []byte(`[{"id":"foo","translation":"Foo"}]`), nil },
-			expected:  "Foo",
+			name:     "Unsupported preference",
+			langs:    func() ([]string, error) { return []string{"de"}, nil },
+			fetch:    func(_ string) ([]byte, error) { return []byte(`[{"id":"foo","translation":"Foo"}]`), nil },
+			expected: "Foo",
 		},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			set, err := New(test.prefLangs, test.fetch)
+			set, err := New(test.langs, test.fetch)
 			var errMsg string
 			if err != nil {
 				errMsg = err.Error()

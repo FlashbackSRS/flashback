@@ -3,29 +3,28 @@
 package l10n_handler
 
 import (
+	"errors"
 	"sync"
 
-	"honnef.co/go/js/console"
-
 	"github.com/gopherjs/gopherjs/js"
-	"golang.org/x/text/language"
+	"honnef.co/go/js/console"
 )
 
-func preferredLanguages() []language.Tag {
-	var langs []language.Tag
+func preferredLanguages() ([]string, error) {
+	var langs []string
+	var err error
 	var wg sync.WaitGroup
 	wg.Add(1)
 	nav := js.Global.Get("navigator")
 	nav.Get("globalization").Call("getPreferredLanguage",
 		func(l string) {
-			defer wg.Done()
-			if tag, err := language.Parse(l); err == nil {
-				langs = append(langs, tag)
-			}
+			langs = append(langs, l)
+			wg.Done()
 		}, func(e *js.Object) {
+			err = errors.New(e.Call("toString").String())
 			console.Log(e)
-			defer wg.Done()
+			wg.Done()
 		})
 	wg.Wait()
-	return langs
+	return langs, err
 }

@@ -29,30 +29,54 @@ type Set struct {
 // rules (in JSON) for that locale.
 type FetchCallback func(locale string) ([]byte, error)
 
+// LangsCallback must return a list of locale tags, in order of user
+// preference.
+type LangsCallback func() ([]string, error)
+
 // New initializes a new language set.
-func New(preferredLanguages []language.Tag, fetch FetchCallback) (*Set, error) {
+func New(langsCb LangsCallback, fetch FetchCallback) (*Set, error) {
+	if langsCb == nil {
+		return nil, errors.New("locales callback required")
+	}
 	if fetch == nil {
 		return nil, errors.New("fetch callback required")
 	}
-	tag, idx, conf := matcher.Match(preferredLanguages...)
-	log.Debugf("Selected language %s (preference choice %d with %s confidence)", tag, idx, conf)
-	s := &Set{
-		Locale: strings.ToLower(tag.String()),
-	}
+	s := &Set{}
 	s.initWG.Add(1)
-	go s.init(tag, fetch)
+	go s.init(langsCb, fetch)
 	return s, nil
 }
 
-func (s *Set) init(tag language.Tag, fetch FetchCallback) {
+func (s *Set) init(langsCb LangsCallback, fetch FetchCallback) {
+	defer log.Debug("l10n init complete")
 	defer s.initWG.Done()
+	tags, err := langsCb()
+	if err != nil {
+		log.Debugf("langs cb failed: %s", err)
+		s.err = err
+		return
+	}
+	log.Debugf("Preferred languages: %v", tags)
+	langs := make([]language.Tag, 0, len(tags))
+	for _, tag := range tags {
+		if tag, err := language.Parse(tag); err == nil {
+			langs = append(langs, tag)
+		}
+	}
+	tag, idx, conf := matcher.Match(langs...)
+	log.Debugf("Selected language %s (preference choice %d with %s confidence)", tag, idx, conf)
+	s.Locale = strings.ToLower(tag.String())
 	if s.Locale != "en-us" {
 		s.tfunc, s.err = loadDictionary(s.Locale, fetch)
 		if s.err != nil {
+			log.Debugf("load dict failed: %s", s.err)
 			return
 		}
 	}
 	s.fallbackTfunc, s.err = loadDictionary("en-us", fetch)
+	if s.err != nil {
+		log.Debugf("load dict 2 failed: %s", s.err)
+	}
 }
 
 func loadDictionary(locale string, fetch FetchCallback) (bundle.TranslateFunc, error) {
