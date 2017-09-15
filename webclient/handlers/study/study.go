@@ -131,30 +131,32 @@ func ShowCard(repo *model.Repo) error {
 	return nil
 }
 
-func init() {
+func StudyInit(prefix string) {
 	log.Debug("Registering iframes listener\n")
-	iframes.RegisterListener("submit", handleSubmit)
+	iframes.RegisterListener("submit", handleSubmit(prefix))
 	log.Debug("Done registering iframes listener\n")
 }
 
-func handleSubmit(cardID string, payload *js.Object, _ iframes.Respond) error {
-	card := currentCard.Card
-	face := currentCard.Face
-	if card.DocID() != cardID {
-		return errors.Errorf("received submit for unexpected card. Got %s, expected %s", cardID, card.DocID())
-	}
-	done, err := card.Action(context.TODO(), &currentCard.Face, currentCard.StartTime, payload)
-	if err != nil {
-		log.Printf("Error executing card action for face %d / %+v: %s", face, card, err)
-	}
-	if done {
-		currentCard = nil
-	} else {
-		if face == currentCard.Face {
-			log.Printf("face wasn't incremented!\n")
+func handleSubmit(prefix string) func(string, *js.Object, iframes.Respond) error {
+	return func(cardID string, payload *js.Object, _ iframes.Respond) error {
+		card := currentCard.Card
+		face := currentCard.Face
+		if card.DocID() != cardID {
+			return errors.Errorf("received submit for unexpected card. Got %s, expected %s", cardID, card.DocID())
 		}
+		done, err := card.Action(context.TODO(), &currentCard.Face, currentCard.StartTime, payload)
+		if err != nil {
+			log.Printf("Error executing card action for face %d / %+v: %s", face, card, err)
+		}
+		if done {
+			currentCard = nil
+		} else {
+			if face == currentCard.Face {
+				log.Printf("face wasn't incremented!\n")
+			}
+		}
+		// FIXME: Don't hard code /app here
+		jQuery(":mobile-pagecontainer").Call("pagecontainer", "change", prefix+"/study.html")
+		return nil
 	}
-	// FIXME: Don't hard code /app here
-	jQuery(":mobile-pagecontainer").Call("pagecontainer", "change", "/app/study.html")
-	return nil
 }
