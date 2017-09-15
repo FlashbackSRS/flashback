@@ -8,7 +8,6 @@ import (
 	"sync"
 
 	"github.com/FlashbackSRS/flashback/l10n"
-	cordova "github.com/flimzy/go-cordova"
 	"github.com/flimzy/log"
 	"github.com/gopherjs/gopherjs/js"
 	"honnef.co/go/js/console"
@@ -76,7 +75,7 @@ func (src *source) FetchLanguage(lang string) ([]byte, error) {
 }
 
 func appDir() string {
-	return cordova.Global().Get("file").Get("applicationDirectory").String() + "www/"
+	return js.Global().Get("cordova").Get("file").Get("applicationDirectory").String() + "www/"
 }
 
 const (
