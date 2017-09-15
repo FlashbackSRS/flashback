@@ -4,9 +4,7 @@ package main
 
 import (
 	"context"
-	"net/url"
 	"strconv"
-	"strings"
 	"sync"
 
 	"github.com/flimzy/jqeventrouter"
@@ -52,11 +50,13 @@ func main() {
 		panic(err)
 	}
 
+	baseURL := conf.GetString("flashback_app")
+
 	jQuery(document).On("mobileinit", func() {
 		MobileInit()
 	})
 
-	repo, err := model.New(context.TODO(), conf.GetString("flashback_api"), conf.GetString("flashback_app"))
+	repo, err := model.New(context.TODO(), conf.GetString("flashback_api"), baseURL)
 	if err != nil {
 		panic(err)
 	}
@@ -72,9 +72,9 @@ func main() {
 
 	// This must happen after cordova init, because it uses cordova to read
 	// translation files.
-	langSet := l10n_handler.Init(conf.GetString("flashback_app"))
+	langSet := l10n_handler.Init(baseURL)
 
-	RouterInit(conf.GetString("flashback_app"), conf.GetString("facebook_client_id"), repo, langSet)
+	RouterInit(urlPrefix(baseURL), baseURL, conf.GetString("facebook_client_id"), repo, langSet)
 
 	// This is what actually loads jQuery Mobile. We have to register our
 	//  'mobileinit' event handler above first, though, as part of RouterInit
@@ -106,13 +106,8 @@ func resizeContent() {
 	jQuery(".ui-content").SetHeight(strconv.Itoa(screenHt - headerHt - footerHt))
 }
 
-func RouterInit(baseURL, facebookID string, repo *model.Repo, langSet *l10n.Set) {
+func RouterInit(prefix, baseURL, facebookID string, repo *model.Repo, langSet *l10n.Set) {
 	log.Debug("Initializing router\n")
-	appURL, err := url.Parse(baseURL)
-	if err != nil {
-		panic(err)
-	}
-	prefix := strings.TrimSuffix(appURL.Path, "/")
 
 	// beforechange -- Just check auth
 	beforeChange := jqeventrouter.NullHandler()
@@ -127,7 +122,7 @@ func RouterInit(baseURL, facebookID string, repo *model.Repo, langSet *l10n.Set)
 		"facebook": oauth2.FacebookURL(facebookID, baseURL),
 	}
 
-	beforeTransition.HandleFunc(prefix+"/login.html", loginhandler.BeforeTransition(providers))
+	beforeTransition.HandleFunc(prefix+"/login.html", loginhandler.BeforeTransition(repo, providers))
 	beforeTransition.HandleFunc(prefix+"/callback.html", loginhandler.BTCallback(repo, providers))
 	beforeTransition.HandleFunc(prefix+"/logout.html", logouthandler.BeforeTransition(repo))
 	beforeTransition.HandleFunc(prefix+"/import.html", importhandler.BeforeTransition(repo))
@@ -147,6 +142,8 @@ func getJqmUri(_ *jquery.Event, ui *js.Object) string {
 
 // MobileInit is run after jQuery Mobile's 'mobileinit' event has fired
 func MobileInit() {
+	log.Debugf("MobileInit")
+	defer log.Debugf("MobileInit finished")
 	jQMobile = js.Global.Get("jQuery").Get("mobile")
 
 	// Disable hash features

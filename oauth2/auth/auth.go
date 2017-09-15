@@ -6,7 +6,7 @@ import (
 	"encoding/json"
 
 	"github.com/flimzy/kivik"
-	"github.com/flimzy/kivik/driver/couchdb/chttp"
+	"github.com/go-kivik/couchdb/chttp"
 )
 
 // NewOAuth2 returns a new kivik chttp authenticator based on the provided
@@ -23,7 +23,6 @@ func NewOAuth2(provider, token string) *OAuth2Authenticator {
 type OAuth2Authenticator struct {
 	Provider string `json:"provider"`
 	Token    string `json:"access_token"`
-	setJar   bool
 }
 
 var _ chttp.Authenticator = &OAuth2Authenticator{}

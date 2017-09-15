@@ -1,5 +1,5 @@
 hash: fa2b899fc56860227dd304b1215953d60762585ee1f5857a086759f156b23665
-updated: 2017-09-10T14:04:43.009459842+02:00
+updated: 2017-09-15T16:12:04.593209718+02:00
 imports:
 - name: github.com/andybalholm/cascadia
   version: 349dd0209470eabd9514242c688c403c0926d266
@@ -22,6 +22,10 @@ imports:
   - errors
 - name: github.com/flimzy/log
   version: 775874b5dd4b1bc0e9cffd55962a44b5ee7f3cd4
+- name: github.com/go-kivik/couchdb
+  version: 64d2ee9d5127eb5efb18003d0d1ebb2890a46e4a
+  subpackages:
+  - chttp
 - name: github.com/go-kivik/mango
   version: 6447c9bcf24e71967adc9699cb87d8040483f0fd
 - name: github.com/go-kivik/memorydb
@@ -66,7 +70,7 @@ imports:
   - html/atom
   - publicsuffix
 - name: golang.org/x/text
-  version: bd91bbf73e9a4a801adbfb97133c992678533126
+  version: 1cbadb444a806fd9430d14ad08967ed91da4fa0a
   subpackages:
   - internal/tag
   - language

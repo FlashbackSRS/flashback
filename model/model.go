@@ -5,7 +5,7 @@ import (
 	"net/http"
 
 	"github.com/flimzy/kivik"
-	"github.com/flimzy/kivik/driver/couchdb/chttp"
+	"github.com/go-kivik/couchdb/chttp"
 	"github.com/pkg/errors"
 
 	fb "github.com/FlashbackSRS/flashback-model"
@@ -51,6 +51,7 @@ func New(ctx context.Context, remoteURL, appURL string) (*Repo, error) {
 	if err != nil {
 		return nil, err
 	}
+	setTransport(httpClient)
 	return &Repo{
 		chttp:  httpClient,
 		remote: remoteClient,

@@ -13,6 +13,7 @@
         "cordova-android": "^6.2.3",
         "cordova-plugin-compat": "^1.1.0",
         "cordova-plugin-console": "~1.0.7",
+        "cordova-plugin-facebook4": "^1.9.1",
         "cordova-plugin-file": "^4.3.3",
         "cordova-plugin-globalization": "^1.0.7",
         "cordova-plugin-whitelist": "1",
@@ -47,7 +48,11 @@
             "cordova-plugin-whitelist": {},
             "cordova-plugin-console": {},
             "cordova-plugin-globalization": {},
-            "cordova-plugin-file": {}
+            "cordova-plugin-file": {},
+            "cordova-plugin-facebook4": {
+                "APP_ID": "867403039963514",
+                "APP_NAME": "FlashbackSRS"
+            }
         },
         "platforms": [
             "android"
