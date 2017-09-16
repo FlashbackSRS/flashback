@@ -104,6 +104,7 @@ ifndef FLASHBACK_FACEBOOK_ID
 endif
 
 cordova-www: www
+	cat cordova.xml | sed -e 's|__FACEBOOK_ID__|$(FLASHBACK_FACEBOOK_ID)|g' > config.xml
 	cat www/index.html | sed -e 's/<!-- Cordova Here -->/<script src="cordova.js"><\/script>/' > www/cordova.html
 
 generate:
