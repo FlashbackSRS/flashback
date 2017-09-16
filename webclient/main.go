@@ -74,7 +74,10 @@ func main() {
 	// translation files.
 	langSet := l10n_handler.Init(baseURL)
 
-	RouterInit(urlPrefix(baseURL), baseURL, conf.GetString("facebook_client_id"), repo, langSet)
+	appPrefix := urlPrefix(baseURL)
+
+	RouterInit(appPrefix, baseURL, conf.GetString("facebook_client_id"), repo, langSet)
+	studyhandler.StudyInit()
 
 	// This is what actually loads jQuery Mobile. We have to register our
 	//  'mobileinit' event handler above first, though, as part of RouterInit

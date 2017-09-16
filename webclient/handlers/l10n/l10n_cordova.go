@@ -75,7 +75,7 @@ func (src *source) FetchLanguage(lang string) ([]byte, error) {
 }
 
 func appDir() string {
-	return js.Global().Get("cordova").Get("file").Get("applicationDirectory").String() + "www/"
+	return js.Global.Get("cordova").Get("file").Get("applicationDirectory").String() + "www/"
 }
 
 const (
