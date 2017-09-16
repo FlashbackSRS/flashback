@@ -12,6 +12,14 @@
                 <ul class="login">
                     <li class="google"><a rel="login-google"><img src="images/gplogin.png"></a></li>
                     <li class="facebook"><a rel="login-facebook"><img src="images/fblogin.png"></a></li>
+                    <li class="devlogin">
+                        <form action="callback.html" method="GET">
+                        <a rel="login-devlogin"><img src="images/devlogin.png"></a><br>
+                        Token: <input name="token"></input><br>
+                        <input type="submit" name="Dev Mode Sign In">
+                        <input type="hidden" name="provider" value="devlogin">
+                    </form>
+                    </li>
                 </ul>
             </div>
             <div class="show-until-load">
