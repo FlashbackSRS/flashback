@@ -96,14 +96,6 @@ func TestImportFile(t *testing.T) {
 	}
 }
 
-// func MustParseDbID(id string) fb.DbID {
-// 	dbid, err := fb.ParseDbID(id)
-// 	if err != nil {
-// 		panic(err)
-// 	}
-// 	return dbid
-// }
-
 func TestImport(t *testing.T) {
 	type iTest struct {
 		name               string
