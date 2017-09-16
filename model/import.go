@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"io"
 
+	"github.com/FlashbackSRS/flashback/model/progress"
 	"github.com/flimzy/kivik"
 	"github.com/flimzy/log"
 	multierror "github.com/hashicorp/go-multierror"
@@ -33,11 +34,19 @@ func (r *Repo) ImportFile(ctx context.Context, f inputFile) error {
 		return err
 	}
 	defer func() { _ = z.Close() }()
-	return r.Import(ctx, z)
+	return r.Import(ctx, z, nil)
 }
 
 // Import imports a .fbb file and stores the content
-func (r *Repo) Import(ctx context.Context, f io.Reader) error {
+func (r *Repo) Import(ctx context.Context, f io.Reader, reporter progress.ReportFunc) error {
+	if reporter == nil {
+		reporter = func(_, _ uint64, _ float64) {}
+	}
+	prog := progress.New(reporter)
+	steps := prog.NewComponent()
+	bundleDocs := prog.NewComponent()
+	cardDocs := prog.NewComponent()
+	steps.Total(5)
 	udb, err := r.userDB(ctx)
 	if err != nil {
 		return err
@@ -46,6 +55,7 @@ func (r *Repo) Import(ctx context.Context, f io.Reader) error {
 	if e := json.NewDecoder(f).Decode(pkg); e != nil {
 		return errors.Wrap(e, "Unable to decode JSON")
 	}
+	steps.Increment(1)
 	if e := pkg.Validate(); e != nil {
 		return e
 	}
@@ -55,13 +65,33 @@ func (r *Repo) Import(ctx context.Context, f io.Reader) error {
 	if e := r.SaveBundle(ctx, bundle); e != nil {
 		return e
 	}
+	steps.Increment(1)
 
 	bdb, err := r.bundleDB(ctx, bundle)
 	if err != nil {
 		return err
 	}
+	steps.Increment(1)
 
+	if err := importBundleDocs(ctx, bdb, pkg, bundleDocs); err != nil {
+		return err
+	}
+	steps.Increment(1)
+
+	if err := importCardDocs(ctx, udb, pkg, cardDocs); err != nil {
+		return err
+	}
+	steps.Increment(1)
+
+	log.Printf("Imported:\n%d Bundles\n%d Themes\n%d Decks\n%d Notes\n%d Cards\n",
+		1, len(pkg.Themes), len(pkg.Decks), len(pkg.Notes), len(pkg.Cards))
+	return nil
+}
+
+func importBundleDocs(ctx context.Context, db kivikDB, pkg *fb.Package, prog *progress.Component) error {
 	docs := make([]FlashbackDoc, 0, len(pkg.Themes)+len(pkg.Notes)+len(pkg.Decks))
+	prog.Total(uint64(cap(docs)))
+	defer prog.Progress(uint64(cap(docs)))
 	for _, theme := range pkg.Themes {
 		docs = append(docs, theme)
 	}
@@ -71,21 +101,19 @@ func (r *Repo) Import(ctx context.Context, f io.Reader) error {
 	for _, deck := range pkg.Decks {
 		docs = append(docs, deck)
 	}
-	if err := bulkInsert(ctx, bdb, docs...); err != nil {
-		return err
-	}
+	return bulkInsert(ctx, db, docs...)
+}
+
+func importCardDocs(ctx context.Context, db kivikDB, pkg *fb.Package, prog *progress.Component) error {
 
 	cards := make([]FlashbackDoc, 0, len(pkg.Cards))
+	prog.Total(uint64(cap(cards)))
+	defer prog.Progress(uint64(cap(cards)))
 	for _, card := range pkg.Cards {
 		cards = append(cards, card)
 	}
 
-	if err := bulkInsert(ctx, udb, cards...); err != nil {
-		return err
-	}
-	log.Printf("Imported:\n%d Bundles\n%d Themes\n%d Decks\n%d Notes\n%d Cards\n",
-		1, len(pkg.Themes), len(pkg.Decks), len(pkg.Notes), len(pkg.Cards))
-	return nil
+	return bulkInsert(ctx, db, cards...)
 }
 
 func bulkInsert(ctx context.Context, db getPutBulkDocer, docs ...FlashbackDoc) error {

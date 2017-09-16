@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"io"
+	"math"
 	"strings"
 	"testing"
 	"time"
@@ -12,6 +13,103 @@ import (
 	"github.com/flimzy/diff"
 	"github.com/flimzy/kivik"
 )
+
+var sampleImportData = `{
+	"version": 2,
+	"bundle": {
+		"_id": "bundle-aebagbb",
+		"type": "bundle",
+		"created": "2016-07-31T15:08:24.730156517Z",
+		"modified": "2016-07-31T15:08:24.730156517Z",
+		"owner": "mjxwe"
+	},
+	"cards": [
+		{
+			"type": "card",
+			"_id": "card-krsxg5baij2w4zdmmu.VGVzdCBOb3Rl.0",
+			"created": "2016-07-31T15:08:24.730156517Z",
+			"modified": "2016-07-31T15:08:24.730156517Z",
+			"model": "theme-VGVzdCBUaGVtZQ/0"
+		}
+	],
+	"notes": [
+		{
+			"_id": "note-VGVzdCBOb3Rl",
+			"type": "note",
+			"created": "2016-07-31T15:08:24.730156517Z",
+			"modified": "2016-07-31T15:08:24.730156517Z",
+			"imported": "2016-08-02T15:08:24.730156517Z",
+			"theme": "theme-VGVzdCBUaGVtZQ",
+			"model": 0,
+			"fieldValues": [
+				{
+					"text": "cat"
+				}
+			]
+		}
+	],
+	"decks": [
+		{
+			"_id": "deck-VGVzdCBEZWNr",
+			"type": "deck",
+			"created": "2016-07-31T15:08:24.730156517Z",
+			"modified": "2016-07-31T15:08:24.730156517Z",
+			"imported": "2016-08-02T15:08:24.730156517Z",
+			"name": "Test Deck",
+			"description": "Deck for testing",
+			"cards": ["card-krsxg5baij2w4zdmmu.VGVzdCBOb3Rl.0"]
+		}
+	],
+	"themes": [
+		{
+			"_id": "theme-VGVzdCBUaGVtZQ",
+			"type": "theme",
+			"created": "2016-07-31T15:08:24.730156517Z",
+			"modified": "2016-07-31T15:08:24.730156517Z",
+			"imported": "2016-08-02T15:08:24.730156517Z",
+			"name": "Test Theme",
+			"description": "Theme for testing",
+			"models": [
+				{
+					"id": 0,
+					"modelType": "anki-basic",
+					"name": "Model A",
+					"templates": [],
+					"fields": [
+						{
+							"fieldType": 0,
+							"name": "Word"
+						}
+					],
+					"files": [
+						"m1.html"
+					]
+				}
+			],
+			"_attachments": {
+				"$main.css": {
+					"content_type": "text/css",
+					"data": "LyogYW4gZW1wdHkgQ1NTIGZpbGUgKi8="
+				},
+				"m1.html": {
+					"content_type": "text/html",
+					"data": "PGh0bWw+PC9odG1sPg=="
+				}
+			},
+			"files": [
+				"$main.css"
+			],
+			"modelSequence": 2
+		}
+	],
+	"reviews": [
+		{
+			"cardID": "card-krsxg5baij2w4zdmmu.VGVzdCBOb3Rl.0",
+			"timestamp": "2017-01-01T01:01:01Z"
+		}
+	]
+}
+`
 
 func ParseTime(ts string) time.Time {
 	t, err := time.Parse(time.RFC3339, ts)
@@ -163,104 +261,7 @@ func TestImport(t *testing.T) {
 					local: local,
 				}
 			}(),
-			file: func() io.Reader {
-				return strings.NewReader(`{
-					"version": 2,
-					"bundle": {
-						"_id": "bundle-aebagbb",
-						"type": "bundle",
-						"created": "2016-07-31T15:08:24.730156517Z",
-						"modified": "2016-07-31T15:08:24.730156517Z",
-						"owner": "mjxwe"
-					},
-					"cards": [
-						{
-							"type": "card",
-							"_id": "card-krsxg5baij2w4zdmmu.VGVzdCBOb3Rl.0",
-							"created": "2016-07-31T15:08:24.730156517Z",
-							"modified": "2016-07-31T15:08:24.730156517Z",
-							"model": "theme-VGVzdCBUaGVtZQ/0"
-						}
-					],
-					"notes": [
-						{
-							"_id": "note-VGVzdCBOb3Rl",
-							"type": "note",
-							"created": "2016-07-31T15:08:24.730156517Z",
-							"modified": "2016-07-31T15:08:24.730156517Z",
-							"imported": "2016-08-02T15:08:24.730156517Z",
-							"theme": "theme-VGVzdCBUaGVtZQ",
-							"model": 0,
-							"fieldValues": [
-								{
-									"text": "cat"
-								}
-							]
-						}
-					],
-					"decks": [
-						{
-							"_id": "deck-VGVzdCBEZWNr",
-							"type": "deck",
-							"created": "2016-07-31T15:08:24.730156517Z",
-							"modified": "2016-07-31T15:08:24.730156517Z",
-							"imported": "2016-08-02T15:08:24.730156517Z",
-							"name": "Test Deck",
-							"description": "Deck for testing",
-							"cards": ["card-krsxg5baij2w4zdmmu.VGVzdCBOb3Rl.0"]
-						}
-					],
-					"themes": [
-						{
-							"_id": "theme-VGVzdCBUaGVtZQ",
-							"type": "theme",
-							"created": "2016-07-31T15:08:24.730156517Z",
-							"modified": "2016-07-31T15:08:24.730156517Z",
-							"imported": "2016-08-02T15:08:24.730156517Z",
-							"name": "Test Theme",
-							"description": "Theme for testing",
-							"models": [
-								{
-									"id": 0,
-									"modelType": "anki-basic",
-									"name": "Model A",
-									"templates": [],
-									"fields": [
-										{
-											"fieldType": 0,
-											"name": "Word"
-										}
-									],
-									"files": [
-										"m1.html"
-									]
-								}
-							],
-							"_attachments": {
-								"$main.css": {
-									"content_type": "text/css",
-									"data": "LyogYW4gZW1wdHkgQ1NTIGZpbGUgKi8="
-								},
-								"m1.html": {
-									"content_type": "text/html",
-									"data": "PGh0bWw+PC9odG1sPg=="
-								}
-							},
-							"files": [
-								"$main.css"
-							],
-							"modelSequence": 2
-						}
-					],
-					"reviews": [
-						{
-							"cardID": "card-krsxg5baij2w4zdmmu.VGVzdCBOb3Rl.0",
-							"timestamp": "2017-01-01T01:01:01Z"
-						}
-					]
-				}
-				`)
-			}(),
+			file: strings.NewReader(sampleImportData),
 			expectedBundle: &fb.Bundle{
 				ID:       "bundle-aebagbb",
 				Rev:      "1",
@@ -334,7 +335,7 @@ func TestImport(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			var msg string
-			err := test.repo.Import(context.Background(), test.file)
+			err := test.repo.Import(context.Background(), test.file, nil)
 			if err != nil {
 				msg = err.Error()
 			}
@@ -517,5 +518,53 @@ func TestBulkInsert(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+type progResult struct {
+	total, progress uint64
+	percent         float64
+}
+
+func TestProgress(t *testing.T) {
+	var results []progResult
+	progFunc := func(total, progress uint64, pct float64) {
+		results = append(results, progResult{
+			total:    total,
+			progress: progress,
+			percent:  pct,
+		})
+	}
+	local, err := localConnection()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := local.CreateDB(context.Background(), "user-mjxwe"); err != nil {
+		t.Fatal(err)
+	}
+	if err := local.CreateDB(context.Background(), "bundle-aebagbb"); err != nil {
+		t.Fatal(err)
+	}
+	repo := &Repo{
+		user:  "mjxwe",
+		local: local,
+	}
+	if err := repo.Import(context.Background(), strings.NewReader(sampleImportData), progFunc); err != nil {
+		t.Fatal(err)
+	}
+	expected := []progResult{
+		{5, 0, math.NaN()},
+		{5, 1, math.NaN()},
+		{5, 2, math.NaN()},
+		{5, 3, math.NaN()},
+		{8, 3, math.NaN()},
+		{8, 6, math.NaN()},
+		{8, 7, math.NaN()},
+		{9, 7, float64(7) / 9 * 100},
+		{9, 8, float64(8) / 9 * 100},
+		{9, 9, 100},
+	}
+	if d := diff.Interface(expected, results); d != nil {
+		t.Error(d)
 	}
 }
