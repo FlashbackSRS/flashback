@@ -43,17 +43,17 @@ func (r *Repo) Import(ctx context.Context, f io.Reader) error {
 		return err
 	}
 	pkg := &fb.Package{}
-	if err := json.NewDecoder(f).Decode(pkg); err != nil {
-		return errors.Wrap(err, "Unable to decode JSON")
+	if e := json.NewDecoder(f).Decode(pkg); e != nil {
+		return errors.Wrap(e, "Unable to decode JSON")
 	}
-	if err := pkg.Validate(); err != nil {
-		return err
+	if e := pkg.Validate(); e != nil {
+		return e
 	}
 
 	bundle := pkg.Bundle
 	bundle.Owner = r.user
-	if err := r.SaveBundle(ctx, bundle); err != nil {
-		return err
+	if e := r.SaveBundle(ctx, bundle); e != nil {
+		return e
 	}
 
 	bdb, err := r.bundleDB(ctx, bundle)
