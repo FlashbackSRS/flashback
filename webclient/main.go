@@ -77,7 +77,7 @@ func main() {
 	appPrefix := urlPrefix(baseURL)
 
 	RouterInit(appPrefix, baseURL, conf.GetString("facebook_client_id"), repo, langSet)
-	studyhandler.StudyInit(appPrefix)
+	studyhandler.StudyInit()
 
 	// This is what actually loads jQuery Mobile. We have to register our
 	//  'mobileinit' event handler above first, though, as part of RouterInit

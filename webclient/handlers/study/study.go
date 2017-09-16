@@ -131,13 +131,13 @@ func ShowCard(repo *model.Repo) error {
 	return nil
 }
 
-func StudyInit(prefix string) {
+func StudyInit() {
 	log.Debug("Registering iframes listener\n")
-	iframes.RegisterListener("submit", handleSubmit(prefix))
+	iframes.RegisterListener("submit", handleSubmit())
 	log.Debug("Done registering iframes listener\n")
 }
 
-func handleSubmit(prefix string) func(string, *js.Object, iframes.Respond) error {
+func handleSubmit() func(string, *js.Object, iframes.Respond) error {
 	return func(cardID string, payload *js.Object, _ iframes.Respond) error {
 		card := currentCard.Card
 		face := currentCard.Face
@@ -156,7 +156,7 @@ func handleSubmit(prefix string) func(string, *js.Object, iframes.Respond) error
 			}
 		}
 		// FIXME: Don't hard code /app here
-		jQuery(":mobile-pagecontainer").Call("pagecontainer", "change", prefix+"/study.html")
+		jQuery(":mobile-pagecontainer").Call("pagecontainer", "change", "study.html")
 		return nil
 	}
 }
