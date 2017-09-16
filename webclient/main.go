@@ -17,7 +17,6 @@ import (
 	"github.com/FlashbackSRS/flashback/iframes"
 	"github.com/FlashbackSRS/flashback/l10n"
 	"github.com/FlashbackSRS/flashback/model"
-	"github.com/FlashbackSRS/flashback/oauth2"
 	"github.com/FlashbackSRS/flashback/util"
 
 	_ "github.com/FlashbackSRS/flashback/controllers/anki" // Anki model controllers
@@ -76,7 +75,9 @@ func main() {
 
 	appPrefix := urlPrefix(baseURL)
 
-	RouterInit(appPrefix, baseURL, conf.GetString("facebook_client_id"), repo, langSet)
+	providers := providerInit(baseURL, conf.GetString("facebook_client_id"))
+
+	RouterInit(appPrefix, baseURL, repo, langSet, providers)
 	studyhandler.StudyInit()
 
 	// This is what actually loads jQuery Mobile. We have to register our
@@ -106,7 +107,7 @@ func resizeContent() {
 	jQuery(".ui-content").SetHeight(strconv.Itoa(screenHt - headerHt - footerHt))
 }
 
-func RouterInit(prefix, baseURL, facebookID string, repo *model.Repo, langSet *l10n.Set) {
+func RouterInit(prefix, baseURL string, repo *model.Repo, langSet *l10n.Set, providers map[string]string) {
 	log.Debug("Initializing router\n")
 
 	// beforechange -- Just check auth
@@ -117,10 +118,6 @@ func RouterInit(prefix, baseURL, facebookID string, repo *model.Repo, langSet *l
 	// beforetransition
 	beforeTransition := jqeventrouter.NewEventMux()
 	beforeTransition.SetUriFunc(getJqmUri)
-
-	providers := map[string]string{
-		"facebook": oauth2.FacebookURL(facebookID, baseURL),
-	}
 
 	beforeTransition.HandleFunc(prefix+"/login.html", loginhandler.BeforeTransition(repo, providers))
 	beforeTransition.HandleFunc(prefix+"/callback.html", loginhandler.BTCallback(repo, providers))
