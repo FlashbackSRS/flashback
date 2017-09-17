@@ -5,7 +5,6 @@ package loginhandler
 import (
 	"context"
 	"fmt"
-	"net/url"
 	"sync"
 
 	"github.com/FlashbackSRS/flashback/model"
@@ -47,11 +46,9 @@ func CordovaLogin(repo *model.Repo) bool {
 	return false
 }
 
-// BTCallback does nothing for Cordova.
-func BTCallback(_ *model.Repo, _ map[string]string) jqeventrouter.HandlerFunc {
-	return func(_ *jquery.Event, _ *js.Object, _ url.Values) bool {
-		return true
-	}
+// BTCallback defers to devLogin in Cordova.
+func BTCallback(repo *model.Repo, _ map[string]string) jqeventrouter.HandlerFunc {
+	return devLogin(repo)
 }
 
 // checkLoginStatus checks for auth in the background

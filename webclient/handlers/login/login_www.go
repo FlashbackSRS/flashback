@@ -26,7 +26,12 @@ func setLoginHandler(_ *model.Repo, container jquery.JQuery, rel, href string, c
 
 // BTCallback handles web logins.
 func BTCallback(repo *model.Repo, providers map[string]string) jqeventrouter.HandlerFunc {
-	return func(event *jquery.Event, ui *js.Object, _ url.Values) bool {
+	devLoginHandler := devLogin(repo)
+	return func(event *jquery.Event, ui *js.Object, params url.Values) bool {
+		if params.Get("provider") == "devlogin" {
+			log.Debug("Callback for dev login")
+			return devLoginHandler(event, ui, params)
+		}
 		log.Debug("Auth Callback")
 		provider, token, err := extractAuthToken(js.Global.Get("location").String())
 		if err != nil {
@@ -53,7 +58,6 @@ func BTCallback(repo *model.Repo, providers map[string]string) jqeventrouter.Han
 			ui.Set("toPage", "index.html")
 			event.StopImmediatePropagation()
 			js.Global.Get("jQuery").Get("mobile").Call("changePage", "index.html")
-			// container.Trigger("pagecontainerbeforechange", ui)
 		}()
 		return true
 	}
