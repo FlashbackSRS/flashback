@@ -88,9 +88,6 @@ func main() {
 func initjQuery() {
 	log.Debug("Initializing jQuery\n")
 	js.Global.Get("jQuery").Set("cors", true)
-	jQuery(js.Global).On("resize", resizeContent)
-	jQuery(js.Global).On("orentationchange", resizeContent)
-	jQuery(document).On("pagecontainertransition", resizeContent)
 	log.Debug("jQuery init complete\n")
 }
 
@@ -148,6 +145,11 @@ func MobileInit() {
 	log.Debugf("MobileInit")
 	defer log.Debugf("MobileInit finished")
 	jQMobile = js.Global.Get("jQuery").Get("mobile")
+
+	jQuery(js.Global).On("resize", resizeContent)
+	jQuery(js.Global).On("orentationchange", resizeContent)
+	jQuery(document).On("pagecontainertransition", resizeContent)
+	go resizeContent() // Just in case the screen was resized before mobileinit fired
 
 	// Disable hash features
 	jQMobile.Set("hashListeningEnabled", false)

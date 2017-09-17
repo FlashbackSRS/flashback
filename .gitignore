@@ -67,4 +67,6 @@ main.js.map
 controllers/anki/data.go
 controllers/done/data.go
 
+# Cordova/Android studio stuff
 .idea/
+config.xml
