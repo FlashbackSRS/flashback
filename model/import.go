@@ -95,7 +95,6 @@ func (r *Repo) Import(ctx context.Context, f io.Reader, reporter progress.Report
 		errCh <- err
 	}()
 
-	log.Debug("Waiting for import to complete...\n")
 	for i := 0; i < 2; i++ {
 		if err := <-errCh; err != nil {
 			return err
@@ -107,12 +106,14 @@ func (r *Repo) Import(ctx context.Context, f io.Reader, reporter progress.Report
 	return nil
 }
 
+const bulkBatchSize = 50
+
 func importBundleDocs(ctx context.Context, db kivikDB, pkg *fb.Package, prog *progress.Component) error {
 	docCount := len(pkg.Themes) + len(pkg.Notes) + len(pkg.Decks)
-	prog.Total(uint64(docCount + 1))
+	prog.Total(uint64(docCount*2 + 1))
+	prog.Increment(uint64(docCount)) // To account for the reading delay
 	docs := make([]FlashbackDoc, 0, docCount)
 	prog.Increment(1)
-	defer prog.Increment(uint64(docCount))
 	for _, theme := range pkg.Themes {
 		docs = append(docs, theme)
 	}
@@ -122,20 +123,44 @@ func importBundleDocs(ctx context.Context, db kivikDB, pkg *fb.Package, prog *pr
 	for _, deck := range pkg.Decks {
 		docs = append(docs, deck)
 	}
-	return bulkInsert(ctx, db, docs...)
+
+	for len(docs) > 0 {
+		batchSize := bulkBatchSize
+		if batchSize > len(docs) {
+			batchSize = len(docs)
+		}
+		if err := bulkInsert(ctx, db, docs[0:batchSize]...); err != nil {
+			return err
+		}
+		prog.Increment(uint64(batchSize))
+		docs = docs[batchSize:]
+	}
+	return nil
 }
 
 func importCardDocs(ctx context.Context, db kivikDB, pkg *fb.Package, prog *progress.Component) error {
 	cardCount := len(pkg.Cards)
-	prog.Total(uint64(cardCount + 1))
+	prog.Total(uint64(cardCount*2 + 1))
+	prog.Increment(uint64(cardCount)) // To account for the reading delay
 	cards := make([]FlashbackDoc, 0, cardCount)
 	prog.Increment(1)
-	defer prog.Increment(uint64(cardCount))
 	for _, card := range pkg.Cards {
 		cards = append(cards, card)
 	}
 
-	return bulkInsert(ctx, db, cards...)
+	for len(cards) > 0 {
+		batchSize := bulkBatchSize
+		if batchSize > len(cards) {
+			batchSize = len(cards)
+		}
+		if err := bulkInsert(ctx, db, cards[0:batchSize]...); err != nil {
+			return err
+		}
+		prog.Increment(uint64(batchSize))
+		cards = cards[batchSize:]
+	}
+
+	return nil
 }
 
 func bulkInsert(ctx context.Context, db getPutBulkDocer, docs ...FlashbackDoc) error {

@@ -5,6 +5,7 @@ package importhandler
 import (
 	"context"
 	"net/url"
+	"time"
 
 	"github.com/flimzy/goweb/file"
 	"github.com/flimzy/jqeventrouter"
@@ -25,10 +26,11 @@ func BeforeTransition(repo *model.Repo) jqeventrouter.HandlerFunc {
 			jQuery("#importnow", container).On("click", func() {
 				log.Debug("Attempting to import something...\n")
 				go func() {
+					start := time.Now()
 					if err := DoImport(repo); err != nil {
 						log.Printf("Error importing: %s\n", err)
 					}
-					log.Printf("DoImport() complete\n")
+					log.Printf("DoImport() complete, %v\n", time.Now().Sub(start))
 				}()
 			})
 			jQuery(".show-until-load", container).Hide()

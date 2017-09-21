@@ -78,7 +78,7 @@ func (c *Component) Total(total uint64) {
 func (c *Component) Progress(progress uint64) {
 	atomic.StoreUint64(c.progress, progress)
 	total := atomic.LoadUint64(c.total)
-	if progress > total {
+	if atomic.LoadInt32(c.ready) == 1 && progress > total {
 		fmt.Fprintf(os.Stderr, "Progress(): progress (%d) > total (%d)\n", progress, total)
 	}
 	c.status.update()

@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"io"
-	"math"
 	"strings"
 	"testing"
 	"time"
@@ -553,17 +552,19 @@ func TestProgress(t *testing.T) {
 		t.Fatal(err)
 	}
 	expected := []progResult{
-		{4, 0, math.NaN()},
-		{4, 1, math.NaN()},
-		{4, 2, math.NaN()},
-		{4, 3, math.NaN()},
-		{4, 4, math.NaN()},
-		{6, 4, math.NaN()},
-		{6, 5, math.NaN()},
-		{6, 6, math.NaN()},
-		{10, 6, float64(6) / 10 * 100},
-		{10, 7, float64(7) / 10 * 100},
-		{10, 10, 100},
+		{},
+		{},
+		{},
+		{},
+		{},
+		{},
+		{},
+		{},
+		{},
+		{},
+		{},
+		{14, 11, float64(11) / 14 * 100},
+		{14, 14, 100},
 	}
 	var failures []string
 	if len(results) != len(expected) {
