@@ -43,7 +43,10 @@ func BeforeTransition(repo *model.Repo) jqeventrouter.HandlerFunc {
 func DoImport(repo *model.Repo) error {
 	files := file.InternalizeFileList(jQuery("#apkg", ":mobile-pagecontainer").Get(0).Get("files"))
 	for i := 0; i < files.Length; i++ {
-		if err := repo.ImportFile(context.TODO(), files.Item(i)); err != nil {
+		reporter := func(total, progress uint64, percent float64) {
+			log.Printf("%d/%d : %.2f\n", progress, total, percent)
+		}
+		if err := repo.ImportFile(context.TODO(), files.Item(i), reporter); err != nil {
 			return err
 		}
 	}

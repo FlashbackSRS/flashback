@@ -7,13 +7,13 @@ import (
 	"encoding/json"
 	"io"
 
-	"github.com/FlashbackSRS/flashback/model/progress"
 	"github.com/flimzy/kivik"
 	"github.com/flimzy/log"
 	multierror "github.com/hashicorp/go-multierror"
 	"github.com/pkg/errors"
 
 	fb "github.com/FlashbackSRS/flashback-model"
+	"github.com/FlashbackSRS/flashback/model/progress"
 )
 
 type inputFile interface {
@@ -21,7 +21,7 @@ type inputFile interface {
 }
 
 // ImportFile imports a *.fbb file, as from an HTML form submission.
-func (r *Repo) ImportFile(ctx context.Context, f inputFile) error {
+func (r *Repo) ImportFile(ctx context.Context, f inputFile, reporter progress.ReportFunc) error {
 	if _, err := r.CurrentUser(); err != nil {
 		return err
 	}
@@ -34,7 +34,7 @@ func (r *Repo) ImportFile(ctx context.Context, f inputFile) error {
 		return err
 	}
 	defer func() { _ = z.Close() }()
-	return r.Import(ctx, z, nil)
+	return r.Import(ctx, z, reporter)
 }
 
 // Import imports a .fbb file and stores the content
@@ -46,7 +46,8 @@ func (r *Repo) Import(ctx context.Context, f io.Reader, reporter progress.Report
 	steps := prog.NewComponent()
 	bundleDocs := prog.NewComponent()
 	cardDocs := prog.NewComponent()
-	steps.Total(5)
+	steps.Total(4)
+	steps.Increment(1)
 	udb, err := r.userDB(ctx)
 	if err != nil {
 		return err
@@ -73,15 +74,33 @@ func (r *Repo) Import(ctx context.Context, f io.Reader, reporter progress.Report
 	}
 	steps.Increment(1)
 
-	if err := importBundleDocs(ctx, bdb, pkg, bundleDocs); err != nil {
-		return err
-	}
-	steps.Increment(1)
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
 
-	if err := importCardDocs(ctx, udb, pkg, cardDocs); err != nil {
-		return err
+	errCh := make(chan error)
+	defer close(errCh)
+	go func() {
+		err := importBundleDocs(ctx, bdb, pkg, bundleDocs)
+		if err != nil {
+			cancel()
+		}
+		errCh <- err
+	}()
+
+	go func() {
+		err := importCardDocs(ctx, udb, pkg, cardDocs)
+		if err != nil {
+			cancel()
+		}
+		errCh <- err
+	}()
+
+	log.Debug("Waiting for import to complete...\n")
+	for i := 0; i < 2; i++ {
+		if err := <-errCh; err != nil {
+			return err
+		}
 	}
-	steps.Increment(1)
 
 	log.Printf("Imported:\n%d Bundles\n%d Themes\n%d Decks\n%d Notes\n%d Cards\n",
 		1, len(pkg.Themes), len(pkg.Decks), len(pkg.Notes), len(pkg.Cards))
@@ -89,9 +108,11 @@ func (r *Repo) Import(ctx context.Context, f io.Reader, reporter progress.Report
 }
 
 func importBundleDocs(ctx context.Context, db kivikDB, pkg *fb.Package, prog *progress.Component) error {
-	docs := make([]FlashbackDoc, 0, len(pkg.Themes)+len(pkg.Notes)+len(pkg.Decks))
-	prog.Total(uint64(cap(docs)))
-	defer prog.Progress(uint64(cap(docs)))
+	docCount := len(pkg.Themes) + len(pkg.Notes) + len(pkg.Decks) + 1
+	prog.Total(uint64(docCount + 1))
+	docs := make([]FlashbackDoc, 0, docCount)
+	prog.Increment(1)
+	defer prog.Increment(uint64(docCount))
 	for _, theme := range pkg.Themes {
 		docs = append(docs, theme)
 	}
@@ -105,10 +126,11 @@ func importBundleDocs(ctx context.Context, db kivikDB, pkg *fb.Package, prog *pr
 }
 
 func importCardDocs(ctx context.Context, db kivikDB, pkg *fb.Package, prog *progress.Component) error {
-
-	cards := make([]FlashbackDoc, 0, len(pkg.Cards))
-	prog.Total(uint64(cap(cards)))
-	defer prog.Progress(uint64(cap(cards)))
+	cardCount := len(pkg.Cards)
+	prog.Total(uint64(cardCount + 1))
+	cards := make([]FlashbackDoc, 0, cardCount)
+	prog.Increment(1)
+	defer prog.Increment(uint64(cardCount))
 	for _, card := range pkg.Cards {
 		cards = append(cards, card)
 	}

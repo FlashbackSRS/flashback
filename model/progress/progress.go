@@ -1,7 +1,9 @@
 package progress
 
 import (
+	"fmt"
 	"math"
+	"os"
 	"sync"
 	"sync/atomic"
 )
@@ -75,12 +77,20 @@ func (c *Component) Total(total uint64) {
 // Progress sets the progress.
 func (c *Component) Progress(progress uint64) {
 	atomic.StoreUint64(c.progress, progress)
+	total := atomic.LoadUint64(c.total)
+	if progress > total {
+		fmt.Fprintf(os.Stderr, "Progress(): progress (%d) > total (%d)\n", progress, total)
+	}
 	c.status.update()
 }
 
 // Increment increments the progress by the specified amount.
 func (c *Component) Increment(inc uint64) {
-	atomic.AddUint64(c.progress, inc)
+	prog := atomic.AddUint64(c.progress, inc)
+	total := atomic.LoadUint64(c.total)
+	if prog > total {
+		fmt.Fprintf(os.Stderr, "Increment(): progress (%d) > total (%d)\n", prog, total)
+	}
 	c.status.update()
 }
 

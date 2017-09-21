@@ -181,7 +181,7 @@ func TestImportFile(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			var msg string
-			if err := test.repo.ImportFile(context.Background(), test.file); err != nil {
+			if err := test.repo.ImportFile(context.Background(), test.file, nil); err != nil {
 				msg = err.Error()
 			}
 			if msg != test.err {
@@ -553,18 +553,26 @@ func TestProgress(t *testing.T) {
 		t.Fatal(err)
 	}
 	expected := []progResult{
-		{5, 0, math.NaN()},
-		{5, 1, math.NaN()},
-		{5, 2, math.NaN()},
-		{5, 3, math.NaN()},
-		{8, 3, math.NaN()},
-		{8, 6, math.NaN()},
-		{8, 7, math.NaN()},
-		{9, 7, float64(7) / 9 * 100},
-		{9, 8, float64(8) / 9 * 100},
-		{9, 9, 100},
+		{4, 0, math.NaN()},
+		{4, 1, math.NaN()},
+		{4, 2, math.NaN()},
+		{4, 3, math.NaN()},
+		{4, 4, math.NaN()},
+		{6, 4, math.NaN()},
+		{6, 5, math.NaN()},
+		{6, 6, math.NaN()},
+		{10, 6, float64(6) / 10 * 100},
+		{10, 7, float64(7) / 10 * 100},
+		{11, 11, 100},
 	}
-	if d := diff.Interface(expected, results); d != nil {
-		t.Error(d)
+	var failures []string
+	if len(results) != len(expected) {
+		failures = append(failures, "wrong number of progress updates")
+	}
+	if d := diff.Interface(expected[len(expected)-1], results[len(results)-1]); d != nil {
+		failures = append(failures, "unexpected final progress update")
+	}
+	if len(failures) > 0 {
+		t.Errorf("%s\n%s\n", strings.Join(failures, "\n"), diff.Interface(expected, results))
 	}
 }
