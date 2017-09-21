@@ -563,7 +563,7 @@ func TestProgress(t *testing.T) {
 		{6, 6, math.NaN()},
 		{10, 6, float64(6) / 10 * 100},
 		{10, 7, float64(7) / 10 * 100},
-		{11, 11, 100},
+		{10, 10, 100},
 	}
 	var failures []string
 	if len(results) != len(expected) {

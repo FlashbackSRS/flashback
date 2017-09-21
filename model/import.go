@@ -108,7 +108,7 @@ func (r *Repo) Import(ctx context.Context, f io.Reader, reporter progress.Report
 }
 
 func importBundleDocs(ctx context.Context, db kivikDB, pkg *fb.Package, prog *progress.Component) error {
-	docCount := len(pkg.Themes) + len(pkg.Notes) + len(pkg.Decks) + 1
+	docCount := len(pkg.Themes) + len(pkg.Notes) + len(pkg.Decks)
 	prog.Total(uint64(docCount + 1))
 	docs := make([]FlashbackDoc, 0, docCount)
 	prog.Increment(1)
