@@ -13,6 +13,7 @@ import (
 	"github.com/pkg/errors"
 
 	fb "github.com/FlashbackSRS/flashback-model"
+	"github.com/FlashbackSRS/flashback/model/progress"
 )
 
 type inputFile interface {
@@ -20,7 +21,7 @@ type inputFile interface {
 }
 
 // ImportFile imports a *.fbb file, as from an HTML form submission.
-func (r *Repo) ImportFile(ctx context.Context, f inputFile) error {
+func (r *Repo) ImportFile(ctx context.Context, f inputFile, reporter progress.ReportFunc) error {
 	if _, err := r.CurrentUser(); err != nil {
 		return err
 	}
@@ -33,35 +34,86 @@ func (r *Repo) ImportFile(ctx context.Context, f inputFile) error {
 		return err
 	}
 	defer func() { _ = z.Close() }()
-	return r.Import(ctx, z)
+	return r.Import(ctx, z, reporter)
 }
 
 // Import imports a .fbb file and stores the content
-func (r *Repo) Import(ctx context.Context, f io.Reader) error {
+func (r *Repo) Import(ctx context.Context, f io.Reader, reporter progress.ReportFunc) error {
+	if reporter == nil {
+		reporter = func(_, _ uint64, _ float64) {}
+	}
+	prog := progress.New(reporter)
+	steps := prog.NewComponent()
+	bundleDocs := prog.NewComponent()
+	cardDocs := prog.NewComponent()
+	steps.Total(4)
+	steps.Increment(1)
 	udb, err := r.userDB(ctx)
 	if err != nil {
 		return err
 	}
 	pkg := &fb.Package{}
-	if err := json.NewDecoder(f).Decode(pkg); err != nil {
-		return errors.Wrap(err, "Unable to decode JSON")
+	if e := json.NewDecoder(f).Decode(pkg); e != nil {
+		return errors.Wrap(e, "Unable to decode JSON")
 	}
-	if err := pkg.Validate(); err != nil {
-		return err
+	steps.Increment(1)
+	if e := pkg.Validate(); e != nil {
+		return e
 	}
 
 	bundle := pkg.Bundle
 	bundle.Owner = r.user
-	if err := r.SaveBundle(ctx, bundle); err != nil {
-		return err
+	if e := r.SaveBundle(ctx, bundle); e != nil {
+		return e
 	}
+	steps.Increment(1)
 
 	bdb, err := r.bundleDB(ctx, bundle)
 	if err != nil {
 		return err
 	}
+	steps.Increment(1)
 
-	docs := make([]FlashbackDoc, 0, len(pkg.Themes)+len(pkg.Notes)+len(pkg.Decks))
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+
+	errCh := make(chan error)
+	defer close(errCh)
+	go func() {
+		err := importBundleDocs(ctx, bdb, pkg, bundleDocs)
+		if err != nil {
+			cancel()
+		}
+		errCh <- err
+	}()
+
+	go func() {
+		err := importCardDocs(ctx, udb, pkg, cardDocs)
+		if err != nil {
+			cancel()
+		}
+		errCh <- err
+	}()
+
+	for i := 0; i < 2; i++ {
+		if err := <-errCh; err != nil {
+			return err
+		}
+	}
+
+	log.Printf("Imported:\n%d Bundles\n%d Themes\n%d Decks\n%d Notes\n%d Cards\n",
+		1, len(pkg.Themes), len(pkg.Decks), len(pkg.Notes), len(pkg.Cards))
+	return nil
+}
+
+const bulkBatchSize = 50
+
+func importBundleDocs(ctx context.Context, db kivikDB, pkg *fb.Package, prog *progress.Component) error {
+	docCount := len(pkg.Themes) + len(pkg.Notes) + len(pkg.Decks)
+	prog.Total(uint64(docCount*2 + 1))
+	prog.Increment(uint64(docCount)) // To account for the reading delay
+	docs := make([]FlashbackDoc, 0, docCount)
+	prog.Increment(1)
 	for _, theme := range pkg.Themes {
 		docs = append(docs, theme)
 	}
@@ -71,20 +123,43 @@ func (r *Repo) Import(ctx context.Context, f io.Reader) error {
 	for _, deck := range pkg.Decks {
 		docs = append(docs, deck)
 	}
-	if err := bulkInsert(ctx, bdb, docs...); err != nil {
-		return err
-	}
 
-	cards := make([]FlashbackDoc, 0, len(pkg.Cards))
+	for len(docs) > 0 {
+		batchSize := bulkBatchSize
+		if batchSize > len(docs) {
+			batchSize = len(docs)
+		}
+		if err := bulkInsert(ctx, db, docs[0:batchSize]...); err != nil {
+			return err
+		}
+		prog.Increment(uint64(batchSize))
+		docs = docs[batchSize:]
+	}
+	return nil
+}
+
+func importCardDocs(ctx context.Context, db kivikDB, pkg *fb.Package, prog *progress.Component) error {
+	cardCount := len(pkg.Cards)
+	prog.Total(uint64(cardCount*2 + 1))
+	prog.Increment(uint64(cardCount)) // To account for the reading delay
+	cards := make([]FlashbackDoc, 0, cardCount)
+	prog.Increment(1)
 	for _, card := range pkg.Cards {
 		cards = append(cards, card)
 	}
 
-	if err := bulkInsert(ctx, udb, cards...); err != nil {
-		return err
+	for len(cards) > 0 {
+		batchSize := bulkBatchSize
+		if batchSize > len(cards) {
+			batchSize = len(cards)
+		}
+		if err := bulkInsert(ctx, db, cards[0:batchSize]...); err != nil {
+			return err
+		}
+		prog.Increment(uint64(batchSize))
+		cards = cards[batchSize:]
 	}
-	log.Printf("Imported:\n%d Bundles\n%d Themes\n%d Decks\n%d Notes\n%d Cards\n",
-		1, len(pkg.Themes), len(pkg.Decks), len(pkg.Notes), len(pkg.Cards))
+
 	return nil
 }
 
