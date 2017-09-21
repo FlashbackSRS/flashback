@@ -538,9 +538,11 @@ func TestProgress(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	_ = local.DestroyDB(context.Background(), "user-mjxwe")
 	if err := local.CreateDB(context.Background(), "user-mjxwe"); err != nil {
 		t.Fatal(err)
 	}
+	_ = local.DestroyDB(context.Background(), "bundle-aebagbb")
 	if err := local.CreateDB(context.Background(), "bundle-aebagbb"); err != nil {
 		t.Fatal(err)
 	}

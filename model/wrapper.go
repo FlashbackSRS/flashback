@@ -17,6 +17,7 @@ type dsner interface {
 type kivikClient interface {
 	CreateDB(ctx context.Context, dbName string, options ...kivik.Options) error
 	DB(ctx context.Context, dbName string, options ...kivik.Options) (kivikDB, error)
+	DestroyDB(ctx context.Context, dbName string, options ...kivik.Options) error
 	dsner
 	replicator
 }
