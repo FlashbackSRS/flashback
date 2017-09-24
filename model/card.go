@@ -14,12 +14,14 @@ import (
 	"time"
 
 	"github.com/PuerkitoBio/goquery"
+	"github.com/flimzy/kivik"
 	"github.com/flimzy/log"
 	"github.com/pkg/errors"
 
 	"github.com/FlashbackSRS/flashback"
 	fb "github.com/FlashbackSRS/flashback-model"
 	"github.com/FlashbackSRS/flashback/controllers/done"
+	"github.com/FlashbackSRS/flashback/controllers/mustsync"
 	"github.com/FlashbackSRS/flashback/webclient/views/studyview"
 )
 
@@ -276,6 +278,12 @@ func selectWeightedCard(cards []*cardSchedule) string {
 // GetCardToStudy returns a CardView to display to the user to study, and buries
 // related cards.
 func (r *Repo) GetCardToStudy(ctx context.Context) (flashback.CardView, error) {
+	if _, _, err := r.lastSyncTime(ctx); err != nil {
+		if kivik.StatusCode(err) == kivik.StatusNotFound {
+			return mustsync.GetCard(), nil
+		}
+		return nil, err
+	}
 	card, err := r.getCardToStudy(ctx)
 	if err != nil {
 		return nil, err
