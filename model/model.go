@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"github.com/flimzy/kivik"
+	kerrors "github.com/flimzy/kivik/errors"
 	"github.com/go-kivik/couchdb/chttp"
 	"github.com/pkg/errors"
 
@@ -126,7 +127,7 @@ func (r *Repo) Logout(ctx context.Context) error {
 }
 
 // ErrNotLoggedIn is returned by CurrentUser if no user is logged in.
-var ErrNotLoggedIn = errors.New("not logged in")
+var ErrNotLoggedIn = kerrors.Status(kivik.StatusUnauthorized, "not logged in")
 
 // CurrentUser returns the currently registered user.
 func (r *Repo) CurrentUser() (string, error) {

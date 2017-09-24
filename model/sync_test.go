@@ -211,15 +211,15 @@ func TestLastSyncTime(t *testing.T) {
 	type lstTest struct {
 		name         string
 		repo         *Repo
-		err          string
+		status       int
 		expectedRev  string
 		expectedTime time.Time
 	}
 	tests := []lstTest{
 		{
-			name: "not logged in",
-			repo: &Repo{},
-			err:  "not logged in",
+			name:   "not logged in",
+			repo:   &Repo{},
+			status: kivik.StatusUnauthorized,
 		},
 		{
 			name: "db does not exist",
@@ -233,7 +233,7 @@ func TestLastSyncTime(t *testing.T) {
 					local: local,
 				}
 			}(),
-			err: "database does not exist",
+			status: kivik.StatusNotFound,
 		},
 		{
 			name: "doc not found",
@@ -250,7 +250,7 @@ func TestLastSyncTime(t *testing.T) {
 					local: local,
 				}
 			}(),
-			err: "missing",
+			status: kivik.StatusNotFound,
 		},
 		{
 			name: "invalid JSON response",
@@ -259,10 +259,10 @@ func TestLastSyncTime(t *testing.T) {
 				if err != nil {
 					t.Fatal(err)
 				}
-				if e := local.CreateDB(context.Background(), "user-bob"); e != nil {
+				if e := local.CreateDB(context.Background(), "user-bob2"); e != nil {
 					t.Fatal(e)
 				}
-				db, err := local.DB(context.Background(), "user-bob")
+				db, err := local.DB(context.Background(), "user-bob2")
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -271,11 +271,11 @@ func TestLastSyncTime(t *testing.T) {
 					t.Fatal(e)
 				}
 				return &Repo{
-					user:  "bob",
+					user:  "bob2",
 					local: local,
 				}
 			}(),
-			err: `parsing time ""foo"" as ""2006-01-02T15:04:05Z07:00"": cannot parse "foo"" as "2006"`,
+			status: kivik.StatusInternalServerError,
 		},
 		func() lstTest {
 			local, err := localConnection()
@@ -309,18 +309,18 @@ func TestLastSyncTime(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			rev, result, err := test.repo.lastSyncTime(context.Background())
-			var errMsg string
+			var status int
 			if err != nil {
-				errMsg = err.Error()
+				status = kivik.StatusCode(err)
 			}
-			if errMsg != test.err {
-				t.Errorf("Unexpected error: %s", errMsg)
+			if status != test.status {
+				t.Errorf("Unexpected error: %d %s", status, err)
 			}
 			if err != nil {
 				return
 			}
 			if test.expectedRev != rev {
-				t.Errorf("Unexpected rev: %s", rev)
+				t.Errorf("Unexpected rev: %s (want %s)", rev, test.expectedRev)
 			}
 			if !test.expectedTime.Equal(result) {
 				t.Errorf("Unexpected result: %v", result)
