@@ -229,7 +229,7 @@ func TestLastSyncTime(t *testing.T) {
 					t.Fatal(err)
 				}
 				return &Repo{
-					user:  "bob",
+					user:  "bob0",
 					local: local,
 				}
 			}(),
@@ -242,11 +242,11 @@ func TestLastSyncTime(t *testing.T) {
 				if err != nil {
 					t.Fatal(err)
 				}
-				if e := local.CreateDB(context.Background(), "user-bob"); e != nil {
+				if e := local.CreateDB(context.Background(), "user-bob1"); e != nil {
 					t.Fatal(e)
 				}
 				return &Repo{
-					user:  "bob",
+					user:  "bob1",
 					local: local,
 				}
 			}(),
@@ -282,10 +282,10 @@ func TestLastSyncTime(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if e := local.CreateDB(context.Background(), "user-bob"); e != nil {
+			if e := local.CreateDB(context.Background(), "user-bob3"); e != nil {
 				t.Fatal(e)
 			}
-			db, err := local.DB(context.Background(), "user-bob")
+			db, err := local.DB(context.Background(), "user-bob3")
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -300,7 +300,7 @@ func TestLastSyncTime(t *testing.T) {
 				expectedRev:  rev,
 				expectedTime: ts,
 				repo: &Repo{
-					user:  "bob",
+					user:  "bob3",
 					local: local,
 				},
 			}
