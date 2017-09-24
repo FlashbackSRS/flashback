@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"testing"
+	"time"
 
 	"github.com/flimzy/kivik"
 )
@@ -201,6 +202,183 @@ func TestSyncBundles(t *testing.T) {
 			}
 			if test.reads != reads || test.writes != writes {
 				t.Errorf("Unexpected sync count.\nExpected reads %d, writes %d\n  Actual reads %d, writes %d", test.reads, test.writes, reads, writes)
+			}
+		})
+	}
+}
+
+func TestLastSyncTime(t *testing.T) {
+	type lstTest struct {
+		name         string
+		repo         *Repo
+		err          string
+		expectedRev  string
+		expectedTime time.Time
+	}
+	tests := []lstTest{
+		{
+			name: "not logged in",
+			repo: &Repo{},
+			err:  "not logged in",
+		},
+		{
+			name: "db does not exist",
+			repo: func() *Repo {
+				local, err := localConnection()
+				if err != nil {
+					t.Fatal(err)
+				}
+				return &Repo{
+					user:  "bob",
+					local: local,
+				}
+			}(),
+			err: "database does not exist",
+		},
+		{
+			name: "doc not found",
+			repo: func() *Repo {
+				local, err := localConnection()
+				if err != nil {
+					t.Fatal(err)
+				}
+				if e := local.CreateDB(context.Background(), "user-bob"); e != nil {
+					t.Fatal(e)
+				}
+				return &Repo{
+					user:  "bob",
+					local: local,
+				}
+			}(),
+			err: "missing",
+		},
+		{
+			name: "invalid JSON response",
+			repo: func() *Repo {
+				local, err := localConnection()
+				if err != nil {
+					t.Fatal(err)
+				}
+				if e := local.CreateDB(context.Background(), "user-bob"); e != nil {
+					t.Fatal(e)
+				}
+				db, err := local.DB(context.Background(), "user-bob")
+				if err != nil {
+					t.Fatal(err)
+				}
+				doc := map[string]string{"lastSync": "foo"}
+				if _, e := db.Put(context.Background(), lastSyncTimestampDocID, doc); e != nil {
+					t.Fatal(e)
+				}
+				return &Repo{
+					user:  "bob",
+					local: local,
+				}
+			}(),
+			err: `parsing time ""foo"" as ""2006-01-02T15:04:05Z07:00"": cannot parse "foo"" as "2006"`,
+		},
+		func() lstTest {
+			local, err := localConnection()
+			if err != nil {
+				t.Fatal(err)
+			}
+			if e := local.CreateDB(context.Background(), "user-bob"); e != nil {
+				t.Fatal(e)
+			}
+			db, err := local.DB(context.Background(), "user-bob")
+			if err != nil {
+				t.Fatal(err)
+			}
+			ts, _ := time.Parse(time.RFC3339, "2006-01-02T15:04:05Z07:00")
+			doc := map[string]interface{}{"lastSync": ts}
+			rev, err := db.Put(context.Background(), lastSyncTimestampDocID, doc)
+			if err != nil {
+				t.Fatal(err)
+			}
+			return lstTest{
+				name:         "success",
+				expectedRev:  rev,
+				expectedTime: ts,
+				repo: &Repo{
+					user:  "bob",
+					local: local,
+				},
+			}
+		}(),
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			rev, result, err := test.repo.lastSyncTime(context.Background())
+			var errMsg string
+			if err != nil {
+				errMsg = err.Error()
+			}
+			if errMsg != test.err {
+				t.Errorf("Unexpected error: %s", errMsg)
+			}
+			if err != nil {
+				return
+			}
+			if test.expectedRev != rev {
+				t.Errorf("Unexpected rev: %s", rev)
+			}
+			if !test.expectedTime.Equal(result) {
+				t.Errorf("Unexpected result: %v", result)
+			}
+		})
+	}
+}
+
+func TestUpdateSyncTime(t *testing.T) {
+	tests := []struct {
+		name         string
+		repo         *Repo
+		dbname       string
+		err          string
+		expectedTime time.Time
+	}{
+		{
+			name: "not logged in",
+			repo: &Repo{},
+			err:  "not logged in",
+		},
+		{
+			name: "first sync",
+			repo: func() *Repo {
+				local, err := localConnection()
+				if err != nil {
+					t.Fatal(err)
+				}
+				if e := local.CreateDB(context.Background(), "user-bob"); e != nil {
+					t.Fatal(e)
+				}
+				return &Repo{
+					user:  "bob",
+					local: local,
+				}
+			}(),
+			expectedTime: func() time.Time {
+				t, _ := time.Parse(time.RFC3339, "2017-01-01T12:00:00Z")
+				return t
+			}(),
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			var errMsg string
+			err := test.repo.updateSyncTime(context.Background())
+			if err != nil {
+				errMsg = err.Error()
+			}
+			if errMsg != test.err {
+				t.Errorf("Unexpected error: %s", errMsg)
+			}
+			if err != nil {
+				return
+			}
+			_, ts, err := test.repo.lastSyncTime(context.Background())
+			if !ts.Equal(test.expectedTime) {
+				t.Errorf("Unexpected time stored: %v", ts)
 			}
 		})
 	}

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strings"
 	"sync/atomic"
+	"time"
 
 	"github.com/flimzy/kivik"
 	"github.com/flimzy/log"
@@ -45,7 +46,60 @@ func (r *Repo) Sync(ctx context.Context) error {
 	}
 
 	log.Debugf("Synced %d docs from server, %d to server\n", docsRead, docsWritten)
-	return nil
+	return r.updateSyncTime(ctx)
+}
+
+const lastSyncTimestampDocID = "_local/lastSyncTimestamp"
+
+type lastSyncTimestampDoc struct {
+	ID       string    `json:"_id"`
+	Rev      string    `json:"_rev"`
+	LastSync time.Time `json:"lastSync"`
+}
+
+// updateSyncTime updates the local timestamp for the last sync.
+func (r *Repo) updateSyncTime(ctx context.Context) error {
+	rev, _, err := r.lastSyncTime(ctx)
+	if err != nil && kivik.StatusCode(err) != kivik.StatusNotFound {
+		return err
+	}
+
+	u, err := r.CurrentUser()
+	if err != nil {
+		return err
+	}
+	db, err := r.local.DB(ctx, "user-"+u)
+	if err != nil {
+		return err
+	}
+	doc := lastSyncTimestampDoc{
+		ID:       lastSyncTimestampDocID,
+		Rev:      rev,
+		LastSync: now(),
+	}
+	_, err = db.Put(ctx, lastSyncTimestampDocID, doc)
+	return err
+}
+
+// lastSyncTime returns the last time the database was synced.
+func (r *Repo) lastSyncTime(ctx context.Context) (rev string, lastSync time.Time, err error) {
+	u, err := r.CurrentUser()
+	if err != nil {
+		return "", time.Time{}, err
+	}
+	db, err := r.local.DB(ctx, "user-"+u)
+	if err != nil {
+		return "", time.Time{}, err
+	}
+	row, err := db.Get(ctx, lastSyncTimestampDocID)
+	if err != nil {
+		return "", time.Time{}, err
+	}
+	var doc lastSyncTimestampDoc
+	if e := row.ScanDoc(&doc); e != nil {
+		return "", time.Time{}, e
+	}
+	return doc.Rev, doc.LastSync, nil
 }
 
 type clientReplicator interface {
