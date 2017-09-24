@@ -66,6 +66,7 @@ main.js.map
 # go-bindata
 controllers/anki/data.go
 controllers/done/data.go
+controllers/mustsync/data.go
 
 # Cordova/Android studio stuff
 .idea/
