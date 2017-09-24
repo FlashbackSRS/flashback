@@ -216,23 +216,27 @@ func TestScheduling(t *testing.T) {
 		},
 	}
 	for _, test := range tests {
-		now = func() time.Time {
-			return test.Now
-		}
-		rcard := &Card{
-			Card: test.Card,
-		}
-		ivl, ease := schedule(rcard, test.Answer)
-		due := fb.Due(test.Now).Add(ivl)
-		if !due.Equal(test.ExpectedDue) {
-			t.Errorf("%s / Due:\n\tExpected: %s\n\t  Actual: %s\n", test.Name, test.ExpectedDue, due)
-		}
-		if !ivl.Equal(test.ExpectedInterval) {
-			t.Errorf("%s / Interval:\n\tExpected: %s (%s)\n\t  Actual: %s (%s)\n", test.Name, test.ExpectedInterval, time.Duration(test.ExpectedInterval), ivl, time.Duration(ivl))
-		}
-		if !float32sEqual(ease, test.ExpectedEase) {
-			t.Errorf("%s / Ease:\n\tExpected: %f\n\t  Actual: %f\n", test.Name, test.ExpectedEase, ease)
-		}
+		t.Run(test.Name, func(t *testing.T) {
+			oldNow := now
+			defer func() { now = oldNow }()
+			now = func() time.Time {
+				return test.Now
+			}
+			rcard := &Card{
+				Card: test.Card,
+			}
+			ivl, ease := schedule(rcard, test.Answer)
+			due := fb.Due(test.Now).Add(ivl)
+			if !due.Equal(test.ExpectedDue) {
+				t.Errorf("Due:\n\tExpected: %s\n\t  Actual: %s\n", test.ExpectedDue, due)
+			}
+			if !ivl.Equal(test.ExpectedInterval) {
+				t.Errorf("Interval:\n\tExpected: %s (%s)\n\t  Actual: %s (%s)\n", test.ExpectedInterval, time.Duration(test.ExpectedInterval), ivl, time.Duration(ivl))
+			}
+			if !float32sEqual(ease, test.ExpectedEase) {
+				t.Errorf("Ease:\n\tExpected: %f\n\t  Actual: %f\n", test.ExpectedEase, ease)
+			}
+		})
 	}
 }
 
