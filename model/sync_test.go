@@ -589,7 +589,7 @@ func TestCacheCardDeck(t *testing.T) {
 				cache:       map[string]string{},
 				readBundles: map[string]struct{}{"bundle-YmFy": struct{}{}},
 			},
-			expected: "",
+			expected: orphanedCardDeck,
 		},
 	}
 	for _, test := range tests {
