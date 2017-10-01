@@ -10,6 +10,8 @@ import (
 	"github.com/flimzy/kivik"
 	"github.com/flimzy/log"
 	"github.com/pkg/errors"
+
+	fb "github.com/FlashbackSRS/flashback-model"
 )
 
 func (r *Repo) remoteDSN(name string) string {
@@ -32,21 +34,124 @@ func (r *Repo) Sync(ctx context.Context) error {
 	var docsWritten, docsRead int32
 
 	// local to remote
-	if err := replicate(ctx, r.local, rdb, udbName, &docsWritten); err != nil {
-		return errors.Wrap(err, "sync local to remote")
+	if e := replicate(ctx, r.local, rdb, udbName, &docsWritten); e != nil {
+		return errors.Wrap(e, "sync local to remote")
 	}
 
 	// remote to local
-	if err := replicate(ctx, r.local, udbName, rdb, &docsRead); err != nil {
-		return errors.Wrap(err, "sync remote to local")
+	if e := replicate(ctx, r.local, udbName, rdb, &docsRead); e != nil {
+		return errors.Wrap(e, "sync remote to local")
 	}
 
-	if err := r.syncBundles(ctx, &docsRead, &docsWritten); err != nil {
-		return errors.Wrap(err, "bundle sync")
+	if e := r.syncBundles(ctx, &docsRead, &docsWritten); e != nil {
+		return errors.Wrap(e, "bundle sync")
 	}
 
 	log.Debugf("Synced %d docs from server, %d to server\n", docsRead, docsWritten)
+	updated, err := r.upgradeSchema(ctx)
+	if err != nil {
+		return err
+	}
+	if updated {
+		// Re-sync
+		return r.Sync(ctx)
+	}
 	return r.updateSyncTime(ctx)
+}
+
+// upgradeSchema updates the local schema, if necessary, and returns true if
+// any updates were made.
+//
+// This should be run after a sync, and in case of updates, a sync should be
+// re-run. This is to reduce the chance of a race condition with multiple
+// clients doing a simultaneous update.
+func (r *Repo) upgradeSchema(ctx context.Context) (bool, error) {
+	defer profile("upgrade")()
+	var updated bool
+	db, err := r.userDB(ctx)
+	if err != nil {
+		return false, err
+	}
+	cache := newCardDeckCache(r.local)
+	rows, err := db.Query(ctx, "index", "newCards", map[string]interface{}{
+		"startkey":     `null,`,
+		"endkey":       `null,` + kivik.EndKeySuffix,
+		"include_docs": true,
+	})
+	if err != nil {
+		return false, err
+	}
+	defer func() { _ = rows.Close() }()
+	for rows.Next() {
+		var card *fb.Card
+		if e := rows.ScanDoc(&card); e != nil {
+			return updated, e
+		}
+		deckID, err := cache.cardDeck(ctx, card)
+		if err != nil {
+			return updated, err
+		}
+		card.Deck = deckID
+		updated = true
+		if _, err := db.Put(ctx, card.ID, card); err != nil {
+			return updated, err
+		}
+	}
+	return updated, nil
+}
+
+type cardDeckCache struct {
+	client      kivikClient
+	cache       map[string]string
+	readBundles map[string]struct{}
+}
+
+func newCardDeckCache(client kivikClient) *cardDeckCache {
+	return &cardDeckCache{
+		client:      client,
+		cache:       make(map[string]string),
+		readBundles: make(map[string]struct{}),
+	}
+}
+
+func (c *cardDeckCache) cardDeck(ctx context.Context, card *fb.Card) (string, error) {
+	bundleID := card.BundleID()
+	if _, ok := c.readBundles[bundleID]; !ok {
+		if err := c.readBundle(ctx, bundleID); err != nil {
+			return "", err
+		}
+	}
+	if deckID, ok := c.cache[card.ID]; ok {
+		return deckID, nil
+	}
+	return "", nil
+}
+
+func (c *cardDeckCache) readBundle(ctx context.Context, bundleID string) error {
+	bdb, err := c.client.DB(ctx, bundleID)
+	if err != nil {
+		return err
+	}
+	c.readBundles[bundleID] = struct{}{}
+	rows, err := bdb.AllDocs(ctx, map[string]interface{}{
+		"startkey":     "deck-",
+		"endkey":       "deck-" + kivik.EndKeySuffix,
+		"include_docs": true,
+	})
+	if err != nil {
+		return err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var deck fb.Deck
+		if err := rows.ScanDoc(&deck); err != nil {
+			return err
+		}
+		for _, cardID := range deck.Cards.All() {
+			c.cache[cardID] = deck.ID
+		}
+	}
+	return nil
 }
 
 const lastSyncTimestampDocID = "_local/lastSyncTimestamp"

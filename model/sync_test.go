@@ -6,6 +6,8 @@ import (
 	"testing"
 	"time"
 
+	fb "github.com/FlashbackSRS/flashback-model"
+	"github.com/flimzy/diff"
 	"github.com/flimzy/kivik"
 )
 
@@ -379,6 +381,232 @@ func TestUpdateSyncTime(t *testing.T) {
 			_, ts, err := test.repo.lastSyncTime(context.Background())
 			if !ts.Equal(test.expectedTime) {
 				t.Errorf("Unexpected time stored: %v", ts)
+			}
+		})
+	}
+}
+
+func TestUpgradeSchema(t *testing.T) {
+	tests := []struct {
+		name     string
+		repo     *Repo
+		expected bool
+		err      string
+		check    func(*Repo) error
+	}{
+		{
+			name: "not logged in",
+			repo: &Repo{},
+			err:  "not logged in",
+		},
+		// {
+		// 	name: "card to update",
+		// 	repo: func() *Repo {
+		// 		local, err := localConnection()
+		// 		if err != nil {
+		// 			t.Fatal(err)
+		// 		}
+		// 		if e := local.CreateDB(context.Background(), "user-bob"); e != nil {
+		// 			t.Fatal(e)
+		// 		}
+		// 		db, err := local.DB(context.Background(), "user-bob")
+		// 		if err != nil {
+		// 			t.Fatal(err)
+		// 		}
+		// 		card := map[string]string{"_id": "card-mzxw6cq.bmlsCg.0"}
+		// 		if _, e := db.Put(context.Background(), card["_id"], card); e != nil {
+		// 			t.Fatal(e)
+		// 		}
+		// 		deck := map[string]interface{}{
+		// 			"_id":   "deck-1234",
+		// 			"cards": []string{"card-mzxw6cq.bmlsCg.0"},
+		// 		}
+		// 		if e := local.CreateDB(context.Background(), "bundle-mzxw6cq"); e != nil {
+		// 			t.Fatal(e)
+		// 		}
+		// 		bdb, err := local.DB(context.Background(), "bundle-mzxw6cq")
+		// 		if err != nil {
+		// 			t.Fatal(err)
+		// 		}
+		// 		if _, e := bdb.Put(context.Background(), deck["_id"].(string), deck); e != nil {
+		// 			t.Fatal(e)
+		// 		}
+		// 		return &Repo{
+		// 			user:  "bob",
+		// 			local: local,
+		// 		}
+		// 	}(),
+		// 	expected: true,
+		// },
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			result, err := test.repo.upgradeSchema(context.Background())
+			var errMsg string
+			if err != nil {
+				errMsg = err.Error()
+			}
+			if errMsg != test.err {
+				t.Errorf("Unexpected error: %s", errMsg)
+			}
+			if err != nil {
+				return
+			}
+			if test.expected != result {
+				t.Errorf("Unexpected result: %t", result)
+			}
+			if test.check != nil {
+				if e := test.check(test.repo); e != nil {
+					t.Errorf("Check failed: %s", e)
+				}
+			}
+		})
+	}
+}
+
+func TestReadBundle(t *testing.T) {
+	tests := []struct {
+		name     string
+		cache    *cardDeckCache
+		bundleID string
+		expected *cardDeckCache
+		err      string
+	}{
+		{
+			name: "db not found",
+			cache: &cardDeckCache{
+				client: testClient(t),
+			},
+			bundleID: "bundle-0000",
+			err:      "database does not exist",
+		},
+		{
+			name: "query error",
+			cache: newCardDeckCache(&mockClient{
+				db: &mockDB{alldocsErr: errors.New("alldocs error")},
+			}),
+			err: "alldocs error",
+		},
+		{
+			name: "bad deck JSON",
+			cache: newCardDeckCache(&mockClient{
+				db: &mockDB{
+					alldocsRows: &mockRows{
+						rows: []string{"invalid json"},
+					},
+				},
+			}),
+			err: "invalid character 'i' looking for beginning of value",
+		},
+		{
+			name:     "success",
+			bundleID: "bundle-0000",
+			cache: newCardDeckCache(&mockClient{
+				db: &mockDB{
+					alldocsRows: &mockRows{
+						rows: []string{`{
+								"_id":         "deck-ZGVjaw",
+								"type":        "deck",
+								"name":        "test name",
+								"description": "test description",
+								"created":     "2017-01-01T00:00:00Z",
+								"modified":    "2017-01-01T00:00:00Z",
+								"imported":    "2017-01-01T00:00:00Z",
+								"cards":       ["card-YmFy.bmlsCg.0","card-Zm9v.bmlsCg.0"]
+							}`,
+						},
+					},
+				},
+			}),
+			expected: &cardDeckCache{
+				cache: map[string]string{
+					"card-YmFy.bmlsCg.0": "deck-ZGVjaw",
+					"card-Zm9v.bmlsCg.0": "deck-ZGVjaw",
+				},
+				readBundles: map[string]struct{}{"bundle-0000": struct{}{}},
+			},
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			err := test.cache.readBundle(context.Background(), test.bundleID)
+			var errMsg string
+			if err != nil {
+				errMsg = err.Error()
+			}
+			if errMsg != test.err {
+				t.Errorf("Unexpected error: %s", errMsg)
+			}
+			if err != nil {
+				return
+			}
+			test.cache.client = nil // Don't care about this for the check
+			if d := diff.Interface(test.expected, test.cache); d != nil {
+				t.Error(d)
+			}
+		})
+	}
+}
+
+func TestCacheCardDeck(t *testing.T) {
+	tests := []struct {
+		name     string
+		card     *fb.Card
+		cache    *cardDeckCache
+		expected string
+		err      string
+	}{
+		{
+			name: "readBundle error",
+			card: &fb.Card{
+				ID: "card-YmFy.bmlsCg.0",
+			},
+			cache: &cardDeckCache{
+				client: testClient(t),
+			},
+			err: "database does not exist",
+		},
+		{
+			name: "cached value",
+			card: &fb.Card{
+				ID: "card-YmFy.bmlsCg.0",
+			},
+			cache: &cardDeckCache{
+				cache: map[string]string{
+					"card-YmFy.bmlsCg.0": "deck-ZGVjaw",
+					"card-Zm9v.bmlsCg.0": "deck-ZGVjaw",
+				},
+				readBundles: map[string]struct{}{"bundle-YmFy": struct{}{}},
+			},
+			expected: "deck-ZGVjaw",
+		},
+		{
+			name: "card without deck",
+			card: &fb.Card{
+				ID: "card-YmFy.bmlsCg.0",
+			},
+			cache: &cardDeckCache{
+				cache:       map[string]string{},
+				readBundles: map[string]struct{}{"bundle-YmFy": struct{}{}},
+			},
+			expected: "",
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			result, err := test.cache.cardDeck(context.Background(), test.card)
+			var errMsg string
+			if err != nil {
+				errMsg = err.Error()
+			}
+			if errMsg != test.err {
+				t.Errorf("Unexpected error: %s", errMsg)
+			}
+			if err != nil {
+				return
+			}
+			if result != test.expected {
+				t.Errorf("Unexpected result: %s", result)
 			}
 		})
 	}
