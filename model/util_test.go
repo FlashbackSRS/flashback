@@ -53,9 +53,12 @@ func (d *testDoc) UnmarshalJSON(data []byte) error {
 }
 
 type mockDB struct {
-	puts   int
-	putErr []error
-	getErr error
+	kivikDB
+	puts        int
+	putErr      []error
+	getErr      error
+	alldocsRows kivikRows
+	alldocsErr  error
 }
 
 var _ getPutter = &mockDB{}
@@ -71,6 +74,14 @@ func (db *mockDB) Put(_ context.Context, _ string, _ interface{}) (string, error
 	err := db.putErr[db.puts]
 	db.puts++
 	return "", err
+}
+
+func (db *mockDB) AllDocs(_ context.Context, _ ...kivik.Options) (kivikRows, error) {
+	return db.alldocsRows, db.alldocsErr
+}
+
+func (db *mockDB) BulkDocs(_ context.Context, _ interface{}) (kivikBulkResults, error) {
+	panic("unimplemented")
 }
 
 func TestSaveDoc(t *testing.T) {

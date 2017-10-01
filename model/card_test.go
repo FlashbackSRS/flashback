@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"math/rand"
+	"reflect"
 	"strings"
 	"testing"
 	"time"
@@ -23,8 +24,9 @@ func init() {
 }
 
 type mockQuerier struct {
-	rows map[string]*mockRows
-	err  error
+	endkey, startkey interface{}
+	rows             map[string]*mockRows
+	err              error
 }
 
 var _ querier = &mockQuerier{}
@@ -35,6 +37,11 @@ func (db *mockQuerier) Query(ctx context.Context, ddoc, view string, options ...
 	}
 	limit, _ := options[0]["limit"].(int)
 	offset, _ := options[0]["skip"].(int)
+	endkey, _ := options[0]["endkey"]
+	startkey, _ := options[0]["startkey"]
+	if !reflect.DeepEqual(startkey, db.startkey) || !reflect.DeepEqual(endkey, db.endkey) {
+		return nil, fmt.Errorf("Unexpected end/start key:  %v - %v, expected: %v - %v", startkey, endkey, db.startkey, db.endkey)
+	}
 	rows, ok := db.rows[view]
 	if !ok {
 		return &mockRows{}, nil
@@ -45,9 +52,9 @@ func (db *mockQuerier) Query(ctx context.Context, ddoc, view string, options ...
 }
 
 var storedCards = []string{
-	`{"type": "card", "_id": "card-krsxg5baij2w4zdmmu.VGVzdCBOb3Rl.0", "_rev": "1-6e1b6fb5352429cf3013eab5d692aac8", "created": "2016-07-31T15:08:24.730156517Z", "modified": "2016-07-15T15:07:24.730156517Z", "model": "theme-VGVzdCBUaGVtZQ/0", "buriedUntil": "2099-01-01"}`,
+	`{"type": "card", "_id": "card-krsxg5baij2w4zdmmu.VGVzdCBOb3Rl.0", "_rev": "1-6e1b6fb5352429cf3013eab5d692aac8", "created": "2016-07-31T15:08:24.730156517Z", "modified": "2016-07-15T15:07:24.730156517Z", "model": "theme-VGVzdCBUaGVtZQ/0", "buriedUntil": "2099-01-01", "deck": "deck-foo"}`,
 	`{"type": "card", "_id": "card-krsxg5baij2w4zdmmu.VGVzdCBOb3Rl.1", "_rev": "1-6e1b6fb5352429cf3013eab5d692aac8", "created": "2016-07-31T15:08:24.730156517Z", "modified": "2016-07-31T15:08:24.730156517Z", "model": "theme-VGVzdCBUaGVtZQ/0", "due": "2019-01-01"}`,
-	`{"type": "card", "_id": "card-krsxg5baij2w4zdmmu.VGVzdCBOb3Rl.2", "_rev": "1-6e1b6fb5352429cf3013eab5d692aac8", "created": "2016-07-31T15:08:24.730156517Z", "modified": "2016-07-31T15:08:24.730156517Z", "model": "theme-VGVzdCBUaGVtZQ/0"}`,
+	`{"type": "card", "_id": "card-krsxg5baij2w4zdmmu.VGVzdCBOb3Rl.2", "_rev": "1-6e1b6fb5352429cf3013eab5d692aac8", "created": "2016-07-31T15:08:24.730156517Z", "modified": "2016-07-31T15:08:24.730156517Z", "model": "theme-VGVzdCBUaGVtZQ/0", "deck": "deck-bar"}`,
 }
 
 var storedCardValues = []string{
@@ -57,9 +64,9 @@ var storedCardValues = []string{
 }
 
 var storedCardKeys = []string{
-	`["2017-05-22 02:00:00","2016-05-04T19:04:23.000000126Z"]`,
+	`["deck-foo","2017-05-22 02:00:00","2016-05-04T19:04:23.000000126Z"]`,
 	`["2019-01-01","2015-03-17T04:33:51.00000029Z"]`,
-	`[null,"2017-05-28T18:32:44.000000978Z"]`,
+	`["deck-bar",null,"2017-05-28T18:32:44.000000978Z"]`,
 }
 
 var expectedCards = []map[string]interface{}{
@@ -82,11 +89,79 @@ var expectedCards = []map[string]interface{}{
 	},
 }
 
+func TestDueFromKey(t *testing.T) {
+	tests := []struct {
+		name     string
+		key      []string
+		expected fb.Due
+		err      string
+	}{
+		{
+			name: "legacy key, invalid due value",
+			key:  []string{"foo", "bar"},
+			err:  "Unrecognized input: foo",
+		},
+		{
+			name: "new key, invald due value",
+			key:  []string{"foo", "bar", "baz"},
+			err:  "Unrecognized input: bar",
+		},
+		{
+			name: "key too long",
+			key:  []string{"foo", "bar", "baz", "qux"},
+			err:  "Key has 4 element(s), expected 2 or 3",
+		},
+		{
+			name: "key too short",
+			key:  []string{"foo"},
+			err:  "Key has 1 element(s), expected 2 or 3",
+		},
+		{
+			name:     "legacy key, no due value",
+			key:      []string{"", "bar"},
+			expected: fb.Due{},
+		},
+		{
+			name:     "new key, no due value",
+			key:      []string{"foo", "", "bar"},
+			expected: fb.Due{},
+		},
+		{
+			name:     "legacy key, valid due",
+			key:      []string{"2018-01-01", "bar"},
+			expected: parseDue(t, "2018-01-01"),
+		},
+		{
+			name:     "new key, valid due",
+			key:      []string{"foo", "2018-01-01", "bar"},
+			expected: parseDue(t, "2018-01-01"),
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			result, err := dueFromKey(test.key)
+			var errMsg string
+			if err != nil {
+				errMsg = err.Error()
+			}
+			if test.err != errMsg {
+				t.Fatalf("Unexpected error: %s", errMsg)
+			}
+			if err != nil {
+				return
+			}
+			if !test.expected.Equal(result) {
+				t.Errorf("Unexpected result: %v", result)
+			}
+		})
+	}
+}
+
 func TestQueryView(t *testing.T) {
 	tests := []struct {
 		name          string
 		db            querier
-		view          string
+		view, deck    string
 		limit, offset int
 		expected      []*cardSchedule
 		read, total   int
@@ -115,15 +190,6 @@ func TestQueryView(t *testing.T) {
 			limit: 1,
 			view:  "test",
 			err:   "ScanKey: invalid character 'o' in literal false (expecting 'a')",
-		},
-		{
-			name: "invalid due value",
-			db: &mockQuerier{rows: map[string]*mockRows{
-				"test": &mockRows{rows: []string{"foo"}, values: []string{"{}"}, keys: []string{`["foo"]`}},
-			}},
-			limit: 1,
-			view:  "test",
-			err:   "Key has 1 elementes, expected 2 or 3",
 		},
 		{
 			name:     "no results",
@@ -155,10 +221,25 @@ func TestQueryView(t *testing.T) {
 			read:  2,
 			total: 3,
 		},
+		{
+			name: "specific deck",
+			db: &mockQuerier{
+				startkey: []interface{}{"deck-foo"},
+				endkey:   []interface{}{"deck-foo", map[string]interface{}{}},
+				rows: map[string]*mockRows{
+					"test": &mockRows{rows: storedCards[0:1], values: storedCardValues[0:1], keys: storedCardKeys[0:1]},
+				}},
+			limit:    1,
+			view:     "test",
+			deck:     "deck-foo",
+			expected: []*cardSchedule{},
+			read:     1,
+			total:    1,
+		},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			cards, read, total, err := queryView(context.Background(), test.db, test.view, test.limit, test.offset)
+			cards, read, total, err := queryView(context.Background(), test.db, test.view, test.deck, test.limit, test.offset)
 			var errMsg string
 			if err != nil {
 				errMsg = err.Error()
@@ -252,7 +333,7 @@ func TestGetCardsFromView(t *testing.T) {
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			cards, err := getCardsFromView(context.Background(), test.db, test.view, test.limit)
+			cards, err := getCardsFromView(context.Background(), test.db, test.view, "", test.limit)
 			checkErr(t, test.err, err)
 			if err != nil {
 				return
@@ -468,7 +549,7 @@ func TestRepoGetCardToStudy(t *testing.T) {
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			result, err := test.repo.getCardToStudy(context.Background())
+			result, err := test.repo.getCardToStudy(context.Background(), "")
 			checkErr(t, test.err, err)
 			if err != nil {
 				return
@@ -519,7 +600,7 @@ func TestGetCardToStudy(t *testing.T) {
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			result, err := getCardToStudy(context.Background(), test.db)
+			result, err := getCardToStudy(context.Background(), test.db, "")
 			checkErr(t, test.err, err)
 			if err != nil {
 				return

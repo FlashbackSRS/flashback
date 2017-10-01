@@ -11,7 +11,7 @@ import:
   - file
 - package: github.com/flimzy/jqeventrouter
 - package: github.com/flimzy/kivik
-  version: ^1.1.0
+  version: ^1.1.1
   subpackages:
   - driver/couchdb/chttp
   - errors

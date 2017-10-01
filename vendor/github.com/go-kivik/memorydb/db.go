@@ -27,7 +27,10 @@ func (d *db) Query(ctx context.Context, ddoc, view string, opts map[string]inter
 	return nil, notYetImplemented
 }
 
-func (d *db) Get(_ context.Context, docID string, opts map[string]interface{}) (json.RawMessage, error) {
+func (d *db) Get(ctx context.Context, docID string, opts map[string]interface{}) (json.RawMessage, error) {
+	if exists, _ := d.client.DBExists(ctx, d.dbName, nil); !exists {
+		return nil, errors.Status(kivik.StatusPreconditionFailed, "database does not exist")
+	}
 	if !d.db.docExists(docID) {
 		return nil, errors.Status(kivik.StatusNotFound, "missing")
 	}
@@ -45,6 +48,9 @@ func (d *db) Get(_ context.Context, docID string, opts map[string]interface{}) (
 }
 
 func (d *db) CreateDoc(ctx context.Context, doc interface{}) (docID, rev string, err error) {
+	if exists, _ := d.client.DBExists(ctx, d.dbName, nil); !exists {
+		return "", "", errors.Status(kivik.StatusPreconditionFailed, "database does not exist")
+	}
 	couchDoc, err := toCouchDoc(doc)
 	if err != nil {
 		return "", "", err
@@ -58,7 +64,10 @@ func (d *db) CreateDoc(ctx context.Context, doc interface{}) (docID, rev string,
 	return docID, rev, err
 }
 
-func (d *db) Put(_ context.Context, docID string, doc interface{}) (rev string, err error) {
+func (d *db) Put(ctx context.Context, docID string, doc interface{}) (rev string, err error) {
+	if exists, _ := d.client.DBExists(ctx, d.dbName, nil); !exists {
+		return "", errors.Status(kivik.StatusPreconditionFailed, "database does not exist")
+	}
 	isLocal := strings.HasPrefix(docID, "_local/")
 	if !isLocal && docID[0] == '_' && !strings.HasPrefix(docID, "_design/") {
 		return "", errors.Status(kivik.StatusBadRequest, "Only reserved document ids may start with underscore.")
@@ -92,6 +101,9 @@ func validRev(rev string) bool {
 }
 
 func (d *db) Delete(ctx context.Context, docID, rev string) (newRev string, err error) {
+	if exists, _ := d.client.DBExists(ctx, d.dbName, nil); !exists {
+		return "", errors.Status(kivik.StatusPreconditionFailed, "database does not exist")
+	}
 	if !strings.HasPrefix(docID, "_local/") && !validRev(rev) {
 		return "", errors.Status(kivik.StatusBadRequest, "Invalid rev format")
 	}

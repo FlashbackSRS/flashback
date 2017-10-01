@@ -10,8 +10,7 @@ import (
 	"reflect"
 	"testing"
 	"time"
-
-	"gopkg.in/yaml.v1"
+	"gopkg.in/yaml.v2"
 )
 
 type simpleTest struct {
@@ -522,4 +521,27 @@ func TestUnexportedProperty(t *testing.T) {
 		}
 	}()
 	Merge(&a, b)
+}
+
+type structWithBoolPointer struct {
+	C *bool
+}
+
+func TestBooleanPointer(t *testing.T) {
+	bt, bf := true, false
+	src := structWithBoolPointer{
+		&bt,
+	}
+	dst := structWithBoolPointer{
+		&bf,
+	}
+	if err := Merge(&dst, src); err != nil {
+		t.FailNow()
+	}
+	if dst.C == src.C {
+		t.Fatalf("dst.C should be a different pointer than src.C")
+	}
+	if *dst.C != *src.C {
+		t.Fatalf("dst.C should be true")
+	}
 }

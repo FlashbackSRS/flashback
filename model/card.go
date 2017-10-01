@@ -162,7 +162,7 @@ const (
 	limitPadding = 20
 )
 
-func getCardsFromView(ctx context.Context, db querier, view string, limit int) ([]*cardSchedule, error) {
+func getCardsFromView(ctx context.Context, db querier, view, deck string, limit int) ([]*cardSchedule, error) {
 	defer profile("getCardsFromView: " + view)()
 	if limit <= 0 {
 		return nil, errors.New("invalid limit")
@@ -170,7 +170,7 @@ func getCardsFromView(ctx context.Context, db querier, view string, limit int) (
 	cards := make([]*cardSchedule, 0, limit)
 	offset := 0
 	for i := 0; len(cards) < limit && i < 100; i++ {
-		result, readRows, totalRows, err := queryView(ctx, db, view, limit, offset)
+		result, readRows, totalRows, err := queryView(ctx, db, view, deck, limit, offset)
 		if err != nil {
 			return nil, err
 		}
@@ -188,14 +188,19 @@ func getCardsFromView(ctx context.Context, db querier, view string, limit int) (
 	return cards, nil
 }
 
-func queryView(ctx context.Context, db querier, view string, limit, offset int) (cards []*cardSchedule, readRows, totalRows int, err error) {
+func queryView(ctx context.Context, db querier, view, deck string, limit, offset int) (cards []*cardSchedule, readRows, totalRows int, err error) {
 	defer profile("queryView: " + view)()
 	log.Debugf("Trying to fetch %d (%d) %s cards\n", limit, offset, view)
-	rows, err := db.Query(context.TODO(), "index", view, map[string]interface{}{
+	query := map[string]interface{}{
 		"limit": limit + limitPadding,
 		"skip":  offset,
 		"sort":  map[string]string{"due": "desc", "created": "asc"},
-	})
+	}
+	if deck != "" {
+		query["startkey"] = []interface{}{deck}
+		query["endkey"] = []interface{}{deck, map[string]interface{}{}}
+	}
+	rows, err := db.Query(context.TODO(), "index", view, query)
 	if err != nil {
 		return nil, 0, 0, errors.Wrap(err, "query failed")
 	}
@@ -216,28 +221,11 @@ func queryView(ctx context.Context, db querier, view string, limit, offset int) 
 		if e := rows.ScanKey(&key); e != nil {
 			return nil, count, 0, errors.Wrap(e, "ScanKey")
 		}
-		switch len(key) {
-		case 2:
-			// legacy index
-			if key[0] != "" {
-				due, e := fb.ParseDue(key[0])
-				if e != nil {
-					return nil, count, 0, errors.Wrap(e, "ParseDue")
-				}
-				card.Due = due
-			}
-		case 3:
-			// new index
-			if key[1] != "" {
-				due, e := fb.ParseDue(key[0])
-				if e != nil {
-					return nil, count, 0, errors.Wrap(e, "ParseDue")
-				}
-				card.Due = due
-			}
-		default:
-			return nil, count, 0, fmt.Errorf("Key has %d elementes, expected 2 or 3", len(key))
+		due, err := dueFromKey(key)
+		if err != nil {
+			return nil, count, 0, errors.Wrap(err, "due time")
 		}
+		card.Due = due
 		card.ID = rows.ID()
 		cards = append(cards, card)
 		if len(cards) == limit {
@@ -246,6 +234,25 @@ func queryView(ctx context.Context, db querier, view string, limit, offset int) 
 		}
 	}
 	return cards, count, int(rows.TotalRows()), nil
+}
+
+func dueFromKey(key []string) (fb.Due, error) {
+	switch len(key) {
+	case 2:
+		// legacy index
+		if key[0] != "" {
+			return fb.ParseDue(key[0])
+		}
+		return fb.Due{}, nil
+	case 3:
+		// new index
+		if key[1] != "" {
+			return fb.ParseDue(key[1])
+		}
+		return fb.Due{}, nil
+	default:
+		return fb.Due{}, fmt.Errorf("Key has %d element(s), expected 2 or 3", len(key))
+	}
 }
 
 // cardPriority returns a number 0 or greater, as a priority to be used in
@@ -292,14 +299,14 @@ func selectWeightedCard(cards []*cardSchedule) string {
 
 // GetCardToStudy returns a CardView to display to the user to study, and buries
 // related cards.
-func (r *Repo) GetCardToStudy(ctx context.Context) (flashback.CardView, error) {
+func (r *Repo) GetCardToStudy(ctx context.Context, deck string) (flashback.CardView, error) {
 	if _, _, err := r.lastSyncTime(ctx); err != nil {
 		if kivik.StatusCode(err) == kivik.StatusNotFound {
 			return mustsync.GetCard(), nil
 		}
 		return nil, err
 	}
-	card, err := r.getCardToStudy(ctx)
+	card, err := r.getCardToStudy(ctx, deck)
 	if err != nil {
 		return nil, err
 	}
@@ -317,12 +324,12 @@ func (r *Repo) GetCardToStudy(ctx context.Context) (flashback.CardView, error) {
 }
 
 // getCardToStudy returns a card to display to the user to study.
-func (r *Repo) getCardToStudy(ctx context.Context) (*Card, error) {
+func (r *Repo) getCardToStudy(ctx context.Context, deck string) (*Card, error) {
 	udb, err := r.userDB(ctx)
 	if err != nil {
 		return nil, err
 	}
-	card, err := getCardToStudy(ctx, udb)
+	card, err := getCardToStudy(ctx, udb, deck)
 	if err != nil || card == nil {
 		return nil, err
 	}
@@ -376,19 +383,19 @@ type cardSchedule struct {
 	BuriedUntil fb.Due      `json:"buriedUntil"`
 }
 
-func getCardToStudy(ctx context.Context, db queryGetter) (*fb.Card, error) {
+func getCardToStudy(ctx context.Context, db queryGetter, deck string) (*fb.Card, error) {
 	defer profile("getCardToStudy")()
 	var newCards, oldCards []*cardSchedule
 	var newErr, oldErr error
 	var wg sync.WaitGroup
 	wg.Add(2)
 	go func() {
-		newCards, newErr = getCardsFromView(ctx, db, "newCards", newBatchSize)
+		newCards, newErr = getCardsFromView(ctx, db, "newCards", deck, newBatchSize)
 		newErr = errors.Wrap(newErr, "newCards")
 		wg.Done()
 	}()
 	go func() {
-		oldCards, oldErr = getCardsFromView(ctx, db, "oldCards", oldBatchSize)
+		oldCards, oldErr = getCardsFromView(ctx, db, "oldCards", deck, oldBatchSize)
 		oldErr = errors.Wrap(oldErr, "oldCards")
 		wg.Done()
 	}()

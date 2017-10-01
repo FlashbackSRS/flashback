@@ -116,13 +116,14 @@ func (r *mockBulkResults) UpdateErr() error { return r.errs[r.i-1] }
 
 type mockClient struct {
 	kivikClient
+	db  kivikDB
 	err error
 }
 
 var _ kivikClient = &mockClient{}
 
 func (c *mockClient) DB(_ context.Context, _ string, _ ...kivik.Options) (kivikDB, error) {
-	return nil, c.err
+	return c.db, c.err
 }
 
 type mockQueryGetter struct {
