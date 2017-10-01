@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"time"
 
@@ -32,31 +33,42 @@ func (r *Repo) Sync(ctx context.Context) error {
 	rdb := r.remoteDSN(udbName)
 
 	var docsWritten, docsRead int32
+	if e := r.doSync(ctx, rdb, udbName, &docsWritten, &docsRead); e != nil {
+		return errors.Wrap(e, "sync failed")
+	}
 
+	updated, err := r.upgradeSchema(ctx)
+	if err != nil {
+		return errors.Wrap(err, "schema upgrade failed")
+	}
+	if updated {
+		fmt.Printf("Documents were updated\n")
+		if e := r.doSync(ctx, rdb, udbName, &docsWritten, &docsRead); e != nil {
+			return errors.Wrap(e, "resync failed")
+		}
+	}
+
+	log.Debugf("Synced %d docs from server, %d to server\n", docsRead, docsWritten)
+
+	return nil
+}
+
+func (r *Repo) doSync(ctx context.Context, remoteUserDBName, localUserDBName string, docsWritten, docsRead *int32) error {
 	// local to remote
-	if e := replicate(ctx, r.local, rdb, udbName, &docsWritten); e != nil {
+	if e := replicate(ctx, r.local, remoteUserDBName, localUserDBName, docsWritten); e != nil {
 		return errors.Wrap(e, "sync local to remote")
 	}
 
 	// remote to local
-	if e := replicate(ctx, r.local, udbName, rdb, &docsRead); e != nil {
+	if e := replicate(ctx, r.local, localUserDBName, remoteUserDBName, docsRead); e != nil {
 		return errors.Wrap(e, "sync remote to local")
 	}
 
-	if e := r.syncBundles(ctx, &docsRead, &docsWritten); e != nil {
+	if e := r.syncBundles(ctx, docsRead, docsWritten); e != nil {
 		return errors.Wrap(e, "bundle sync")
 	}
 
-	log.Debugf("Synced %d docs from server, %d to server\n", docsRead, docsWritten)
-	updated, err := r.upgradeSchema(ctx)
-	if err != nil {
-		return err
-	}
-	if updated {
-		// Re-sync
-		return r.Sync(ctx)
-	}
-	return r.updateSyncTime(ctx)
+	return errors.Wrap(r.updateSyncTime(ctx), "fialed to store sync timestamp")
 }
 
 // upgradeSchema updates the local schema, if necessary, and returns true if
@@ -67,37 +79,60 @@ func (r *Repo) Sync(ctx context.Context) error {
 // clients doing a simultaneous update.
 func (r *Repo) upgradeSchema(ctx context.Context) (bool, error) {
 	defer profile("upgrade")()
-	var updated bool
 	db, err := r.userDB(ctx)
 	if err != nil {
 		return false, err
 	}
+
+	var newUpdated, oldUpdated bool
+	var newErr, oldErr error
 	cache := newCardDeckCache(r.local)
-	rows, err := db.Query(ctx, "index", "newCards", map[string]interface{}{
-		"startkey":     `null,`,
-		"endkey":       `null,` + kivik.EndKeySuffix,
+	var wg sync.WaitGroup
+	wg.Add(2)
+	go func() {
+		newUpdated, newErr = upgradeSchemaFromView(ctx, db, cache, "newCards")
+		wg.Done()
+	}()
+	go func() {
+		oldUpdated, oldErr = upgradeSchemaFromView(ctx, db, cache, "oldCards")
+		wg.Done()
+	}()
+	wg.Wait()
+	if newErr != nil {
+		return newUpdated || oldUpdated, newErr
+	}
+	return newUpdated || oldUpdated, oldErr
+}
+
+func upgradeSchemaFromView(ctx context.Context, db kivikDB, cache *cardDeckCache, view string) (bool, error) {
+	defer profile(fmt.Sprintf("upgrade from view %s", view))()
+	rows, err := db.Query(ctx, "index", view, map[string]interface{}{
+		"startkey":     []interface{}{nil},
+		"endkey":       []interface{}{nil, map[string]interface{}{}},
 		"include_docs": true,
 	})
 	if err != nil {
 		return false, err
 	}
 	defer func() { _ = rows.Close() }()
+	var count int
 	for rows.Next() {
 		var card *fb.Card
 		if e := rows.ScanDoc(&card); e != nil {
-			return updated, e
+			return count != 0, e
 		}
 		deckID, err := cache.cardDeck(ctx, card)
 		if err != nil {
-			return updated, err
+			return count != 0, err
 		}
 		card.Deck = deckID
-		updated = true
+		count++
 		if _, err := db.Put(ctx, card.ID, card); err != nil {
-			return updated, err
+			return count != 0, err
 		}
 	}
-	return updated, nil
+	log.Debugf("%d of %d %s cards upgraded\n", count, rows.TotalRows(), view)
+	return count != 0, rows.Err()
 }
 
 type cardDeckCache struct {

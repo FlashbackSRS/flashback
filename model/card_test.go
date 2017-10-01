@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"math/rand"
+	"reflect"
 	"strings"
 	"testing"
 	"time"
@@ -23,7 +24,7 @@ func init() {
 }
 
 type mockQuerier struct {
-	endkey, startkey string
+	endkey, startkey interface{}
 	rows             map[string]*mockRows
 	err              error
 }
@@ -36,10 +37,10 @@ func (db *mockQuerier) Query(ctx context.Context, ddoc, view string, options ...
 	}
 	limit, _ := options[0]["limit"].(int)
 	offset, _ := options[0]["skip"].(int)
-	endkey, _ := options[0]["endkey"].(string)
-	startkey, _ := options[0]["startkey"].(string)
-	if endkey != db.endkey || startkey != db.startkey {
-		return nil, fmt.Errorf("Unexpected end/start key:  %s - %s, expected: %s - %s", startkey, endkey, db.startkey, db.endkey)
+	endkey, _ := options[0]["endkey"]
+	startkey, _ := options[0]["startkey"]
+	if !reflect.DeepEqual(startkey, db.startkey) || !reflect.DeepEqual(endkey, db.endkey) {
+		return nil, fmt.Errorf("Unexpected end/start key:  %v - %v, expected: %v - %v", startkey, endkey, db.startkey, db.endkey)
 	}
 	rows, ok := db.rows[view]
 	if !ok {
@@ -182,8 +183,8 @@ func TestQueryView(t *testing.T) {
 		{
 			name: "specific deck",
 			db: &mockQuerier{
-				startkey: `"deck-foo",`,
-				endkey:   `"deck-foo",` + kivik.EndKeySuffix,
+				startkey: []interface{}{"deck-foo"},
+				endkey:   []interface{}{"deck-foo", map[string]interface{}{}},
 				rows: map[string]*mockRows{
 					"test": &mockRows{rows: storedCards[0:1], values: storedCardValues[0:1], keys: storedCardKeys[0:1]},
 				}},

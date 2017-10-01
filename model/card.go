@@ -197,8 +197,8 @@ func queryView(ctx context.Context, db querier, view, deck string, limit, offset
 		"sort":  map[string]string{"due": "desc", "created": "asc"},
 	}
 	if deck != "" {
-		query["startkey"] = fmt.Sprintf(`"%s",`, deck)
-		query["endkey"] = fmt.Sprintf(`"%s",%s`, deck, kivik.EndKeySuffix)
+		query["startkey"] = []interface{}{deck}
+		query["endkey"] = []interface{}{deck, map[string]interface{}{}}
 	}
 	rows, err := db.Query(context.TODO(), "index", view, query)
 	if err != nil {

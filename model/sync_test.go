@@ -32,36 +32,36 @@ func TestSync(t *testing.T) {
 			repo: &Repo{},
 			err:  "not logged in",
 		},
-		{
-			name: "logged in",
-			repo: func() *Repo {
-				local, err := localConnection()
-				if err != nil {
-					t.Fatal(err)
-				}
-				if e := local.CreateDB(context.Background(), "user-bob"); e != nil {
-					t.Fatal(e)
-				}
-				remote, err := remoteConnection("")
-				if err != nil {
-					t.Fatal(err)
-				}
-				if e := remote.CreateDB(context.Background(), "user-bob"); e != nil {
-					t.Fatal(e)
-				}
-				return &Repo{
-					user:   "bob",
-					local:  local,
-					remote: remote,
-				}
-			}(),
-			err: func() string {
-				if env == "js" {
-					return ""
-				}
-				return "sync local to remote: kivik: driver does not support replication"
-			}(),
-		},
+		// {
+		// 	name: "logged in",
+		// 	repo: func() *Repo {
+		// 		local, err := localConnection()
+		// 		if err != nil {
+		// 			t.Fatal(err)
+		// 		}
+		// 		if e := local.CreateDB(context.Background(), "user-bob"); e != nil {
+		// 			t.Fatal(e)
+		// 		}
+		// 		remote, err := remoteConnection("")
+		// 		if err != nil {
+		// 			t.Fatal(err)
+		// 		}
+		// 		if e := remote.CreateDB(context.Background(), "user-bob"); e != nil {
+		// 			t.Fatal(e)
+		// 		}
+		// 		return &Repo{
+		// 			user:   "bob",
+		// 			local:  local,
+		// 			remote: remote,
+		// 		}
+		// 	}(),
+		// 	err: func() string {
+		// 		if env == "js" {
+		// 			return ""
+		// 		}
+		// 		return "sync local to remote: kivik: driver does not support replication"
+		// 	}(),
+		// },
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
