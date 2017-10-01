@@ -82,16 +82,16 @@ var expectedCards = []map[string]interface{}{
 	},
 }
 
-func TestGetCardsFromView(t *testing.T) {
-	type gcfvTest struct {
-		name     string
-		db       querier
-		view     string
-		limit    int
-		expected interface{}
-		err      string
-	}
-	tests := []gcfvTest{
+func TestQueryView(t *testing.T) {
+	tests := []struct {
+		name          string
+		db            querier
+		view          string
+		limit, offset int
+		expected      []*cardSchedule
+		read, total   int
+		err           string
+	}{
 		{
 			name:  "query error",
 			db:    &mockQuerier{err: errors.New("query failed")},
@@ -125,6 +125,70 @@ func TestGetCardsFromView(t *testing.T) {
 			view:  "test",
 			err:   "ParseDue: Unrecognized input: foo",
 		},
+		{
+			name:     "no results",
+			db:       &mockQuerier{rows: map[string]*mockRows{}},
+			limit:    1,
+			expected: []*cardSchedule{},
+		},
+		{
+			name: "buried card filter",
+			db: &mockQuerier{rows: map[string]*mockRows{
+				"test": &mockRows{rows: storedCards[0:1], values: storedCardValues[0:1], keys: storedCardKeys[0:1]},
+			}},
+			limit:    10,
+			view:     "test",
+			expected: []*cardSchedule{},
+			read:     1,
+			total:    1,
+		},
+		{
+			name: "limit reached",
+			db: &mockQuerier{rows: map[string]*mockRows{
+				"test": &mockRows{rows: storedCards, values: storedCardValues, keys: storedCardKeys},
+			}},
+			limit: 1,
+			view:  "test",
+			expected: []*cardSchedule{
+				{ID: "card-krsxg5baij2w4zdmmu.VGVzdCBOb3Rl.1", Due: parseDue(t, "2019-01-01")},
+			},
+			read:  2,
+			total: 3,
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			cards, read, total, err := queryView(context.Background(), test.db, test.view, test.limit, test.offset)
+			var errMsg string
+			if err != nil {
+				errMsg = err.Error()
+			}
+			if errMsg != test.err {
+				t.Errorf("Unexpected error: %s", errMsg)
+			}
+			if err != nil {
+				return
+			}
+			if d := diff.Interface(test.expected, cards); d != nil {
+				t.Error(d)
+			}
+			if read != test.read || total != test.total {
+				t.Errorf("Unexpected counts: read = %d, total = %d", read, total)
+			}
+		})
+	}
+}
+
+func TestGetCardsFromView(t *testing.T) {
+	type gcfvTest struct {
+		name     string
+		db       querier
+		view     string
+		limit    int
+		expected interface{}
+		err      string
+	}
+	tests := []gcfvTest{
 		{
 			name:     "no results",
 			db:       &mockQuerier{rows: map[string]*mockRows{}},

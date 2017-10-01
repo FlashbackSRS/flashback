@@ -227,7 +227,7 @@ func queryView(ctx context.Context, db querier, view string, limit, offset int) 
 		cards = append(cards, card)
 		if len(cards) == limit {
 			log.Debugf("Got %d cards, early exiting", len(cards))
-			return cards, count, 0, nil
+			return cards, count, int(rows.TotalRows()), nil
 		}
 	}
 	return cards, count, int(rows.TotalRows()), nil
