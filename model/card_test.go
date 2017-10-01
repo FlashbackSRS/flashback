@@ -23,8 +23,9 @@ func init() {
 }
 
 type mockQuerier struct {
-	rows map[string]*mockRows
-	err  error
+	endkey, startkey string
+	rows             map[string]*mockRows
+	err              error
 }
 
 var _ querier = &mockQuerier{}
@@ -35,6 +36,11 @@ func (db *mockQuerier) Query(ctx context.Context, ddoc, view string, options ...
 	}
 	limit, _ := options[0]["limit"].(int)
 	offset, _ := options[0]["skip"].(int)
+	endkey, _ := options[0]["endkey"].(string)
+	startkey, _ := options[0]["startkey"].(string)
+	if endkey != db.endkey || startkey != db.startkey {
+		return nil, fmt.Errorf("Unexpected end/start key:  %s - %s, expected: %s - %s", startkey, endkey, db.startkey, db.endkey)
+	}
 	rows, ok := db.rows[view]
 	if !ok {
 		return &mockRows{}, nil
@@ -45,9 +51,9 @@ func (db *mockQuerier) Query(ctx context.Context, ddoc, view string, options ...
 }
 
 var storedCards = []string{
-	`{"type": "card", "_id": "card-krsxg5baij2w4zdmmu.VGVzdCBOb3Rl.0", "_rev": "1-6e1b6fb5352429cf3013eab5d692aac8", "created": "2016-07-31T15:08:24.730156517Z", "modified": "2016-07-15T15:07:24.730156517Z", "model": "theme-VGVzdCBUaGVtZQ/0", "buriedUntil": "2099-01-01"}`,
+	`{"type": "card", "_id": "card-krsxg5baij2w4zdmmu.VGVzdCBOb3Rl.0", "_rev": "1-6e1b6fb5352429cf3013eab5d692aac8", "created": "2016-07-31T15:08:24.730156517Z", "modified": "2016-07-15T15:07:24.730156517Z", "model": "theme-VGVzdCBUaGVtZQ/0", "buriedUntil": "2099-01-01", "deck": "deck-foo"}`,
 	`{"type": "card", "_id": "card-krsxg5baij2w4zdmmu.VGVzdCBOb3Rl.1", "_rev": "1-6e1b6fb5352429cf3013eab5d692aac8", "created": "2016-07-31T15:08:24.730156517Z", "modified": "2016-07-31T15:08:24.730156517Z", "model": "theme-VGVzdCBUaGVtZQ/0", "due": "2019-01-01"}`,
-	`{"type": "card", "_id": "card-krsxg5baij2w4zdmmu.VGVzdCBOb3Rl.2", "_rev": "1-6e1b6fb5352429cf3013eab5d692aac8", "created": "2016-07-31T15:08:24.730156517Z", "modified": "2016-07-31T15:08:24.730156517Z", "model": "theme-VGVzdCBUaGVtZQ/0"}`,
+	`{"type": "card", "_id": "card-krsxg5baij2w4zdmmu.VGVzdCBOb3Rl.2", "_rev": "1-6e1b6fb5352429cf3013eab5d692aac8", "created": "2016-07-31T15:08:24.730156517Z", "modified": "2016-07-31T15:08:24.730156517Z", "model": "theme-VGVzdCBUaGVtZQ/0", "deck": "deck-bar"}`,
 }
 
 var storedCardValues = []string{
@@ -57,9 +63,9 @@ var storedCardValues = []string{
 }
 
 var storedCardKeys = []string{
-	`["2017-05-22 02:00:00","2016-05-04T19:04:23.000000126Z"]`,
+	`["deck-foo","2017-05-22 02:00:00","2016-05-04T19:04:23.000000126Z"]`,
 	`["2019-01-01","2015-03-17T04:33:51.00000029Z"]`,
-	`[null,"2017-05-28T18:32:44.000000978Z"]`,
+	`["deck-bar",null,"2017-05-28T18:32:44.000000978Z"]`,
 }
 
 var expectedCards = []map[string]interface{}{
@@ -86,7 +92,7 @@ func TestQueryView(t *testing.T) {
 	tests := []struct {
 		name          string
 		db            querier
-		view          string
+		view, deck    string
 		limit, offset int
 		expected      []*cardSchedule
 		read, total   int
@@ -173,10 +179,25 @@ func TestQueryView(t *testing.T) {
 			read:  2,
 			total: 3,
 		},
+		{
+			name: "specific deck",
+			db: &mockQuerier{
+				startkey: `"deck-foo",`,
+				endkey:   `"deck-foo",` + kivik.EndKeySuffix,
+				rows: map[string]*mockRows{
+					"test": &mockRows{rows: storedCards[0:1], values: storedCardValues[0:1], keys: storedCardKeys[0:1]},
+				}},
+			limit:    1,
+			view:     "test",
+			deck:     "deck-foo",
+			expected: []*cardSchedule{},
+			read:     1,
+			total:    1,
+		},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			cards, read, total, err := queryView(context.Background(), test.db, test.view, test.limit, test.offset)
+			cards, read, total, err := queryView(context.Background(), test.db, test.view, test.deck, test.limit, test.offset)
 			var errMsg string
 			if err != nil {
 				errMsg = err.Error()

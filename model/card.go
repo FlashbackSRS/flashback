@@ -170,7 +170,7 @@ func getCardsFromView(ctx context.Context, db querier, view string, limit int) (
 	cards := make([]*cardSchedule, 0, limit)
 	offset := 0
 	for i := 0; len(cards) < limit && i < 100; i++ {
-		result, readRows, totalRows, err := queryView(ctx, db, view, limit, offset)
+		result, readRows, totalRows, err := queryView(ctx, db, view, "", limit, offset)
 		if err != nil {
 			return nil, err
 		}
@@ -188,14 +188,19 @@ func getCardsFromView(ctx context.Context, db querier, view string, limit int) (
 	return cards, nil
 }
 
-func queryView(ctx context.Context, db querier, view string, limit, offset int) (cards []*cardSchedule, readRows, totalRows int, err error) {
+func queryView(ctx context.Context, db querier, view, deck string, limit, offset int) (cards []*cardSchedule, readRows, totalRows int, err error) {
 	defer profile("queryView: " + view)()
 	log.Debugf("Trying to fetch %d (%d) %s cards\n", limit, offset, view)
-	rows, err := db.Query(context.TODO(), "index", view, map[string]interface{}{
+	query := map[string]interface{}{
 		"limit": limit + limitPadding,
 		"skip":  offset,
 		"sort":  map[string]string{"due": "desc", "created": "asc"},
-	})
+	}
+	if deck != "" {
+		query["startkey"] = fmt.Sprintf(`"%s",`, deck)
+		query["endkey"] = fmt.Sprintf(`"%s",%s`, deck, kivik.EndKeySuffix)
+	}
+	rows, err := db.Query(context.TODO(), "index", view, query)
 	if err != nil {
 		return nil, 0, 0, errors.Wrap(err, "query failed")
 	}
