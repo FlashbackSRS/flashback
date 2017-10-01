@@ -133,6 +133,7 @@ func TestCardMarshalJSON(t *testing.T) {
 			Modified:    parseTime("2017-01-01T01:01:01Z"),
 			Imported:    parseTime("2017-01-01T01:01:01Z"),
 			BuriedUntil: Due(parseTime("2017-03-01T00:00:00Z")),
+			Deck:        "deck-foo",
 			Due:         Due(parseTime("2018-01-01T00:00:00Z")),
 			LastReview:  parseTime("2016-12-30T12:00:00Z"),
 			Suspended:   true,
@@ -145,6 +146,7 @@ func TestCardMarshalJSON(t *testing.T) {
 			"modified":    "2017-01-01T01:01:01Z",
 			"imported":    "2017-01-01T01:01:01Z",
 			"lastReview":  "2016-12-30T12:00:00Z",
+			"deck":        "deck-foo",
 			"buriedUntil": "2017-03-01",
 			"due":         "2018-01-01",
 			"suspended":   true

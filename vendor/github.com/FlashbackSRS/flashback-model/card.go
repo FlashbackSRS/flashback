@@ -31,6 +31,7 @@ type Card struct {
 	Modified   time.Time `json:"modified"`
 	Imported   time.Time `json:"imported,omitempty"`
 	LastReview time.Time `json:"lastReview,omitempty"`
+	Deck       string    `json:"deck,omitempty"`
 
 	// ModelID is a compound key refering to a specific model. It is in the
 	// format:

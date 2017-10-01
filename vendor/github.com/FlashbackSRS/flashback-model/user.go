@@ -1,8 +1,6 @@
 package fb
 
 import (
-	"crypto/rand"
-	"encoding/hex"
 	"encoding/json"
 	"strings"
 	"time"
@@ -34,14 +32,6 @@ func GenerateUser() *User {
 	return user
 }
 
-func generateSalt() string {
-	b := make([]byte, 16)
-	if _, err := rand.Read(b); err != nil {
-		panic(err)
-	}
-	return hex.EncodeToString(b)
-}
-
 // Validate validates that all of the data in the user appears valid and self
 // consistent. A nil return value means no errors were detected.
 func (u *User) Validate() error {
@@ -53,9 +43,6 @@ func (u *User) Validate() error {
 	}
 	if u.Modified.IsZero() {
 		return errors.New("modified time required")
-	}
-	if u.Salt == "" {
-		return errors.New("salt required")
 	}
 	return nil
 }
@@ -71,7 +58,6 @@ func NewUser(name string) (*User, error) {
 		Name:     name,
 		Created:  now().UTC(),
 		Modified: now().UTC(),
-		Salt:     generateSalt(),
 	}
 	if err := u.Validate(); err != nil {
 		return nil, err

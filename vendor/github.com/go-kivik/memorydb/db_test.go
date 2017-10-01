@@ -209,6 +209,25 @@ func TestPut(t *testing.T) {
 				"value": "quack",
 			},
 		},
+		{
+			Name: "Deleted DB",
+			Setup: func() driver.DB {
+				c := setup(t, nil)
+				if err := c.CreateDB(context.Background(), "deleted0", nil); err != nil {
+					t.Fatal(err)
+				}
+				db, err := c.DB(context.Background(), "deleted0", nil)
+				if err != nil {
+					t.Fatal(err)
+				}
+				if e := c.DestroyDB(context.Background(), "deleted0", nil); e != nil {
+					t.Fatal(e)
+				}
+				return db
+			},
+			Status: kivik.StatusPreconditionFailed,
+			Error:  "database does not exist",
+		},
 	}
 	for _, test := range tests {
 		func(test putTest) {
@@ -356,6 +375,25 @@ func TestGet(t *testing.T) {
 				Error:  "missing",
 			}
 		}(),
+		{
+			Name: "Deleted DB",
+			DB: func() driver.DB {
+				c := setup(t, nil)
+				if err := c.CreateDB(context.Background(), "deleted0", nil); err != nil {
+					t.Fatal(err)
+				}
+				db, err := c.DB(context.Background(), "deleted0", nil)
+				if err != nil {
+					t.Fatal(err)
+				}
+				if e := c.DestroyDB(context.Background(), "deleted0", nil); e != nil {
+					t.Fatal(e)
+				}
+				return db
+			}(),
+			Error:  "database does not exist",
+			Status: kivik.StatusPreconditionFailed,
+		},
 	}
 	for _, test := range tests {
 		func(test getTest) {
@@ -457,6 +495,26 @@ func TestDeleteDoc(t *testing.T) {
 				return db
 			}(),
 		},
+		{
+			Name: "DB deleted",
+			ID:   "foo",
+			DB: func() driver.DB {
+				c := setup(t, nil)
+				if err := c.CreateDB(context.Background(), "deleted0", nil); err != nil {
+					t.Fatal(err)
+				}
+				db, err := c.DB(context.Background(), "deleted0", nil)
+				if err != nil {
+					t.Fatal(err)
+				}
+				if e := c.DestroyDB(context.Background(), "deleted0", nil); e != nil {
+					t.Fatal(e)
+				}
+				return db
+			}(),
+			Status: kivik.StatusPreconditionFailed,
+			Error:  "database does not exist",
+		},
 	}
 	for _, test := range tests {
 		func(test delTest) {
@@ -507,6 +565,7 @@ func TestDeleteDoc(t *testing.T) {
 func TestCreateDoc(t *testing.T) {
 	type cdTest struct {
 		Name     string
+		DB       driver.DB
 		Doc      interface{}
 		Expected map[string]interface{}
 		Error    string
@@ -522,11 +581,35 @@ func TestCreateDoc(t *testing.T) {
 				"foo":  "bar",
 			},
 		},
+		{
+			Name: "Deleted DB",
+			DB: func() driver.DB {
+				c := setup(t, nil)
+				if err := c.CreateDB(context.Background(), "deleted0", nil); err != nil {
+					t.Fatal(err)
+				}
+				db, err := c.DB(context.Background(), "deleted0", nil)
+				if err != nil {
+					t.Fatal(err)
+				}
+				if e := c.DestroyDB(context.Background(), "deleted0", nil); e != nil {
+					t.Fatal(e)
+				}
+				return db
+			}(),
+			Doc: map[string]interface{}{
+				"foo": "bar",
+			},
+			Error: "database does not exist",
+		},
 	}
 	for _, test := range tests {
 		func(test cdTest) {
 			t.Run(test.Name, func(t *testing.T) {
-				db := setupDB(t, nil)
+				db := test.DB
+				if db == nil {
+					db = setupDB(t, nil)
+				}
 				docID, _, err := db.CreateDoc(context.Background(), test.Doc)
 				var msg string
 				if err != nil {

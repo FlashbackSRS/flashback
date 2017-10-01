@@ -229,23 +229,11 @@ func TestUserValidate(t *testing.T) {
 			err:  "modified time required",
 		},
 		{
-			name: "no salt",
-			v:    &User{Name: "mzxw6", Created: now(), Modified: now()},
-			err:  "salt required",
-		},
-		{
 			name: "valid",
 			v:    &User{Name: "mjxwe", Created: now(), Modified: now(), Salt: "sea salt is the best"},
 		},
 	}
 	testValidation(t, tests)
-}
-
-func TestGenerateSalt(t *testing.T) {
-	salt := generateSalt()
-	if len(salt) != 32 {
-		t.Errorf("Generated salt is %d chars long, expected 32", len(salt))
-	}
 }
 
 func TestGenerateUser(t *testing.T) {

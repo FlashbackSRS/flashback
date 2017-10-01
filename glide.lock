@@ -1,10 +1,10 @@
-hash: fa2b899fc56860227dd304b1215953d60762585ee1f5857a086759f156b23665
-updated: 2017-09-15T16:12:04.593209718+02:00
+hash: ebe32c0112fa3be10d2569a21455c99824d6f2a25fbd6c0593e579eaa50315a7
+updated: 2017-10-01T15:12:51.458796945+02:00
 imports:
 - name: github.com/andybalholm/cascadia
   version: 349dd0209470eabd9514242c688c403c0926d266
 - name: github.com/FlashbackSRS/flashback-model
-  version: a9780f22bcf46434069d7ed33edd6ea5a16253fe
+  version: c9cf5ebb3b69093305b10a0e391909e48ce65853
 - name: github.com/flimzy/goweb
   version: 3f8643d366a98037bfb7643ebf15c8c45f291e03
   subpackages:
@@ -13,7 +13,7 @@ imports:
 - name: github.com/flimzy/jqeventrouter
   version: 457b14bf10290699ba4c042d0168d4fbb45eb823
 - name: github.com/flimzy/kivik
-  version: 5f708f34dedf2908c5a30bb393ebb5941099812b
+  version: b4c3dadf09df676d9a87f0f78375e7a35f39fc7e
   subpackages:
   - collate
   - driver
@@ -23,13 +23,13 @@ imports:
 - name: github.com/flimzy/log
   version: 775874b5dd4b1bc0e9cffd55962a44b5ee7f3cd4
 - name: github.com/go-kivik/couchdb
-  version: 64d2ee9d5127eb5efb18003d0d1ebb2890a46e4a
+  version: ff6b8496983233487cb88f2e33712b0bda6b21f8
   subpackages:
   - chttp
 - name: github.com/go-kivik/mango
   version: 6447c9bcf24e71967adc9699cb87d8040483f0fd
 - name: github.com/go-kivik/memorydb
-  version: 603670783b3834becb1abd8622f2a41b9b0cdead
+  version: bc9fe85f9dfc729f7889fada4c034aec65e70fe9
 - name: github.com/go-kivik/pouchdb
   version: 1e0e2e004f98cd6a721ee7285e888ed7ec499f2e
   subpackages:
@@ -37,15 +37,15 @@ imports:
 - name: github.com/gopherjs/jquery
   version: c5b71b8699e312469a95c0927c19833fa42359e6
 - name: github.com/gopherjs/jsbuiltin
-  version: 8831a521bd78a65f94dab7f9e2de71fad0ed3d73
+  version: 67703bfb044e3192fbcab025c3aeaeedafad1f2f
 - name: github.com/hashicorp/errwrap
   version: 7554cd9344cec97297fa6649b055a8c98c2a1e55
 - name: github.com/hashicorp/go-multierror
   version: 83588e72410abfbe4df460eeb6f30841ae47d4c4
 - name: github.com/imdario/mergo
-  version: 3e95a51e0639b4cf372f2ccf74c86749d747fbdc
+  version: e3000cb3d28c72b837601cac94debd91032d19fe
 - name: github.com/nicksnyder/go-i18n
-  version: 3e70a1a463008cea6726380c908b1a6a8bdf7b24
+  version: ca33e78c8a430e2df435b02f63a3944fa8e9ea11
   subpackages:
   - i18n/bundle
   - i18n/language
@@ -53,7 +53,7 @@ imports:
 - name: github.com/pborman/uuid
   version: e790cca94e6cc75c7064b1332e63811d4aae1a53
 - name: github.com/pelletier/go-toml
-  version: 1d6b12b7cb290426e27e6b4e38b89fcda3aeef03
+  version: 16398bac157da96aa88f98a2df640c7f32af1da2
 - name: github.com/pkg/errors
   version: 645ef00459ed84a119197bfb8d8205042c6df63d
 - name: github.com/PuerkitoBio/goquery
@@ -63,7 +63,7 @@ imports:
   subpackages:
   - diffmatchpatch
 - name: golang.org/x/net
-  version: 1a26cf06691746ee35aa7113c9b37289afc7ea28
+  version: 0a9397675ba34b2845f758fe3cd68828369c6517
   subpackages:
   - context
   - html
