@@ -123,7 +123,7 @@ func TestQueryView(t *testing.T) {
 			}},
 			limit: 1,
 			view:  "test",
-			err:   "ParseDue: Unrecognized input: foo",
+			err:   "Key has 1 elementes, expected 2 or 3",
 		},
 		{
 			name:     "no results",

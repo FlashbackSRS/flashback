@@ -216,12 +216,27 @@ func queryView(ctx context.Context, db querier, view string, limit, offset int) 
 		if e := rows.ScanKey(&key); e != nil {
 			return nil, count, 0, errors.Wrap(e, "ScanKey")
 		}
-		if key[0] != "" {
-			due, e := fb.ParseDue(key[0])
-			if e != nil {
-				return nil, count, 0, errors.Wrap(e, "ParseDue")
+		switch len(key) {
+		case 2:
+			// legacy index
+			if key[0] != "" {
+				due, e := fb.ParseDue(key[0])
+				if e != nil {
+					return nil, count, 0, errors.Wrap(e, "ParseDue")
+				}
+				card.Due = due
 			}
-			card.Due = due
+		case 3:
+			// new index
+			if key[1] != "" {
+				due, e := fb.ParseDue(key[0])
+				if e != nil {
+					return nil, count, 0, errors.Wrap(e, "ParseDue")
+				}
+				card.Due = due
+			}
+		default:
+			return nil, count, 0, fmt.Errorf("Key has %d elementes, expected 2 or 3", len(key))
 		}
 		card.ID = rows.ID()
 		cards = append(cards, card)
