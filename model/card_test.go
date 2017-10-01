@@ -119,6 +119,24 @@ func TestQueryView(t *testing.T) {
 		{
 			name: "invalid due value",
 			db: &mockQuerier{rows: map[string]*mockRows{
+				"test": &mockRows{rows: []string{"foo"}, values: []string{"{}"}, keys: []string{`["foo", "bar"]`}},
+			}},
+			limit: 1,
+			view:  "test",
+			err:   "ParseDue: Unrecognized input: foo",
+		},
+		{
+			name: "invalid due value, new key",
+			db: &mockQuerier{rows: map[string]*mockRows{
+				"test": &mockRows{rows: []string{"foo"}, values: []string{"{}"}, keys: []string{`["foo","foo", "bar"]`}},
+			}},
+			limit: 1,
+			view:  "test",
+			err:   "ParseDue: Unrecognized input: foo",
+		},
+		{
+			name: "invalid key length",
+			db: &mockQuerier{rows: map[string]*mockRows{
 				"test": &mockRows{rows: []string{"foo"}, values: []string{"{}"}, keys: []string{`["foo"]`}},
 			}},
 			limit: 1,
