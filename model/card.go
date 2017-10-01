@@ -221,28 +221,11 @@ func queryView(ctx context.Context, db querier, view, deck string, limit, offset
 		if e := rows.ScanKey(&key); e != nil {
 			return nil, count, 0, errors.Wrap(e, "ScanKey")
 		}
-		switch len(key) {
-		case 2:
-			// legacy index
-			if key[0] != "" {
-				due, e := fb.ParseDue(key[0])
-				if e != nil {
-					return nil, count, 0, errors.Wrap(e, "ParseDue")
-				}
-				card.Due = due
-			}
-		case 3:
-			// new index
-			if key[1] != "" {
-				due, e := fb.ParseDue(key[0])
-				if e != nil {
-					return nil, count, 0, errors.Wrap(e, "ParseDue")
-				}
-				card.Due = due
-			}
-		default:
-			return nil, count, 0, fmt.Errorf("Key has %d elementes, expected 2 or 3", len(key))
+		due, err := dueFromKey(key)
+		if err != nil {
+			return nil, count, 0, errors.Wrap(err, "due time")
 		}
+		card.Due = due
 		card.ID = rows.ID()
 		cards = append(cards, card)
 		if len(cards) == limit {
@@ -251,6 +234,25 @@ func queryView(ctx context.Context, db querier, view, deck string, limit, offset
 		}
 	}
 	return cards, count, int(rows.TotalRows()), nil
+}
+
+func dueFromKey(key []string) (fb.Due, error) {
+	switch len(key) {
+	case 2:
+		// legacy index
+		if key[0] != "" {
+			return fb.ParseDue(key[0])
+		}
+		return fb.Due{}, nil
+	case 3:
+		// new index
+		if key[1] != "" {
+			return fb.ParseDue(key[1])
+		}
+		return fb.Due{}, nil
+	default:
+		return fb.Due{}, fmt.Errorf("Key has %d element(s), expected 2 or 3", len(key))
+	}
 }
 
 // cardPriority returns a number 0 or greater, as a priority to be used in

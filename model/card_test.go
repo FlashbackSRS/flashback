@@ -89,6 +89,74 @@ var expectedCards = []map[string]interface{}{
 	},
 }
 
+func TestDueFromKey(t *testing.T) {
+	tests := []struct {
+		name     string
+		key      []string
+		expected fb.Due
+		err      string
+	}{
+		{
+			name: "legacy key, invalid due value",
+			key:  []string{"foo", "bar"},
+			err:  "Unrecognized input: foo",
+		},
+		{
+			name: "new key, invald due value",
+			key:  []string{"foo", "bar", "baz"},
+			err:  "Unrecognized input: bar",
+		},
+		{
+			name: "key too long",
+			key:  []string{"foo", "bar", "baz", "qux"},
+			err:  "Key has 4 element(s), expected 2 or 3",
+		},
+		{
+			name: "key too short",
+			key:  []string{"foo"},
+			err:  "Key has 1 element(s), expected 2 or 3",
+		},
+		{
+			name:     "legacy key, no due value",
+			key:      []string{"", "bar"},
+			expected: fb.Due{},
+		},
+		{
+			name:     "new key, no due value",
+			key:      []string{"foo", "", "bar"},
+			expected: fb.Due{},
+		},
+		{
+			name:     "legacy key, valid due",
+			key:      []string{"2018-01-01", "bar"},
+			expected: parseDue(t, "2018-01-01"),
+		},
+		{
+			name:     "new key, valid due",
+			key:      []string{"foo", "2018-01-01", "bar"},
+			expected: parseDue(t, "2018-01-01"),
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			result, err := dueFromKey(test.key)
+			var errMsg string
+			if err != nil {
+				errMsg = err.Error()
+			}
+			if test.err != errMsg {
+				t.Fatalf("Unexpected error: %s", errMsg)
+			}
+			if err != nil {
+				return
+			}
+			if !test.expected.Equal(result) {
+				t.Errorf("Unexpected result: %v", result)
+			}
+		})
+	}
+}
+
 func TestQueryView(t *testing.T) {
 	tests := []struct {
 		name          string
@@ -122,33 +190,6 @@ func TestQueryView(t *testing.T) {
 			limit: 1,
 			view:  "test",
 			err:   "ScanKey: invalid character 'o' in literal false (expecting 'a')",
-		},
-		{
-			name: "invalid due value",
-			db: &mockQuerier{rows: map[string]*mockRows{
-				"test": &mockRows{rows: []string{"foo"}, values: []string{"{}"}, keys: []string{`["foo", "bar"]`}},
-			}},
-			limit: 1,
-			view:  "test",
-			err:   "ParseDue: Unrecognized input: foo",
-		},
-		{
-			name: "invalid due value, new key",
-			db: &mockQuerier{rows: map[string]*mockRows{
-				"test": &mockRows{rows: []string{"foo"}, values: []string{"{}"}, keys: []string{`["foo","foo", "bar"]`}},
-			}},
-			limit: 1,
-			view:  "test",
-			err:   "ParseDue: Unrecognized input: foo",
-		},
-		{
-			name: "invalid key length",
-			db: &mockQuerier{rows: map[string]*mockRows{
-				"test": &mockRows{rows: []string{"foo"}, values: []string{"{}"}, keys: []string{`["foo"]`}},
-			}},
-			limit: 1,
-			view:  "test",
-			err:   "Key has 1 elementes, expected 2 or 3",
 		},
 		{
 			name:     "no results",
