@@ -162,7 +162,7 @@ const (
 	limitPadding = 20
 )
 
-func getCardsFromView(ctx context.Context, db querier, view string, limit int) ([]*cardSchedule, error) {
+func getCardsFromView(ctx context.Context, db querier, view, deck string, limit int) ([]*cardSchedule, error) {
 	defer profile("getCardsFromView: " + view)()
 	if limit <= 0 {
 		return nil, errors.New("invalid limit")
@@ -170,7 +170,7 @@ func getCardsFromView(ctx context.Context, db querier, view string, limit int) (
 	cards := make([]*cardSchedule, 0, limit)
 	offset := 0
 	for i := 0; len(cards) < limit && i < 100; i++ {
-		result, readRows, totalRows, err := queryView(ctx, db, view, "", limit, offset)
+		result, readRows, totalRows, err := queryView(ctx, db, view, deck, limit, offset)
 		if err != nil {
 			return nil, err
 		}
@@ -297,14 +297,14 @@ func selectWeightedCard(cards []*cardSchedule) string {
 
 // GetCardToStudy returns a CardView to display to the user to study, and buries
 // related cards.
-func (r *Repo) GetCardToStudy(ctx context.Context) (flashback.CardView, error) {
+func (r *Repo) GetCardToStudy(ctx context.Context, deck string) (flashback.CardView, error) {
 	if _, _, err := r.lastSyncTime(ctx); err != nil {
 		if kivik.StatusCode(err) == kivik.StatusNotFound {
 			return mustsync.GetCard(), nil
 		}
 		return nil, err
 	}
-	card, err := r.getCardToStudy(ctx)
+	card, err := r.getCardToStudy(ctx, deck)
 	if err != nil {
 		return nil, err
 	}
@@ -322,12 +322,12 @@ func (r *Repo) GetCardToStudy(ctx context.Context) (flashback.CardView, error) {
 }
 
 // getCardToStudy returns a card to display to the user to study.
-func (r *Repo) getCardToStudy(ctx context.Context) (*Card, error) {
+func (r *Repo) getCardToStudy(ctx context.Context, deck string) (*Card, error) {
 	udb, err := r.userDB(ctx)
 	if err != nil {
 		return nil, err
 	}
-	card, err := getCardToStudy(ctx, udb)
+	card, err := getCardToStudy(ctx, udb, deck)
 	if err != nil || card == nil {
 		return nil, err
 	}
@@ -381,19 +381,19 @@ type cardSchedule struct {
 	BuriedUntil fb.Due      `json:"buriedUntil"`
 }
 
-func getCardToStudy(ctx context.Context, db queryGetter) (*fb.Card, error) {
+func getCardToStudy(ctx context.Context, db queryGetter, deck string) (*fb.Card, error) {
 	defer profile("getCardToStudy")()
 	var newCards, oldCards []*cardSchedule
 	var newErr, oldErr error
 	var wg sync.WaitGroup
 	wg.Add(2)
 	go func() {
-		newCards, newErr = getCardsFromView(ctx, db, "newCards", newBatchSize)
+		newCards, newErr = getCardsFromView(ctx, db, "newCards", deck, newBatchSize)
 		newErr = errors.Wrap(newErr, "newCards")
 		wg.Done()
 	}()
 	go func() {
-		oldCards, oldErr = getCardsFromView(ctx, db, "oldCards", oldBatchSize)
+		oldCards, oldErr = getCardsFromView(ctx, db, "oldCards", deck, oldBatchSize)
 		oldErr = errors.Wrap(oldErr, "oldCards")
 		wg.Done()
 	}()

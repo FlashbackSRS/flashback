@@ -291,7 +291,7 @@ func TestGetCardsFromView(t *testing.T) {
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			cards, err := getCardsFromView(context.Background(), test.db, test.view, test.limit)
+			cards, err := getCardsFromView(context.Background(), test.db, test.view, "", test.limit)
 			checkErr(t, test.err, err)
 			if err != nil {
 				return
@@ -507,7 +507,7 @@ func TestRepoGetCardToStudy(t *testing.T) {
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			result, err := test.repo.getCardToStudy(context.Background())
+			result, err := test.repo.getCardToStudy(context.Background(), "")
 			checkErr(t, test.err, err)
 			if err != nil {
 				return
@@ -558,7 +558,7 @@ func TestGetCardToStudy(t *testing.T) {
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			result, err := getCardToStudy(context.Background(), test.db)
+			result, err := getCardToStudy(context.Background(), test.db, "")
 			checkErr(t, test.err, err)
 			if err != nil {
 				return

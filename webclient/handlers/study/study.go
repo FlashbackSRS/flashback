@@ -49,7 +49,7 @@ func BeforeTransition(repo *model.Repo) jqeventrouter.HandlerFunc {
 func ShowCard(repo *model.Repo) error {
 	if currentCard == nil {
 		log.Debug("Fetching card\n")
-		card, err := repo.GetCardToStudy(context.TODO())
+		card, err := repo.GetCardToStudy(context.TODO(), "")
 		if err != nil {
 			return errors.Wrap(err, "get card to study")
 		}
