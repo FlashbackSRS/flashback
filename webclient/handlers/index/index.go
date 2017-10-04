@@ -7,6 +7,7 @@ import (
 	"context"
 	"net/url"
 
+	"github.com/flimzy/kivik"
 	"github.com/flimzy/log"
 	"github.com/gopherjs/gopherjs/js"
 	"github.com/gopherjs/jquery"
@@ -33,6 +34,11 @@ func BeforeTransition(repo *model.Repo) jqeventrouter.HandlerFunc {
 		go func() {
 			decks, err := repo.DeckList(context.TODO())
 			if err != nil {
+				if kivik.StatusCode(err) == kivik.StatusNotFound {
+					jQuery("#deck-list", container).SetHtml("Please synchronize")
+					jQuery(".show-until-load", container).Hide()
+					jQuery(".hide-until-load", container).Show()
+				}
 				log.Printf("Failed to read deck list: %s", err)
 			}
 
@@ -45,7 +51,6 @@ func BeforeTransition(repo *model.Repo) jqeventrouter.HandlerFunc {
 			jQuery("#deck-list", container).SetHtml(buf.String())
 			jQuery(".show-until-load", container).Hide()
 			jQuery(".hide-until-load", container).Show()
-
 		}()
 		return true
 	}
