@@ -3,8 +3,11 @@ package model
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"io"
+	"reflect"
 
+	"github.com/flimzy/diff"
 	"github.com/flimzy/kivik"
 	"github.com/flimzy/kivik/errors"
 )
@@ -144,4 +147,56 @@ var _ kivikRow = mockRow("")
 
 func (r mockRow) ScanDoc(i interface{}) error {
 	return json.Unmarshal([]byte(r), &i)
+}
+
+type mockQuerier struct {
+	kivikDB
+	options []kivik.Options
+	rows    []*mockRows
+	err     error
+}
+
+var _ querier = &mockQuerier{}
+
+func optsEqual(opt, req kivik.Options) bool {
+	for k, v := range opt {
+		reqVal, ok := req[k]
+		if !ok || !reflect.DeepEqual(v, reqVal) {
+			return false
+		}
+	}
+	return true
+}
+
+func (db *mockQuerier) Query(ctx context.Context, ddoc, view string, options ...kivik.Options) (kivikRows, error) {
+	if db.err != nil {
+		return nil, db.err
+	}
+	queryIndex := -1
+	if len(db.rows) > 1 || len(db.options) > 0 {
+		for i, opts := range db.options {
+			if optsEqual(opts, options[0]) {
+				queryIndex = i
+				break
+			}
+		}
+		if queryIndex < 0 {
+			var d string
+			if len(db.options) == 1 {
+				d = diff.Interface(db.options[0], options[0]).String()
+			} else {
+				js, _ := json.MarshalIndent(options[0], "", "    ")
+				d = string(js)
+			}
+			return nil, fmt.Errorf("Matching query not found in mock result set\n%s", d)
+		}
+	} else {
+		queryIndex = 0
+	}
+	limit, _ := options[0]["limit"].(int)
+	offset, _ := options[0]["skip"].(int)
+	rows := db.rows[queryIndex]
+	rows.limit = limit + offset
+	rows.i = offset
+	return rows, nil
 }

@@ -57,16 +57,18 @@ key.pem
 
 node_modules/
 www/
-pre-bundle.js
+pre-bundle.js*
 bundle.js
 bundle.js.map
 main.js
 main.js.map
+*~
 
 # go-bindata
 controllers/anki/data.go
 controllers/done/data.go
 controllers/mustsync/data.go
+webclient/handlers/index/data.go
 
 # Cordova/Android studio stuff
 .idea/

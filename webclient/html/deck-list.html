@@ -1,0 +1,20 @@
+<table>
+    <tr>
+        <th>Deck</th>
+        <th>Due</th>
+        <th>Learning</th>
+        <th>Mature</th>
+        <th>New</th>
+        <th>Suspended</th>
+    </tr>
+{{range .}}
+    <tr>
+        <td>{{.Name}}</td>
+        <td>{{.DueCards}}</td>
+        <td>{{.LearningCards}}</td>
+        <td>{{.MatureCards}}</td>
+        <td>{{.NewCards}}</td>
+        <td>{{.SuspendedCards}}</td>
+    </tr>
+{{end}}
+</table>
