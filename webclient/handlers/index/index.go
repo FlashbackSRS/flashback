@@ -4,6 +4,7 @@ package index
 
 import (
 	"bytes"
+	"context"
 	"net/url"
 
 	"github.com/flimzy/log"
@@ -30,7 +31,7 @@ func BeforeTransition(repo *model.Repo) jqeventrouter.HandlerFunc {
 		}
 
 		go func() {
-			decks, err := repo.DeckList()
+			decks, err := repo.DeckList(context.TODO())
 			if err != nil {
 				log.Printf("Failed to read deck list: %s", err)
 			}

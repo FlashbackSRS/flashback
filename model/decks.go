@@ -2,8 +2,8 @@ package model
 
 import (
 	"context"
+	"fmt"
 	"sort"
-	"sync"
 	"time"
 
 	"github.com/flimzy/kivik"
@@ -23,6 +23,7 @@ type Deck struct {
 
 // DeckList returns a complete list of decks available for study.
 func (r *Repo) DeckList(ctx context.Context) ([]*Deck, error) {
+	defer profile("deck list")()
 	udb, err := r.userDB(ctx)
 	if err != nil {
 		return nil, err
@@ -33,30 +34,15 @@ func (r *Repo) DeckList(ctx context.Context) ([]*Deck, error) {
 	}
 
 	ts := now()
-	errs := make(chan error, 5)
-	var wg sync.WaitGroup
 	for _, deck := range decks {
 		if deck.MatureCards+deck.LearningCards == 0 {
 			continue
 		}
-		wg.Add(1)
-		go func(deck *Deck) {
-			dueCount, e := dueCount(ctx, udb, deck.ID, ts)
-			deck.DueCards = dueCount
-			errs <- e
-			wg.Done()
-		}(deck)
-	}
-	wg.Wait()
-	close(errs)
-	err = nil
-	for e := range errs {
-		if err == nil {
-			err = e
+		var e error
+		deck.DueCards, e = dueCount(ctx, udb, deck.ID, ts)
+		if e != nil {
+			return nil, e
 		}
-	}
-	if err != nil {
-		return nil, err
 	}
 	allDeck := &Deck{
 		Name: "All",
@@ -77,6 +63,7 @@ func (r *Repo) DeckList(ctx context.Context) ([]*Deck, error) {
 }
 
 func dueCount(ctx context.Context, db querier, deckID string, ts time.Time) (int, error) {
+	defer profile(fmt.Sprintf("due count for %s", deckID))
 	rows, err := db.Query(ctx, mainDDoc, mainView, kivik.Options{
 		"startkey":     []interface{}{"old", deckID},
 		"endkey":       []interface{}{"old", deckID, ts.Format(time.RFC3339)},
@@ -94,6 +81,7 @@ func dueCount(ctx context.Context, db querier, deckID string, ts time.Time) (int
 }
 
 func deckReducedStats(ctx context.Context, db querier) ([]*Deck, error) {
+	defer profile("deck reduced stats")()
 	rows, err := db.Query(ctx, mainDDoc, mainView, kivik.Options{
 		"group_level": 2,
 	})
