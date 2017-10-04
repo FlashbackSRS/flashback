@@ -23,6 +23,7 @@ import (
 	"github.com/FlashbackSRS/flashback/webclient/handlers/auth"
 	"github.com/FlashbackSRS/flashback/webclient/handlers/general"
 	"github.com/FlashbackSRS/flashback/webclient/handlers/import"
+	"github.com/FlashbackSRS/flashback/webclient/handlers/index"
 	"github.com/FlashbackSRS/flashback/webclient/handlers/l10n"
 	"github.com/FlashbackSRS/flashback/webclient/handlers/login"
 	"github.com/FlashbackSRS/flashback/webclient/handlers/logout"
@@ -119,6 +120,7 @@ func RouterInit(prefix, baseURL string, repo *model.Repo, langSet *l10n.Set, pro
 	beforeTransition := jqeventrouter.NewEventMux()
 	beforeTransition.SetUriFunc(getJqmUri)
 
+	beforeTransition.HandleFunc(prefix+"/index.html", index.BeforeTransition(repo))
 	beforeTransition.HandleFunc(prefix+"/login.html", loginhandler.BeforeTransition(repo, providers))
 	beforeTransition.HandleFunc(prefix+"/callback.html", loginhandler.BTCallback(repo, providers))
 	beforeTransition.HandleFunc(prefix+"/logout.html", logouthandler.BeforeTransition(repo))

@@ -16,12 +16,12 @@ var jQuery = jquery.NewJQuery
 
 // BeforeTransition prepares the logout page before display.
 func BeforeTransition(repo *model.Repo, providers map[string]string) jqeventrouter.HandlerFunc {
-	return func(_ *jquery.Event, _ *js.Object, _ url.Values) bool {
+	return func(_ *jquery.Event, ui *js.Object, _ url.Values) bool {
 		log.Debug("login BEFORE")
 
 		cancel := checkLoginStatus(repo)
 
-		container := jQuery(":mobile-pagecontainer")
+		container := jQuery(ui.Get("toPage"))
 		for rel, href := range providers {
 			setLoginHandler(repo, container, rel, href, cancel)
 		}
