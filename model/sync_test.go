@@ -397,7 +397,7 @@ func TestUpgradeSchema(t *testing.T) {
 		{
 			name: "not logged in",
 			repo: &Repo{},
-			err:  "not logged in",
+			err:  "failed to connect to db: not logged in",
 		},
 		// {
 		// 	name: "card to update",

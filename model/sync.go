@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"strings"
-	"sync"
 	"sync/atomic"
 	"time"
 
@@ -81,58 +80,61 @@ func (r *Repo) upgradeSchema(ctx context.Context) (bool, error) {
 	defer profile("upgrade")()
 	db, err := r.userDB(ctx)
 	if err != nil {
-		return false, err
+		return false, errors.Wrap(err, "failed to connect to db")
 	}
 
-	var newUpdated, oldUpdated bool
-	var newErr, oldErr error
+	upd := new(int32)
+	errs := make(chan error)
 	cache := newCardDeckCache(r.local)
-	var wg sync.WaitGroup
-	wg.Add(2)
-	go func() {
-		newUpdated, newErr = upgradeSchemaFromView(ctx, db, cache, "newCards")
-		wg.Done()
-	}()
-	go func() {
-		oldUpdated, oldErr = upgradeSchemaFromView(ctx, db, cache, "oldCards")
-		wg.Done()
-	}()
-	wg.Wait()
-	if newErr != nil {
-		return newUpdated || oldUpdated, newErr
+	for _, class := range []string{"new", "old", "suspended"} {
+		go func(class string) {
+			updated, err := upgradeSchemaFromView(ctx, db, cache, class)
+			if updated {
+				atomic.AddInt32(upd, 1)
+			}
+			errs <- errors.Wrapf(err, "%s failed", class)
+		}(class)
 	}
-	return newUpdated || oldUpdated, oldErr
+	err = nil
+	for i := 0; i < 3; i++ {
+		e := <-errs
+		if err == nil {
+			err = e
+		}
+	}
+	return *upd > 0, err
 }
 
-func upgradeSchemaFromView(ctx context.Context, db kivikDB, cache *cardDeckCache, view string) (bool, error) {
-	defer profile(fmt.Sprintf("upgrade from view %s", view))()
-	rows, err := db.Query(ctx, "index", view, map[string]interface{}{
-		"startkey":     []interface{}{nil},
-		"endkey":       []interface{}{nil, map[string]interface{}{}},
+func upgradeSchemaFromView(ctx context.Context, db kivikDB, cache *cardDeckCache, class string) (bool, error) {
+	defer profile(fmt.Sprintf("upgrade %s", class))()
+	rows, err := db.Query(ctx, "index", "cards", map[string]interface{}{
+		"startkey":     []interface{}{class, nil},
+		"endkey":       []interface{}{class, nil, map[string]interface{}{}},
 		"include_docs": true,
+		"reduce":       false,
 	})
 	if err != nil {
-		return false, err
+		return false, errors.Wrap(err, "query")
 	}
 	defer func() { _ = rows.Close() }()
 	var count int
 	for rows.Next() {
 		var card *fb.Card
 		if e := rows.ScanDoc(&card); e != nil {
-			return count != 0, e
+			return count != 0, errors.Wrap(e, "doc scan")
 		}
 		deckID, err := cache.cardDeck(ctx, card)
 		if err != nil {
-			return count != 0, err
+			return count != 0, errors.Wrap(err, "card deck")
 		}
 		card.Deck = deckID
 		count++
 		if _, err := db.Put(ctx, card.ID, card); err != nil {
-			return count != 0, err
+			return count != 0, errors.Wrap(err, "put")
 		}
 	}
-	log.Debugf("%d of %d %s cards upgraded\n", count, rows.TotalRows(), view)
-	return count != 0, rows.Err()
+	log.Debugf("%d of %d %s cards upgraded\n", count, rows.TotalRows(), class)
+	return count != 0, errors.Wrap(rows.Err(), "rows")
 }
 
 type cardDeckCache struct {

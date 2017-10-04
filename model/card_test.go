@@ -2,6 +2,7 @@ package model
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -24,9 +25,9 @@ func init() {
 }
 
 type mockQuerier struct {
-	endkey, startkey interface{}
-	rows             map[string]*mockRows
-	err              error
+	options []kivik.Options
+	rows    []*mockRows
+	err     error
 }
 
 var _ querier = &mockQuerier{}
@@ -35,17 +36,27 @@ func (db *mockQuerier) Query(ctx context.Context, ddoc, view string, options ...
 	if db.err != nil {
 		return nil, db.err
 	}
+	queryIndex := -1
+	if len(db.rows) > 1 {
+		for i, opts := range db.options {
+			for k, v := range opts {
+				reqVal, ok := options[0][k]
+				if !ok || !reflect.DeepEqual(v, reqVal) {
+					continue
+				}
+				queryIndex = i
+			}
+		}
+		if queryIndex < 0 {
+			js, _ := json.MarshalIndent(options[0], "", "    ")
+			return nil, fmt.Errorf("Matching query not found in mock result set\n%s", string(js))
+		}
+	} else {
+		queryIndex = 0
+	}
 	limit, _ := options[0]["limit"].(int)
 	offset, _ := options[0]["skip"].(int)
-	endkey, _ := options[0]["endkey"]
-	startkey, _ := options[0]["startkey"]
-	if !reflect.DeepEqual(startkey, db.startkey) || !reflect.DeepEqual(endkey, db.endkey) {
-		return nil, fmt.Errorf("Unexpected end/start key:  %v - %v, expected: %v - %v", startkey, endkey, db.startkey, db.endkey)
-	}
-	rows, ok := db.rows[view]
-	if !ok {
-		return &mockRows{}, nil
-	}
+	rows := db.rows[queryIndex]
 	rows.limit = limit + offset
 	rows.i = offset
 	return rows, nil
@@ -108,13 +119,13 @@ func TestDueFromKey(t *testing.T) {
 		},
 		{
 			name: "key too long",
-			key:  []string{"foo", "bar", "baz", "qux"},
-			err:  "Key has 4 element(s), expected 2 or 3",
+			key:  []string{"foo", "bar", "baz", "qux", "quux"},
+			err:  "Key has 5 element(s), expected 2, 3 or 4",
 		},
 		{
 			name: "key too short",
 			key:  []string{"foo"},
-			err:  "Key has 1 element(s), expected 2 or 3",
+			err:  "Key has 1 element(s), expected 2, 3 or 4",
 		},
 		{
 			name:     "legacy key, no due value",
@@ -175,33 +186,40 @@ func TestQueryView(t *testing.T) {
 		},
 		{
 			name: "invalid value JSON",
-			db: &mockQuerier{rows: map[string]*mockRows{
-				"test": &mockRows{rows: []string{"foo"}, values: []string{"foo"}},
-			}},
+			db: &mockQuerier{
+				options: []kivik.Options{{
+					"startkey": []interface{}{"new"},
+					"endkey":   []interface{}{"new", map[string]interface{}{}},
+				}},
+				rows: []*mockRows{
+					&mockRows{rows: []string{"foo"}, values: []string{"foo"}},
+				}},
 			limit: 1,
 			view:  "test",
 			err:   "ScanValue: invalid character 'o' in literal false (expecting 'a')",
 		},
 		{
 			name: "invalid key JSON",
-			db: &mockQuerier{rows: map[string]*mockRows{
-				"test": &mockRows{rows: []string{"foo"}, values: []string{"{}"}, keys: []string{"foo"}},
-			}},
+			db: &mockQuerier{
+				rows: []*mockRows{
+					{rows: []string{"foo"}, values: []string{"{}"}, keys: []string{"foo"}},
+				}},
 			limit: 1,
 			view:  "test",
 			err:   "ScanKey: invalid character 'o' in literal false (expecting 'a')",
 		},
 		{
 			name:     "no results",
-			db:       &mockQuerier{rows: map[string]*mockRows{}},
+			db:       &mockQuerier{rows: []*mockRows{{}}},
 			limit:    1,
 			expected: []*cardSchedule{},
 		},
 		{
 			name: "buried card filter",
-			db: &mockQuerier{rows: map[string]*mockRows{
-				"test": &mockRows{rows: storedCards[0:1], values: storedCardValues[0:1], keys: storedCardKeys[0:1]},
-			}},
+			db: &mockQuerier{
+				rows: []*mockRows{
+					{rows: storedCards[0:1], values: storedCardValues[0:1], keys: storedCardKeys[0:1]},
+				}},
 			limit:    10,
 			view:     "test",
 			expected: []*cardSchedule{},
@@ -210,9 +228,15 @@ func TestQueryView(t *testing.T) {
 		},
 		{
 			name: "limit reached",
-			db: &mockQuerier{rows: map[string]*mockRows{
-				"test": &mockRows{rows: storedCards, values: storedCardValues, keys: storedCardKeys},
-			}},
+			db: &mockQuerier{
+				options: []kivik.Options{
+					{},
+					{"startkey": []interface{}{"test"}},
+				},
+				rows: []*mockRows{
+					{},
+					{rows: storedCards, values: storedCardValues, keys: storedCardKeys},
+				}},
 			limit: 1,
 			view:  "test",
 			expected: []*cardSchedule{
@@ -224,10 +248,13 @@ func TestQueryView(t *testing.T) {
 		{
 			name: "specific deck",
 			db: &mockQuerier{
-				startkey: []interface{}{"deck-foo"},
-				endkey:   []interface{}{"deck-foo", map[string]interface{}{}},
-				rows: map[string]*mockRows{
-					"test": &mockRows{rows: storedCards[0:1], values: storedCardValues[0:1], keys: storedCardKeys[0:1]},
+				options: []kivik.Options{
+					{},
+					{"startkey": []interface{}{"test", "deck-foo"}},
+				},
+				rows: []*mockRows{
+					{},
+					{rows: storedCards[0:1], values: storedCardValues[0:1], keys: storedCardKeys[0:1]},
 				}},
 			limit:    1,
 			view:     "test",
@@ -271,16 +298,24 @@ func TestGetCardsFromView(t *testing.T) {
 	}
 	tests := []gcfvTest{
 		{
-			name:     "no results",
-			db:       &mockQuerier{rows: map[string]*mockRows{}},
+			name: "no results",
+			db: &mockQuerier{
+				rows: []*mockRows{{}},
+			},
 			limit:    1,
 			expected: []*cardSchedule{},
 		},
 		{
 			name: "successful fetch",
-			db: &mockQuerier{rows: map[string]*mockRows{
-				"test": &mockRows{rows: storedCards, values: storedCardValues, keys: storedCardKeys},
-			}},
+			db: &mockQuerier{
+				options: []kivik.Options{
+					{},
+					{"startkey": []interface{}{"test"}},
+				},
+				rows: []*mockRows{
+					{},
+					{rows: storedCards, values: storedCardValues, keys: storedCardKeys},
+				}},
 			limit: 10,
 			view:  "test",
 			expected: []*cardSchedule{
@@ -296,9 +331,15 @@ func TestGetCardsFromView(t *testing.T) {
 		},
 		{
 			name: "limit reached",
-			db: &mockQuerier{rows: map[string]*mockRows{
-				"test": &mockRows{rows: storedCards, values: storedCardValues, keys: storedCardKeys},
-			}},
+			db: &mockQuerier{
+				options: []kivik.Options{
+					{},
+					{"startkey": []interface{}{"test"}},
+				},
+				rows: []*mockRows{
+					{},
+					{rows: storedCards, values: storedCardValues, keys: storedCardKeys},
+				}},
 			limit: 1,
 			view:  "test",
 			expected: []*cardSchedule{
@@ -307,22 +348,23 @@ func TestGetCardsFromView(t *testing.T) {
 		},
 		{
 			name: "aggregate necessary",
-			db: &mockQuerier{rows: map[string]*mockRows{
-				"test": func() *mockRows {
-					rows := make([]string, 150)
-					values := make([]string, 150)
-					keys := make([]string, 150)
-					for i := 0; i < 150; i++ {
-						rows[i] = storedCards[0]
-						values[i] = storedCardValues[0]
-						keys[i] = storedCardKeys[0]
-					}
-					rows = append(rows, storedCards...)
-					values = append(values, storedCardValues...)
-					keys = append(keys, storedCardKeys...)
-					return &mockRows{rows: rows, values: values, keys: keys}
-				}(),
-			}},
+			db: &mockQuerier{
+				rows: []*mockRows{
+					func() *mockRows {
+						rows := make([]string, 150)
+						values := make([]string, 150)
+						keys := make([]string, 150)
+						for i := 0; i < 150; i++ {
+							rows[i] = storedCards[0]
+							values[i] = storedCardValues[0]
+							keys[i] = storedCardKeys[0]
+						}
+						rows = append(rows, storedCards...)
+						values = append(values, storedCardValues...)
+						keys = append(keys, storedCardKeys...)
+						return &mockRows{rows: rows, values: values, keys: keys}
+					}(),
+				}},
 			limit: 5,
 			view:  "test",
 			expected: []*cardSchedule{
@@ -513,17 +555,22 @@ func TestRepoGetCardToStudy(t *testing.T) {
 				if env == "js" {
 					return "newCards: query failed: not_found: missing"
 				}
-				return "newCards: query failed: kivik: not yet implemented in memory driver"
+				return "new: query failed: kivik: not yet implemented in memory driver"
 			}(),
 		},
 		{
 			name: "no cards",
 			repo: &Repo{user: "mjxwe", local: &gctsClient{
 				db: &gctsDB{
-					q: &mockQuerier{rows: map[string]*mockRows{
-						"newCards": &mockRows{},
-						"oldCards": &mockRows{},
-					}},
+					q: &mockQuerier{
+						options: []kivik.Options{
+							{"startkey": []interface{}{"new"}},
+							{"startkey": []interface{}{"old"}},
+						},
+						rows: []*mockRows{
+							{},
+							{},
+						}},
 				}},
 			},
 		},
@@ -533,11 +580,19 @@ func TestRepoGetCardToStudy(t *testing.T) {
 				user: "bob",
 				local: &gctsClient{
 					db: &gctsDB{
-						q: &mockQuerier{rows: map[string]*mockRows{"newCards": &mockRows{
-							rows:   storedCards[1:2],
-							values: storedCardValues[1:2],
-							keys:   storedCardKeys[1:2],
-						}}},
+						q: &mockQuerier{
+							options: []kivik.Options{
+								{"startkey": []interface{}{"new"}},
+								{"startkey": []interface{}{"old"}},
+							},
+							rows: []*mockRows{
+								{
+									rows:   storedCards[1:2],
+									values: storedCardValues[1:2],
+									keys:   storedCardKeys[1:2],
+								},
+								{},
+							}},
 						card:  storedCards[1],
 						note:  `{"_id":"note-Zm9v", "theme":"theme-Zm9v", "created":"2017-01-01T01:01:01Z", "modified":"2017-01-01T01:01:01Z"}`,
 						theme: `{"_id":"theme-Zm9v", "created":"2017-01-01T01:01:01Z", "modified":"2017-01-01T01:01:01Z", "_attachments":{}, "files":[], "modelSequence":1, "models": [{"id":0, "files":[], "modelType":"foo"}]}`,
@@ -571,28 +626,48 @@ func TestGetCardToStudy(t *testing.T) {
 	tests := []gctsTest{
 		{
 			name: "no cards",
-			db:   &mockQueryGetter{mockQuerier: &mockQuerier{rows: map[string]*mockRows{}}},
+			db:   &mockQueryGetter{mockQuerier: &mockQuerier{rows: []*mockRows{{}}}},
 		},
 		{
 			name: "new query failure",
-			db: &mockQueryGetter{mockQuerier: &mockQuerier{rows: map[string]*mockRows{
-				"newCards": &mockRows{rows: []string{"invalid json"}, values: []string{"invalid json"}},
-			}}},
-			err: `newCards: ScanValue: invalid character 'i' looking for beginning of value`,
+			db: &mockQueryGetter{mockQuerier: &mockQuerier{
+				options: []kivik.Options{
+					{"startkey": []interface{}{"new"}},
+					{"startkey": []interface{}{"old"}},
+				},
+				rows: []*mockRows{
+					{rows: []string{"invalid json"}, values: []string{"invalid json"}},
+					{},
+				}},
+			},
+			err: `new: ScanValue: invalid character 'i' looking for beginning of value`,
 		},
 		{
 			name: "old query failure",
-			db: &mockQueryGetter{mockQuerier: &mockQuerier{rows: map[string]*mockRows{
-				"oldCards": &mockRows{rows: []string{"invalid json"}, values: []string{"invalid json"}},
-			}}},
-			err: `oldCards: ScanValue: invalid character 'i' looking for beginning of value`,
+			db: &mockQueryGetter{mockQuerier: &mockQuerier{
+				options: []kivik.Options{
+					{"startkey": []interface{}{"new"}},
+					{"startkey": []interface{}{"old"}},
+				},
+				rows: []*mockRows{
+					{},
+					{rows: []string{"invalid json"}, values: []string{"invalid json"}},
+				}},
+			},
+			err: `old: ScanValue: invalid character 'i' looking for beginning of value`,
 		},
 		{
 			name: "one new card",
 			db: &mockQueryGetter{
-				mockQuerier: &mockQuerier{rows: map[string]*mockRows{
-					"newCards": &mockRows{rows: storedCards[1:2], values: storedCardValues[1:2], keys: storedCardKeys[1:2]},
-				}},
+				mockQuerier: &mockQuerier{
+					options: []kivik.Options{
+						{"startkey": []interface{}{"new"}},
+						{"startkey": []interface{}{"old"}},
+					},
+					rows: []*mockRows{
+						{rows: storedCards[1:2], values: storedCardValues[1:2], keys: storedCardKeys[1:2]},
+						{},
+					}},
 				row: mockRow(storedCards[1]),
 			},
 			expected: expectedCards[0],
