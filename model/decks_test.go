@@ -15,13 +15,121 @@ func TestDeckList(t *testing.T) {
 	tests := []struct {
 		name     string
 		repo     *Repo
-		expected []Deck
+		expected []*Deck
 		err      string
 	}{
 		{
 			name: "not logged in",
 			repo: &Repo{},
 			err:  "not logged in",
+		},
+		{
+			name: "reduce query fail",
+			repo: &Repo{
+				user: "bob",
+				local: &mockClient{
+					db: &mockQuerier{err: errors.New("foo error")},
+				},
+			},
+			err: "foo error",
+		},
+		{
+			name: "dueCount fail",
+			repo: &Repo{
+				user: "bob",
+				local: &mockClient{
+					db: &mockQuerier{
+						options: []kivik.Options{
+							{"group_level": 2},
+							{"reduce": false},
+						},
+						rows: []*mockRows{
+							{
+								rows:   []string{""},
+								values: []string{"[234,6]"},
+								keys: []string{
+									`["old","deck-Brm5eFOpF0553VTksh7hlySt6M8"]`,
+								},
+							},
+							{err: errors.New("count error")},
+						},
+					},
+				},
+			},
+			err: "count error",
+		},
+		{
+			name: "success",
+			repo: &Repo{
+				user: "bob",
+				local: &mockClient{
+					db: &mockQuerier{
+						options: []kivik.Options{
+							{"group_level": 2},
+							{"startkey": []interface{}{"old", "deck-Brm5eFOpF0553VTksh7hlySt6M8"}, "reduce": false},
+							{"startkey": []interface{}{"old", "deck-foo"}, "reduce": false},
+						},
+						rows: []*mockRows{
+							{
+								rows: []string{"", "", "", "", "", "", ""},
+								values: []string{
+									"[234,6]", "[1811,56]", "[52,9]",
+									"[100,0]", "[100,20]", "[5,1]",
+									"[50,0]",
+								},
+								keys: []string{
+									`["new","deck-Brm5eFOpF0553VTksh7hlySt6M8"]`,
+									`["old","deck-Brm5eFOpF0553VTksh7hlySt6M8"]`,
+									`["suspended","deck-Brm5eFOpF0553VTksh7hlySt6M8"]`,
+									`["new","deck-foo"]`,
+									`["old","deck-foo"]`,
+									`["suspended","deck-foo"]`,
+									`["new","deck-bar"]`,
+								},
+							},
+							{rows: []string{"", "", "", ""}},
+							{rows: []string{"", ""}},
+						},
+					},
+				},
+			},
+			expected: []*Deck{
+				{
+					Name:           "All",
+					TotalCards:     2352,
+					DueCards:       6,
+					LearningCards:  76,
+					MatureCards:    1835,
+					NewCards:       384,
+					SuspendedCards: 57,
+				},
+				{
+					Name:           "deck-Brm5eFOpF0553VTksh7hlySt6M8",
+					ID:             "deck-Brm5eFOpF0553VTksh7hlySt6M8",
+					TotalCards:     2097,
+					DueCards:       4,
+					LearningCards:  56,
+					MatureCards:    1755,
+					NewCards:       234,
+					SuspendedCards: 52,
+				},
+				{
+					Name:       "deck-bar",
+					ID:         "deck-bar",
+					TotalCards: 50,
+					NewCards:   50,
+				},
+				{
+					Name:           "deck-foo",
+					ID:             "deck-foo",
+					TotalCards:     205,
+					DueCards:       2,
+					LearningCards:  20,
+					MatureCards:    80,
+					NewCards:       100,
+					SuspendedCards: 5,
+				},
+			},
 		},
 	}
 	for _, test := range tests {
@@ -48,7 +156,7 @@ func TestDeckReducedStats(t *testing.T) {
 	tests := []struct {
 		name     string
 		db       querier
-		expected []Deck
+		expected []*Deck
 		err      string
 	}{
 		{
@@ -59,7 +167,7 @@ func TestDeckReducedStats(t *testing.T) {
 		{
 			name:     "no cards",
 			db:       &mockQuerier{rows: []*mockRows{{}}},
-			expected: []Deck{},
+			expected: []*Deck{},
 		},
 		{
 			name: "one deck",
@@ -74,7 +182,7 @@ func TestDeckReducedStats(t *testing.T) {
 					},
 				}},
 			},
-			expected: []Deck{
+			expected: []*Deck{
 				{
 					ID:             "deck-Brm5eFOpF0553VTksh7hlySt6M8",
 					TotalCards:     2097,
@@ -107,7 +215,7 @@ func TestDeckReducedStats(t *testing.T) {
 					},
 				}},
 			},
-			expected: []Deck{
+			expected: []*Deck{
 				{
 					ID:             "deck-Brm5eFOpF0553VTksh7hlySt6M8",
 					TotalCards:     2097,

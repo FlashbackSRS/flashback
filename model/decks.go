@@ -2,6 +2,8 @@ package model
 
 import (
 	"context"
+	"sort"
+	"sync"
 	"time"
 
 	"github.com/flimzy/kivik"
@@ -20,7 +22,7 @@ type Deck struct {
 }
 
 // DeckList returns a complete list of decks available for study.
-func (r *Repo) DeckList(ctx context.Context) ([]Deck, error) {
+func (r *Repo) DeckList(ctx context.Context) ([]*Deck, error) {
 	udb, err := r.userDB(ctx)
 	if err != nil {
 		return nil, err
@@ -29,7 +31,49 @@ func (r *Repo) DeckList(ctx context.Context) ([]Deck, error) {
 	if err != nil {
 		return nil, err
 	}
-	return decks, nil
+
+	ts := now()
+	errs := make(chan error, 5)
+	var wg sync.WaitGroup
+	for _, deck := range decks {
+		if deck.MatureCards+deck.LearningCards == 0 {
+			continue
+		}
+		wg.Add(1)
+		go func(deck *Deck) {
+			dueCount, e := dueCount(ctx, udb, deck.ID, ts)
+			deck.DueCards = dueCount
+			errs <- e
+			wg.Done()
+		}(deck)
+	}
+	wg.Wait()
+	close(errs)
+	err = nil
+	for e := range errs {
+		if err == nil {
+			err = e
+		}
+	}
+	if err != nil {
+		return nil, err
+	}
+	allDeck := &Deck{
+		Name: "All",
+	}
+	for _, deck := range decks {
+		deck.Name = deck.ID
+		allDeck.TotalCards += deck.TotalCards
+		allDeck.DueCards += deck.DueCards
+		allDeck.LearningCards += deck.LearningCards
+		allDeck.MatureCards += deck.MatureCards
+		allDeck.SuspendedCards += deck.SuspendedCards
+		allDeck.NewCards += deck.NewCards
+	}
+	sort.Slice(decks, func(i, j int) bool {
+		return decks[i].Name < decks[j].Name
+	})
+	return append([]*Deck{allDeck}, decks...), nil
 }
 
 func dueCount(ctx context.Context, db querier, deckID string, ts time.Time) (int, error) {
@@ -49,7 +93,7 @@ func dueCount(ctx context.Context, db querier, deckID string, ts time.Time) (int
 	return count, rows.Err()
 }
 
-func deckReducedStats(ctx context.Context, db querier) ([]Deck, error) {
+func deckReducedStats(ctx context.Context, db querier) ([]*Deck, error) {
 	rows, err := db.Query(ctx, mainDDoc, mainView, kivik.Options{
 		"group_level": 2,
 	})
@@ -75,20 +119,20 @@ func deckReducedStats(ctx context.Context, db querier) ([]Deck, error) {
 		deck.TotalCards += values[0]
 		switch key[0] {
 		case "suspended":
-			deck.SuspendedCards += values[0]
+			deck.SuspendedCards = values[0]
 		case "new":
-			deck.NewCards += values[0]
+			deck.NewCards = values[0]
 		case "old":
-			deck.LearningCards += values[1]
+			deck.LearningCards = values[1]
 			deck.MatureCards = values[0] - values[1]
 		}
 	}
 	if e := rows.Err(); e != nil {
 		return nil, e
 	}
-	decks := make([]Deck, 0, len(deckMap))
+	decks := make([]*Deck, 0, len(deckMap))
 	for _, deck := range deckMap {
-		decks = append(decks, *deck)
+		decks = append(decks, deck)
 	}
 	return decks, nil
 }

@@ -150,6 +150,7 @@ func (r mockRow) ScanDoc(i interface{}) error {
 }
 
 type mockQuerier struct {
+	kivikDB
 	options []kivik.Options
 	rows    []*mockRows
 	err     error
