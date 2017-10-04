@@ -5,8 +5,10 @@ import (
 	"errors"
 	"sort"
 	"testing"
+	"time"
 
 	"github.com/flimzy/diff"
+	"github.com/flimzy/kivik"
 )
 
 func TestDeckList(t *testing.T) {
@@ -15,15 +17,34 @@ func TestDeckList(t *testing.T) {
 		repo     *Repo
 		expected []Deck
 		err      string
-	}{}
+	}{
+		{
+			name: "not logged in",
+			repo: &Repo{},
+			err:  "not logged in",
+		},
+	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-
+			result, err := test.repo.DeckList(context.Background())
+			var errMsg string
+			if err != nil {
+				errMsg = err.Error()
+			}
+			if errMsg != test.err {
+				t.Errorf("Unexpected error: %s", errMsg)
+			}
+			if err != nil {
+				return
+			}
+			if d := diff.Interface(test.expected, result); d != nil {
+				t.Error(d)
+			}
 		})
 	}
 }
 
-func TestDeckStats(t *testing.T) {
+func TestDeckReducedStats(t *testing.T) {
 	tests := []struct {
 		name     string
 		db       querier
@@ -114,7 +135,7 @@ func TestDeckStats(t *testing.T) {
 		}}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			result, err := deckStats(context.Background(), test.db)
+			result, err := deckReducedStats(context.Background(), test.db)
 			var errMsg string
 			if err != nil {
 				errMsg = err.Error()
@@ -130,6 +151,73 @@ func TestDeckStats(t *testing.T) {
 			})
 			if d := diff.Interface(test.expected, result); d != nil {
 				t.Error(d)
+			}
+		})
+	}
+}
+
+func TestDueCount(t *testing.T) {
+	tests := []struct {
+		name     string
+		db       querier
+		deckID   string
+		ts       time.Time
+		expected int
+		err      string
+	}{
+		{
+			name: "query error",
+			db:   &mockQuerier{err: errors.New("unf error")},
+			err:  "unf error",
+		},
+		{
+			name:     "no results",
+			db:       &mockQuerier{rows: []*mockRows{{}}},
+			deckID:   "deck-foo",
+			ts:       now(),
+			expected: 0,
+		},
+		{
+			name: "some results",
+			db: &mockQuerier{
+				options: []kivik.Options{
+					{
+						"startkey":     []interface{}{"old", "deck-foo"},
+						"endkey":       []interface{}{"old", "deck-foo", "2017-01-01T12:00:00Z"},
+						"reduce":       false,
+						"include_docs": false,
+					},
+				},
+				rows: []*mockRows{
+					{rows: []string{"", "", ""}},
+				},
+			},
+			deckID: "deck-foo",
+			ts: func() time.Time {
+				t, e := time.Parse(time.RFC3339, "2017-01-01T12:00:00Z")
+				if e != nil {
+					panic(e)
+				}
+				return t
+			}(),
+			expected: 3,
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			result, err := dueCount(context.Background(), test.db, test.deckID, test.ts)
+			var errMsg string
+			if err != nil {
+				errMsg = err.Error()
+			}
+			if errMsg != test.err {
+				t.Errorf("Unexpected error: %s", errMsg)
+			}
+			if err != nil {
+				return
+			}
+			if test.expected != result {
+				t.Errorf("Unexpected result: %d", result)
 			}
 		})
 	}

@@ -2,7 +2,7 @@ package model
 
 import (
 	"context"
-	"sort"
+	"time"
 
 	"github.com/flimzy/kivik"
 )
@@ -20,42 +20,36 @@ type Deck struct {
 }
 
 // DeckList returns a complete list of decks available for study.
-func (r *Repo) DeckList() ([]Deck, error) {
-	return []Deck{
-		{
-			Name:           "All",
-			ID:             "",
-			TotalCards:     1142,
-			DueCards:       120,
-			LearningCards:  150,
-			MatureCards:    400,
-			NewCards:       577,
-			SuspendedCards: 15,
-		},
-		{
-			Name:           "Foo",
-			ID:             "deck-asdf",
-			TotalCards:     600,
-			DueCards:       20,
-			LearningCards:  50,
-			MatureCards:    50,
-			NewCards:       497,
-			SuspendedCards: 3,
-		},
-		{
-			Name:           "Bar",
-			ID:             "deck-qwerty",
-			TotalCards:     542,
-			DueCards:       100,
-			LearningCards:  100,
-			MatureCards:    350,
-			NewCards:       80,
-			SuspendedCards: 12,
-		},
-	}, nil
+func (r *Repo) DeckList(ctx context.Context) ([]Deck, error) {
+	udb, err := r.userDB(ctx)
+	if err != nil {
+		return nil, err
+	}
+	decks, err := deckReducedStats(ctx, udb)
+	if err != nil {
+		return nil, err
+	}
+	return decks, nil
 }
 
-func deckStats(ctx context.Context, db querier) ([]Deck, error) {
+func dueCount(ctx context.Context, db querier, deckID string, ts time.Time) (int, error) {
+	rows, err := db.Query(ctx, mainDDoc, mainView, kivik.Options{
+		"startkey":     []interface{}{"old", deckID},
+		"endkey":       []interface{}{"old", deckID, ts.Format(time.RFC3339)},
+		"reduce":       false,
+		"include_docs": false,
+	})
+	if err != nil {
+		return 0, err
+	}
+	var count int
+	for rows.Next() {
+		count++
+	}
+	return count, rows.Err()
+}
+
+func deckReducedStats(ctx context.Context, db querier) ([]Deck, error) {
 	rows, err := db.Query(ctx, mainDDoc, mainView, kivik.Options{
 		"group_level": 2,
 	})
@@ -96,8 +90,5 @@ func deckStats(ctx context.Context, db querier) ([]Deck, error) {
 	for _, deck := range deckMap {
 		decks = append(decks, *deck)
 	}
-	sort.Slice(decks, func(i, j int) bool {
-		return decks[i].ID < decks[j].ID
-	})
 	return decks, nil
 }

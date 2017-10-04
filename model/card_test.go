@@ -2,12 +2,10 @@ package model
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
 	"math/rand"
-	"reflect"
 	"strings"
 	"testing"
 	"time"
@@ -22,44 +20,6 @@ func init() {
 		t, _ := time.Parse(time.RFC3339, "2017-01-01T12:00:00Z")
 		return t
 	}
-}
-
-type mockQuerier struct {
-	options []kivik.Options
-	rows    []*mockRows
-	err     error
-}
-
-var _ querier = &mockQuerier{}
-
-func (db *mockQuerier) Query(ctx context.Context, ddoc, view string, options ...kivik.Options) (kivikRows, error) {
-	if db.err != nil {
-		return nil, db.err
-	}
-	queryIndex := -1
-	if len(db.rows) > 1 {
-		for i, opts := range db.options {
-			for k, v := range opts {
-				reqVal, ok := options[0][k]
-				if !ok || !reflect.DeepEqual(v, reqVal) {
-					continue
-				}
-				queryIndex = i
-			}
-		}
-		if queryIndex < 0 {
-			js, _ := json.MarshalIndent(options[0], "", "    ")
-			return nil, fmt.Errorf("Matching query not found in mock result set\n%s", string(js))
-		}
-	} else {
-		queryIndex = 0
-	}
-	limit, _ := options[0]["limit"].(int)
-	offset, _ := options[0]["skip"].(int)
-	rows := db.rows[queryIndex]
-	rows.limit = limit + offset
-	rows.i = offset
-	return rows, nil
 }
 
 var storedCards = []string{
@@ -188,8 +148,8 @@ func TestQueryView(t *testing.T) {
 			name: "invalid value JSON",
 			db: &mockQuerier{
 				options: []kivik.Options{{
-					"startkey": []interface{}{"new"},
-					"endkey":   []interface{}{"new", map[string]interface{}{}},
+					"startkey": []interface{}{"test"},
+					"endkey":   []interface{}{"test", map[string]interface{}{}},
 				}},
 				rows: []*mockRows{
 					&mockRows{rows: []string{"foo"}, values: []string{"foo"}},
@@ -230,11 +190,9 @@ func TestQueryView(t *testing.T) {
 			name: "limit reached",
 			db: &mockQuerier{
 				options: []kivik.Options{
-					{},
 					{"startkey": []interface{}{"test"}},
 				},
 				rows: []*mockRows{
-					{},
 					{rows: storedCards, values: storedCardValues, keys: storedCardKeys},
 				}},
 			limit: 1,
@@ -249,11 +207,9 @@ func TestQueryView(t *testing.T) {
 			name: "specific deck",
 			db: &mockQuerier{
 				options: []kivik.Options{
-					{},
 					{"startkey": []interface{}{"test", "deck-foo"}},
 				},
 				rows: []*mockRows{
-					{},
 					{rows: storedCards[0:1], values: storedCardValues[0:1], keys: storedCardKeys[0:1]},
 				}},
 			limit:    1,
@@ -309,11 +265,9 @@ func TestGetCardsFromView(t *testing.T) {
 			name: "successful fetch",
 			db: &mockQuerier{
 				options: []kivik.Options{
-					{},
 					{"startkey": []interface{}{"test"}},
 				},
 				rows: []*mockRows{
-					{},
 					{rows: storedCards, values: storedCardValues, keys: storedCardKeys},
 				}},
 			limit: 10,
@@ -333,11 +287,9 @@ func TestGetCardsFromView(t *testing.T) {
 			name: "limit reached",
 			db: &mockQuerier{
 				options: []kivik.Options{
-					{},
 					{"startkey": []interface{}{"test"}},
 				},
 				rows: []*mockRows{
-					{},
 					{rows: storedCards, values: storedCardValues, keys: storedCardKeys},
 				}},
 			limit: 1,
