@@ -7,6 +7,8 @@ import (
 	"time"
 
 	"github.com/flimzy/kivik"
+
+	fb "github.com/FlashbackSRS/flashback-model"
 )
 
 // Deck represents a single deck.
@@ -63,7 +65,7 @@ func (r *Repo) DeckList(ctx context.Context) ([]*Deck, error) {
 }
 
 func dueCount(ctx context.Context, db querier, deckID string, ts time.Time) (int, error) {
-	defer profile(fmt.Sprintf("due count for %s", deckID))
+	defer profile(fmt.Sprintf("due count for %s", deckID))()
 	rows, err := db.Query(ctx, mainDDoc, mainView, kivik.Options{
 		"startkey":     []interface{}{"old", deckID},
 		"endkey":       []interface{}{"old", deckID, ts.Format(time.RFC3339)},
@@ -75,6 +77,15 @@ func dueCount(ctx context.Context, db querier, deckID string, ts time.Time) (int
 	}
 	var count int
 	for rows.Next() {
+		var doc struct {
+			BuriedUntil fb.Due `json:"buriedUntil"`
+		}
+		if e := rows.ScanValue(&doc); e != nil {
+			return count, e
+		}
+		if time.Time(doc.BuriedUntil).After(ts) {
+			continue
+		}
 		count++
 	}
 	return count, rows.Err()

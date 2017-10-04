@@ -87,8 +87,8 @@ func TestDeckList(t *testing.T) {
 									`["new","deck-bar"]`,
 								},
 							},
-							{rows: []string{"", "", "", ""}},
-							{rows: []string{"", ""}},
+							{rows: []string{"", "", "", ""}, values: []string{"{}", "{}", "{}", "{}"}},
+							{rows: []string{"", ""}, values: []string{"{}", "{}"}},
 						},
 					},
 				},
@@ -297,18 +297,50 @@ func TestDueCount(t *testing.T) {
 					},
 				},
 				rows: []*mockRows{
-					{rows: []string{"", "", ""}},
+					{rows: []string{"", "", ""}, values: []string{"{}", "{}", "{}"}},
+				},
+			},
+			deckID:   "deck-foo",
+			ts:       parseTime(t, "2017-01-01T12:00:00Z"),
+			expected: 3,
+		},
+		{
+			name: "value error",
+			db: &mockQuerier{
+				options: []kivik.Options{
+					{
+						"startkey":     []interface{}{"old", "deck-foo"},
+						"endkey":       []interface{}{"old", "deck-foo", "2017-01-01T12:00:00Z"},
+						"reduce":       false,
+						"include_docs": false,
+					},
+				},
+				rows: []*mockRows{
+					{rows: []string{""}, values: []string{`invalid json`}},
 				},
 			},
 			deckID: "deck-foo",
-			ts: func() time.Time {
-				t, e := time.Parse(time.RFC3339, "2017-01-01T12:00:00Z")
-				if e != nil {
-					panic(e)
-				}
-				return t
-			}(),
-			expected: 3,
+			ts:     parseTime(t, "2017-01-01T12:00:00Z"),
+			err:    "invalid character 'i' looking for beginning of value",
+		},
+		{
+			name: "Omit buried",
+			db: &mockQuerier{
+				options: []kivik.Options{
+					{
+						"startkey":     []interface{}{"old", "deck-foo"},
+						"endkey":       []interface{}{"old", "deck-foo", "2017-01-01T12:00:00Z"},
+						"reduce":       false,
+						"include_docs": false,
+					},
+				},
+				rows: []*mockRows{
+					{rows: []string{"", "", ""}, values: []string{`{"buriedUntil":"2019-01-01"}`, "{}", "{}"}},
+				},
+			},
+			deckID:   "deck-foo",
+			ts:       parseTime(t, "2017-01-01T12:00:00Z"),
+			expected: 2,
 		},
 	}
 	for _, test := range tests {
