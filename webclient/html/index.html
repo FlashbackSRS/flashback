@@ -52,7 +52,12 @@
         </div><!-- /header -->
 
         <div data-role="content">
-            <p data-lt="hello_world">Hello world</p>
+            <div class="show-until-load">
+                <p data-lt="page_loading">Initializing login page...</p>
+            </div>
+            <div class="hide-until-load">
+                <p data-lt="nothing_to_see">Nothing to see here</p>
+            </div>
         </div><!-- /content -->
 
         <div data-role="footer">
