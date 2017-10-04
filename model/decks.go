@@ -2,6 +2,7 @@ package model
 
 import (
 	"context"
+	"sort"
 
 	"github.com/flimzy/kivik"
 )
@@ -95,5 +96,8 @@ func deckStats(ctx context.Context, db querier) ([]Deck, error) {
 	for _, deck := range deckMap {
 		decks = append(decks, *deck)
 	}
+	sort.Slice(decks, func(i, j int) bool {
+		return decks[i].ID < decks[j].ID
+	})
 	return decks, nil
 }
