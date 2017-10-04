@@ -136,3 +136,15 @@ func deckReducedStats(ctx context.Context, db querier) ([]*Deck, error) {
 	}
 	return decks, nil
 }
+
+func deckName(ctx context.Context, db getter, deckID string) (string, error) {
+	row, err := db.Get(ctx, deckID)
+	if err != nil {
+		return "", err
+	}
+	var doc struct {
+		Name string `json:"name"`
+	}
+	e := row.ScanDoc(&doc)
+	return doc.Name, e
+}

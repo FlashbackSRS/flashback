@@ -330,3 +330,47 @@ func TestDueCount(t *testing.T) {
 		})
 	}
 }
+
+func TestDeckName(t *testing.T) {
+	tests := []struct {
+		name     string
+		db       getter
+		deckID   string
+		expected string
+		err      string
+	}{
+		{
+			name: "get error",
+			db:   &mockQueryGetter{err: errors.New("error getting")},
+			err:  "error getting",
+		},
+		{
+			name: "bad json",
+			db:   &mockQueryGetter{row: mockRow("invalid json")},
+			err:  "invalid character 'i' looking for beginning of value",
+		},
+		{
+			name:     "success",
+			db:       &mockQueryGetter{row: mockRow(`{"name":"foo deck","unused":"field"}`)},
+			expected: "foo deck",
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			result, err := deckName(context.Background(), test.db, test.deckID)
+			var errMsg string
+			if err != nil {
+				errMsg = err.Error()
+			}
+			if errMsg != test.err {
+				t.Errorf("Unexpected error: %s", errMsg)
+			}
+			if err != nil {
+				return
+			}
+			if result != test.expected {
+				t.Errorf("Unexpected result: %s", result)
+			}
+		})
+	}
+}
