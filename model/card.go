@@ -188,19 +188,22 @@ func getCardsFromView(ctx context.Context, db querier, view, deck string, limit 
 	return cards, nil
 }
 
-func queryView(ctx context.Context, db querier, view, deck string, limit, offset int) (cards []*cardSchedule, readRows, totalRows int, err error) {
-	defer profile("queryView: " + view)()
-	log.Debugf("Trying to fetch %d (%d) %s cards\n", limit, offset, view)
+func queryView(ctx context.Context, db querier, state, deck string, limit, offset int) (cards []*cardSchedule, readRows, totalRows int, err error) {
+	defer profile("queryView: " + state)()
+	log.Debugf("Trying to fetch %d (%d) %s cards\n", limit, offset, state)
 	query := map[string]interface{}{
-		"limit": limit + limitPadding,
-		"skip":  offset,
-		"sort":  map[string]string{"due": "desc", "created": "asc"},
+		"limit":    limit + limitPadding,
+		"skip":     offset,
+		"sort":     map[string]string{"due": "desc", "created": "asc"},
+		"reduce":   false,
+		"startkey": []interface{}{state},
+		"endkey":   []interface{}{state, map[string]interface{}{}},
 	}
 	if deck != "" {
-		query["startkey"] = []interface{}{deck}
-		query["endkey"] = []interface{}{deck, map[string]interface{}{}}
+		query["startkey"] = []interface{}{state, deck}
+		query["endkey"] = []interface{}{state, deck, map[string]interface{}{}}
 	}
-	rows, err := db.Query(context.TODO(), "index", view, query)
+	rows, err := db.Query(context.TODO(), "index", "cards", query)
 	if err != nil {
 		return nil, 0, 0, errors.Wrap(err, "query failed")
 	}
@@ -237,22 +240,23 @@ func queryView(ctx context.Context, db querier, view, deck string, limit, offset
 }
 
 func dueFromKey(key []string) (fb.Due, error) {
+	var raw string
 	switch len(key) {
 	case 2:
 		// legacy index
-		if key[0] != "" {
-			return fb.ParseDue(key[0])
-		}
-		return fb.Due{}, nil
+		raw = key[0]
 	case 3:
 		// new index
-		if key[1] != "" {
-			return fb.ParseDue(key[1])
-		}
-		return fb.Due{}, nil
+		raw = key[1]
+	case 4:
+		raw = key[2]
 	default:
-		return fb.Due{}, fmt.Errorf("Key has %d element(s), expected 2 or 3", len(key))
+		return fb.Due{}, fmt.Errorf("Key has %d element(s), expected 2, 3 or 4", len(key))
 	}
+	if raw != "" {
+		return fb.ParseDue(raw)
+	}
+	return fb.Due{}, nil
 }
 
 // cardPriority returns a number 0 or greater, as a priority to be used in
@@ -390,13 +394,13 @@ func getCardToStudy(ctx context.Context, db queryGetter, deck string) (*fb.Card,
 	var wg sync.WaitGroup
 	wg.Add(2)
 	go func() {
-		newCards, newErr = getCardsFromView(ctx, db, "newCards", deck, newBatchSize)
-		newErr = errors.Wrap(newErr, "newCards")
+		newCards, newErr = getCardsFromView(ctx, db, "new", deck, newBatchSize)
+		newErr = errors.Wrap(newErr, "new")
 		wg.Done()
 	}()
 	go func() {
-		oldCards, oldErr = getCardsFromView(ctx, db, "oldCards", deck, oldBatchSize)
-		oldErr = errors.Wrap(oldErr, "oldCards")
+		oldCards, oldErr = getCardsFromView(ctx, db, "old", deck, oldBatchSize)
+		oldErr = errors.Wrap(oldErr, "old")
 		wg.Done()
 	}()
 	wg.Wait()
