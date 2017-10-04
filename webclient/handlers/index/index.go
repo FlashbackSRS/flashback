@@ -38,6 +38,7 @@ func BeforeTransition(repo *model.Repo) jqeventrouter.HandlerFunc {
 					jQuery("#deck-list", container).SetHtml("Please synchronize")
 					jQuery(".show-until-load", container).Hide()
 					jQuery(".hide-until-load", container).Show()
+					return
 				}
 				log.Printf("Failed to read deck list: %s", err)
 			}
