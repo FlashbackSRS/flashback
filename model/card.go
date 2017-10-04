@@ -188,6 +188,11 @@ func getCardsFromView(ctx context.Context, db querier, view, deck string, limit 
 	return cards, nil
 }
 
+const (
+	mainDDoc = "index"
+	mainView = "cards"
+)
+
 func queryView(ctx context.Context, db querier, state, deck string, limit, offset int) (cards []*cardSchedule, readRows, totalRows int, err error) {
 	defer profile("queryView: " + state)()
 	log.Debugf("Trying to fetch %d (%d) %s cards\n", limit, offset, state)
@@ -203,7 +208,7 @@ func queryView(ctx context.Context, db querier, state, deck string, limit, offse
 		query["startkey"] = []interface{}{state, deck}
 		query["endkey"] = []interface{}{state, deck, map[string]interface{}{}}
 	}
-	rows, err := db.Query(context.TODO(), "index", "cards", query)
+	rows, err := db.Query(context.TODO(), mainDDoc, mainView, query)
 	if err != nil {
 		return nil, 0, 0, errors.Wrap(err, "query failed")
 	}
