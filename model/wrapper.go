@@ -165,4 +165,5 @@ type kivikRows interface {
 	TotalRows() int64
 	ID() string
 	Err() error
+	Key() string
 }

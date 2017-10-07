@@ -254,14 +254,32 @@ func TestSaveDoc(t *testing.T) {
 }
 
 type mockGetter struct {
+	kivikDB
 	row kivikRow
 	err error
 }
 
 var _ getter = &mockGetter{}
 
-func (db *mockGetter) Get(ctx context.Context, docID string, options ...kivik.Options) (kivikRow, error) {
+func (db *mockGetter) Get(_ context.Context, _ string, _ ...kivik.Options) (kivikRow, error) {
 	return db.row, db.err
+}
+
+type mockMultiGetter struct {
+	kivikDB
+	rows map[string]kivikRow
+	errs map[string]error
+}
+
+var _ getter = &mockMultiGetter{}
+
+func (db *mockMultiGetter) Get(_ context.Context, docID string, _ ...kivik.Options) (kivikRow, error) {
+	doc, _ := db.rows[docID]
+	err, _ := db.errs[docID]
+	if doc == nil && err == nil {
+		return nil, errors.Statusf(kivik.StatusNotFound, "mock doc '%s' not found", docID)
+	}
+	return doc, err
 }
 
 func TestGetDoc(t *testing.T) {

@@ -9,6 +9,7 @@ import (
 	fb "github.com/FlashbackSRS/flashback-model"
 	"github.com/flimzy/diff"
 	"github.com/flimzy/kivik"
+	"github.com/flimzy/testy"
 )
 
 func TestDbDSN(t *testing.T) {
@@ -607,6 +608,231 @@ func TestCacheCardDeck(t *testing.T) {
 			}
 			if result != test.expected {
 				t.Errorf("Unexpected result: %s", result)
+			}
+		})
+	}
+}
+
+func TestStoreDecksInUserDB(t *testing.T) {
+	tests := []struct {
+		name     string
+		repo     *Repo
+		expected bool
+		err      string
+		verify   func(*Repo) error
+	}{
+		{
+			name: "not logged in",
+			repo: &Repo{},
+			err:  "user db: not logged in",
+		},
+		{
+			name: "missing bundle",
+			repo: &Repo{
+				user: "bob",
+				local: &mockClient{
+					dbs: map[string]kivikDB{
+						"user-bob": &mockAllDocer{
+							rows: &mockRows{
+								rows: []string{""},
+								keys: []string{"bundle-foo"},
+							},
+						},
+					},
+				},
+			},
+			err: "mock db not found",
+		},
+		{
+			name: "get bundle IDs failure",
+			repo: &Repo{
+				user: "bob",
+				local: &mockClient{
+					db: &mockAllDocer{
+						err: errors.New("alldocs failed"),
+					},
+				},
+			},
+			err: "alldocs failed",
+		},
+		{
+			name: "bulk failure",
+			repo: &Repo{
+				user: "bob",
+				local: &mockClient{
+					dbs: map[string]kivikDB{
+						"user-bob": &mockAllDocer{
+							rows: &mockRows{
+								rows: []string{""},
+								keys: []string{"bundle-foo"},
+							},
+							kivikDB: &mockBulkDocer{err: errors.New("bulkdocs error")},
+						},
+						"bundle-foo": &mockAllDocer{
+							rows: &mockRows{
+								rows: []string{`{"_id":"deck-foo", "_rev":"1-12345", "name":"Foo", "created":"2017-01-01T00:00:00Z", "modified":"2017-01-01T00:00:00Z", "cards":[]}`},
+							},
+						},
+					},
+				},
+			},
+			err: "bulkdocs error",
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			result, err := storeDecksInUserDB(context.Background(), test.repo)
+			testy.Error(t, test.err, err)
+			if result != test.expected {
+				t.Errorf("Unexpected result: %t", result)
+			}
+			if test.verify != nil {
+				if err := test.verify(test.repo); err != nil {
+					t.Errorf("Verification failed: %s", err)
+				}
+			}
+		})
+	}
+}
+
+func TestGetBundleIDs(t *testing.T) {
+	tests := []struct {
+		name     string
+		db       kivikDB
+		expected []string
+		err      string
+	}{
+		{
+			name: "Alldocs failure",
+			db: &mockAllDocer{
+				err: errors.New("alldocs failed"),
+			},
+			err: "alldocs failed",
+		},
+		{
+			name: "rows failure",
+			db: &mockAllDocer{
+				rows: &mockRows{
+					err: errors.New("rows error"),
+				},
+			},
+			err: "rows error",
+		},
+		{
+			name: "two bundles",
+			db: &mockAllDocer{
+				rows: &mockRows{
+					rows: []string{"", ""},
+					keys: []string{"bundle-foo", "bundle-bar"},
+				},
+			},
+			expected: []string{"bundle-foo", "bundle-bar"},
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			result, err := getBundleIDs(context.Background(), test.db)
+			testy.Error(t, test.err, err)
+			if d := diff.Interface(test.expected, result); d != nil {
+				t.Error(d)
+			}
+		})
+	}
+}
+
+func TestGetDecksFromBundle(t *testing.T) {
+	tests := []struct {
+		name     string
+		repo     *Repo
+		bundleID string
+		expected []*fb.Deck
+		err      string
+	}{
+		{
+			name: "bundle doesn't exist",
+			repo: &Repo{
+				user: "bob",
+				local: &mockClient{
+					err: errors.New("db doesn't exist"),
+				},
+			},
+			err: "db doesn't exist",
+		},
+		{
+			name: "alldocs failure",
+			repo: &Repo{
+				user: "bob",
+				local: &mockClient{
+					db: &mockAllDocer{err: errors.New("alldocs error")},
+				},
+			},
+			err: "alldocs error",
+		},
+		{
+			name: "rows failure",
+			repo: &Repo{
+				user: "bob",
+				local: &mockClient{
+					db: &mockAllDocer{
+						rows: &mockRows{err: errors.New("rows error")},
+					},
+				},
+			},
+			err: "rows error",
+		},
+		{
+			name: "two decks",
+			repo: &Repo{
+				user: "bob",
+				local: &mockClient{
+					db: &mockAllDocer{
+						rows: &mockRows{
+							rows: []string{
+								`{"_id":"deck-foo", "_rev":"1-12345", "name":"Foo", "created":"2017-01-01T00:00:00Z", "modified":"2017-01-01T00:00:00Z", "cards":[]}`,
+								`{"_id":"deck-bar", "_rev":"1-12345", "name":"Bar", "created":"2017-01-01T00:00:00Z", "modified":"2017-01-01T00:00:00Z", "cards":[]}`,
+							},
+						},
+					},
+				},
+			},
+			expected: []*fb.Deck{
+				{
+					ID:       "deck-foo",
+					Name:     "Foo",
+					Created:  parseTime(t, "2017-01-01T00:00:00Z"),
+					Modified: parseTime(t, "2017-01-01T00:00:00Z"),
+					Cards:    fb.NewCardCollection(),
+				},
+				{
+					ID:       "deck-bar",
+					Name:     "Bar",
+					Created:  parseTime(t, "2017-01-01T00:00:00Z"),
+					Modified: parseTime(t, "2017-01-01T00:00:00Z"),
+					Cards:    fb.NewCardCollection(),
+				},
+			},
+		},
+		{
+			name: "scan failure",
+			repo: &Repo{
+				user: "bob",
+				local: &mockClient{
+					db: &mockAllDocer{
+						rows: &mockRows{
+							rows: []string{`invalid json`},
+						},
+					},
+				},
+			},
+			err: "invalid character 'i' looking for beginning of value",
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			result, err := getDecksFromBundle(context.Background(), test.repo, test.bundleID)
+			testy.Error(t, test.err, err)
+			if d := diff.Interface(test.expected, result); d != nil {
+				t.Error(d)
 			}
 		})
 	}

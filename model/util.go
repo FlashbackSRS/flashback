@@ -23,42 +23,41 @@ type FlashbackDoc interface {
 	json.Unmarshaler
 }
 
-func mergeDoc(ctx context.Context, db getPutter, doc FlashbackDoc) error {
+func mergeDoc(ctx context.Context, db getPutter, doc FlashbackDoc) (changed bool, err error) {
 	// Don't attempt to merge a non-import
 	if doc.ImportedTime().IsZero() {
-		return errors.Status(kivik.StatusConflict, "document update conflict")
+		return false, errors.Status(kivik.StatusConflict, "document update conflict")
 	}
 	existing := reflect.New(reflect.TypeOf(doc).Elem()).Interface().(FlashbackDoc)
 	row, e := db.Get(context.TODO(), doc.DocID())
 	if e != nil {
-		return errors.Wrap(e, "failed to fetch existing document")
+		return false, errors.Wrap(e, "failed to fetch existing document")
 	}
 	if e = row.ScanDoc(&existing); e != nil {
-		return errors.Wrap(e, "failed to parse existing document")
+		return false, errors.Wrap(e, "failed to parse existing document")
 	}
 	imported := existing.ImportedTime()
 	if imported.IsZero() {
-		return errors.Status(kivik.StatusConflict, "document update conflict")
+		return false, errors.Status(kivik.StatusConflict, "document update conflict")
 	}
 	if existing.ModifiedTime().After(imported) {
 		// The existing document was modified after import, so we won't allow re-importing
-		return errors.Status(kivik.StatusConflict, "document update conflict")
+		return false, errors.Status(kivik.StatusConflict, "document update conflict")
 	}
-	var changed bool
 	if changed, e = doc.MergeImport(existing); e != nil {
-		return errors.Wrap(e, "failed to merge into existing document")
+		return false, errors.Wrap(e, "failed to merge into existing document")
 	}
 	if changed {
 		rev, e := db.Put(context.TODO(), doc.DocID(), doc)
 		if e != nil {
-			return errors.Wrap(e, "failed to store updated document")
+			return true, errors.Wrap(e, "failed to store updated document")
 		}
 		doc.SetRev(rev)
-		return nil
+		return true, nil
 	}
 	existingValue := reflect.ValueOf(&existing).Elem()
 	reflect.ValueOf(&doc).Elem().Set(existingValue)
-	return nil
+	return false, nil
 }
 
 func saveDoc(ctx context.Context, db getPutter, doc FlashbackDoc) error {
@@ -66,7 +65,7 @@ func saveDoc(ctx context.Context, db getPutter, doc FlashbackDoc) error {
 	var err error
 	if rev, err = db.Put(context.TODO(), doc.DocID(), doc); err != nil {
 		if kivik.StatusCode(err) == kivik.StatusConflict {
-			return mergeDoc(ctx, db, doc)
+			_, err = mergeDoc(ctx, db, doc)
 		}
 		return err
 	}

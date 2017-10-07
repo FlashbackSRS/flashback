@@ -45,7 +45,7 @@ func (r *Repo) Import(ctx context.Context, f io.Reader, reporter progress.Report
 	prog := progress.New(reporter)
 	steps := prog.NewComponent()
 	bundleDocs := prog.NewComponent()
-	cardDocs := prog.NewComponent()
+	userDocs := prog.NewComponent()
 	steps.Total(4)
 	steps.Increment(1)
 	udb, err := r.userDB(ctx)
@@ -88,7 +88,7 @@ func (r *Repo) Import(ctx context.Context, f io.Reader, reporter progress.Report
 	}()
 
 	go func() {
-		err := importCardDocs(ctx, udb, pkg, cardDocs)
+		err := importUserDocs(ctx, udb, pkg, userDocs)
 		if err != nil {
 			cancel()
 		}
@@ -129,7 +129,7 @@ func importBundleDocs(ctx context.Context, db kivikDB, pkg *fb.Package, prog *pr
 		if batchSize > len(docs) {
 			batchSize = len(docs)
 		}
-		if err := bulkInsert(ctx, db, docs[0:batchSize]...); err != nil {
+		if _, err := bulkInsert(ctx, db, docs[0:batchSize]...); err != nil {
 			return err
 		}
 		prog.Increment(uint64(batchSize))
@@ -138,48 +138,56 @@ func importBundleDocs(ctx context.Context, db kivikDB, pkg *fb.Package, prog *pr
 	return nil
 }
 
-func importCardDocs(ctx context.Context, db kivikDB, pkg *fb.Package, prog *progress.Component) error {
-	cardCount := len(pkg.Cards)
-	prog.Total(uint64(cardCount*2 + 1))
-	prog.Increment(uint64(cardCount)) // To account for the reading delay
-	cards := make([]FlashbackDoc, 0, cardCount)
+func importUserDocs(ctx context.Context, db kivikDB, pkg *fb.Package, prog *progress.Component) error {
+	docCount := len(pkg.Cards) + len(pkg.Decks)
+	prog.Total(uint64(docCount*2 + 1))
+	prog.Increment(uint64(docCount)) // To account for the reading delay
+	docs := make([]FlashbackDoc, 0, docCount)
 	prog.Increment(1)
 	for _, card := range pkg.Cards {
-		cards = append(cards, card)
+		docs = append(docs, card)
+	}
+	for _, deck := range pkg.Decks {
+		docs = append(docs, deck)
 	}
 
-	for len(cards) > 0 {
+	for len(docs) > 0 {
 		batchSize := bulkBatchSize
-		if batchSize > len(cards) {
-			batchSize = len(cards)
+		if batchSize > len(docs) {
+			batchSize = len(docs)
 		}
-		if err := bulkInsert(ctx, db, cards[0:batchSize]...); err != nil {
+		if _, err := bulkInsert(ctx, db, docs[0:batchSize]...); err != nil {
 			return err
 		}
 		prog.Increment(uint64(batchSize))
-		cards = cards[batchSize:]
+		docs = docs[batchSize:]
 	}
 
 	return nil
 }
 
-func bulkInsert(ctx context.Context, db getPutBulkDocer, docs ...FlashbackDoc) error {
+func bulkInsert(ctx context.Context, db getPutBulkDocer, docs ...FlashbackDoc) (updated bool, err error) {
 	results, err := db.BulkDocs(ctx, docs)
 	if err != nil {
-		return err
+		return false, err
 	}
 	var errs *multierror.Error
 	for i := 0; results.Next(); i++ {
 		if err := results.UpdateErr(); err != nil {
 			if kivik.StatusCode(err) == kivik.StatusConflict {
-				if e := mergeDoc(ctx, db, docs[i]); e != nil {
+				if changed, e := mergeDoc(ctx, db, docs[i]); e != nil {
 					err = e
 				} else {
+					if changed {
+						updated = true
+					}
 					continue
 				}
 			}
 			errs = multierror.Append(errs, errors.Wrapf(err, "failed to save doc %s", results.ID()))
+		} else {
+			updated = true
 		}
 	}
-	return errs.ErrorOrNil()
+	return updated, errs.ErrorOrNil()
 }

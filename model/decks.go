@@ -35,22 +35,13 @@ func (r *Repo) DeckList(ctx context.Context) ([]*Deck, error) {
 		return nil, err
 	}
 
-	ts := now()
-	for _, deck := range decks {
-		if deck.MatureCards+deck.LearningCards == 0 {
-			continue
-		}
-		var e error
-		deck.DueCards, e = dueCount(ctx, udb, deck.ID, ts)
-		if e != nil {
-			return nil, e
-		}
+	if err := fleshenDecks(ctx, udb, decks); err != nil {
+		return nil, err
 	}
 	allDeck := &Deck{
 		Name: "All",
 	}
 	for _, deck := range decks {
-		deck.Name = deck.ID
 		allDeck.TotalCards += deck.TotalCards
 		allDeck.DueCards += deck.DueCards
 		allDeck.LearningCards += deck.LearningCards
@@ -62,6 +53,50 @@ func (r *Repo) DeckList(ctx context.Context) ([]*Deck, error) {
 		return decks[i].Name < decks[j].Name
 	})
 	return append([]*Deck{allDeck}, decks...), nil
+}
+
+func fleshenDecks(ctx context.Context, db kivikDB, decks []*Deck) error {
+	sem := make(chan struct{}, 3) // Run at most 3 simultaneous fetches
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+	errCh := make(chan error)
+	var err error
+	go func() {
+		for e := range errCh {
+			if err == nil {
+				cancel()
+				err = e
+			}
+		}
+	}()
+	ts := now()
+	for _, deck := range decks {
+		sem <- struct{}{}
+		go func(deck *Deck) {
+			var e error
+			deck.Name, e = deckName(ctx, db, deck.ID)
+			if e != nil {
+				errCh <- e
+			}
+			<-sem
+		}(deck)
+		if deck.MatureCards+deck.LearningCards == 0 {
+			continue
+		}
+		sem <- struct{}{}
+		go func(deck *Deck) {
+			var e error
+			deck.DueCards, e = dueCount(ctx, db, deck.ID, ts)
+			if e != nil {
+				errCh <- e
+			}
+			<-sem
+		}(deck)
+	}
+	for i := 0; i < cap(sem); i++ {
+		sem <- struct{}{}
+	}
+	return err
 }
 
 func dueCount(ctx context.Context, db querier, deckID string, ts time.Time) (int, error) {

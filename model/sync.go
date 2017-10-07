@@ -70,6 +70,13 @@ func (r *Repo) doSync(ctx context.Context, remoteUserDBName, localUserDBName str
 	return errors.Wrap(r.updateSyncTime(ctx), "fialed to store sync timestamp")
 }
 
+type upgradeFunc func(context.Context, *Repo) (bool, error)
+
+var upgrades = []upgradeFunc{
+	addDeckToCards,
+	storeDecksInUserDB,
+}
+
 // upgradeSchema updates the local schema, if necessary, and returns true if
 // any updates were made.
 //
@@ -77,6 +84,91 @@ func (r *Repo) doSync(ctx context.Context, remoteUserDBName, localUserDBName str
 // re-run. This is to reduce the chance of a race condition with multiple
 // clients doing a simultaneous update.
 func (r *Repo) upgradeSchema(ctx context.Context) (bool, error) {
+	var updated bool
+	for _, upgrade := range upgrades {
+		u, err := upgrade(ctx, r)
+		updated = updated || u
+		if err != nil {
+			return updated, err
+		}
+	}
+	return updated, nil
+}
+
+func storeDecksInUserDB(ctx context.Context, r *Repo) (bool, error) {
+	db, err := r.userDB(ctx)
+	if err != nil {
+		return false, errors.Wrap(err, "user db")
+	}
+
+	bundleIDs, err := getBundleIDs(ctx, db)
+	if err != nil {
+		return false, err
+	}
+
+	allDecks := make([]FlashbackDoc, 0)
+	for _, bundleID := range bundleIDs {
+		decks, err := getDecksFromBundle(ctx, r, bundleID)
+		if err != nil {
+			return false, err
+		}
+		for _, deck := range decks {
+			allDecks = append(allDecks, deck)
+		}
+	}
+	return bulkInsert(ctx, db, allDecks...)
+}
+
+func getBundleIDs(ctx context.Context, db kivikDB) ([]string, error) {
+	rows, err := db.AllDocs(ctx, kivik.Options{
+		"startkey": "bundle-",
+		"endkey":   "bundle-" + kivik.EndKeySuffix,
+	})
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var bundles []string
+	for rows.Next() {
+		bundles = append(bundles, rows.Key())
+	}
+	return bundles, rows.Err()
+}
+
+// getDecksFromBundle returns all decks in the specified bundle. The deck
+// revisions are cleared before returning.
+func getDecksFromBundle(ctx context.Context, r *Repo, bundleID string) ([]*fb.Deck, error) {
+	db, err := r.newDB(ctx, bundleID)
+	if err != nil {
+		return nil, err
+	}
+
+	rows, err := db.AllDocs(ctx, kivik.Options{
+		"startkey":     "deck-",
+		"endkey":       "deck-" + kivik.EndKeySuffix,
+		"include_docs": true,
+	})
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	decks := make([]*fb.Deck, 0)
+
+	for rows.Next() {
+		var deck fb.Deck
+		if err := rows.ScanDoc(&deck); err != nil {
+			return nil, err
+		}
+		deck.Rev = ""
+		decks = append(decks, &deck)
+	}
+
+	return decks, rows.Err()
+}
+
+func addDeckToCards(ctx context.Context, r *Repo) (bool, error) {
 	defer profile("upgrade")()
 	db, err := r.userDB(ctx)
 	if err != nil {
@@ -88,11 +180,11 @@ func (r *Repo) upgradeSchema(ctx context.Context) (bool, error) {
 	cache := newCardDeckCache(r.local)
 	for _, class := range []string{"new", "old", "suspended"} {
 		go func(class string) {
-			updated, err := upgradeSchemaFromView(ctx, db, cache, class)
+			updated, e := upgradeSchemaFromView(ctx, db, cache, class)
 			if updated {
 				atomic.AddInt32(upd, 1)
 			}
-			errs <- errors.Wrapf(err, "%s failed", class)
+			errs <- errors.Wrapf(e, "%s failed", class)
 		}(class)
 	}
 	err = nil
@@ -133,7 +225,7 @@ func upgradeSchemaFromView(ctx context.Context, db kivikDB, cache *cardDeckCache
 			return count != 0, errors.Wrap(err, "put")
 		}
 	}
-	log.Debugf("%d of %d %s cards upgraded\n", count, rows.TotalRows(), class)
+	log.Debugf("%d %s cards upgraded\n", count, class)
 	return count != 0, errors.Wrap(rows.Err(), "rows")
 }
 
