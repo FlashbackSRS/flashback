@@ -124,11 +124,42 @@ func getBundleIDs(ctx context.Context, db kivikDB) ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
+	defer rows.Close()
+
 	var bundles []string
 	for rows.Next() {
 		bundles = append(bundles, rows.Key())
 	}
 	return bundles, rows.Err()
+}
+
+func getDecksFromBundle(ctx context.Context, r *Repo, bundleID string) ([]*fb.Deck, error) {
+	db, err := r.newDB(ctx, bundleID)
+	if err != nil {
+		return nil, err
+	}
+
+	rows, err := db.AllDocs(ctx, kivik.Options{
+		"startkey":     "deck-",
+		"endkey":       "deck-" + kivik.EndKeySuffix,
+		"include_docs": true,
+	})
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	decks := make([]*fb.Deck, 0)
+
+	for rows.Next() {
+		var deck fb.Deck
+		if err := rows.ScanDoc(&deck); err != nil {
+			return nil, err
+		}
+		decks = append(decks, &deck)
+	}
+
+	return decks, rows.Err()
 }
 
 func addDeckToCards(ctx context.Context, r *Repo) (bool, error) {

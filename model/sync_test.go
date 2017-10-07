@@ -738,3 +738,101 @@ func TestGetBundleIDs(t *testing.T) {
 		})
 	}
 }
+
+func TestGetDecksFromBundle(t *testing.T) {
+	tests := []struct {
+		name     string
+		repo     *Repo
+		bundleID string
+		expected []*fb.Deck
+		err      string
+	}{
+		{
+			name: "bundle doesn't exist",
+			repo: &Repo{
+				user: "bob",
+				local: &mockClient{
+					err: errors.New("db doesn't exist"),
+				},
+			},
+			err: "db doesn't exist",
+		},
+		{
+			name: "alldocs failure",
+			repo: &Repo{
+				user: "bob",
+				local: &mockClient{
+					db: &mockAllDocer{err: errors.New("alldocs error")},
+				},
+			},
+			err: "alldocs error",
+		},
+		{
+			name: "rows failure",
+			repo: &Repo{
+				user: "bob",
+				local: &mockClient{
+					db: &mockAllDocer{
+						rows: &mockRows{err: errors.New("rows error")},
+					},
+				},
+			},
+			err: "rows error",
+		},
+		{
+			name: "two decks",
+			repo: &Repo{
+				user: "bob",
+				local: &mockClient{
+					db: &mockAllDocer{
+						rows: &mockRows{
+							rows: []string{
+								`{"_id":"deck-foo", "name":"Foo", "created":"2017-01-01T00:00:00Z", "modified":"2017-01-01T00:00:00Z", "cards":[]}`,
+								`{"_id":"deck-bar", "name":"Bar", "created":"2017-01-01T00:00:00Z", "modified":"2017-01-01T00:00:00Z", "cards":[]}`,
+							},
+						},
+					},
+				},
+			},
+			expected: []*fb.Deck{
+				{
+					ID:       "deck-foo",
+					Name:     "Foo",
+					Created:  parseTime(t, "2017-01-01T00:00:00Z"),
+					Modified: parseTime(t, "2017-01-01T00:00:00Z"),
+					Cards:    fb.NewCardCollection(),
+				},
+				{
+					ID:       "deck-bar",
+					Name:     "Bar",
+					Created:  parseTime(t, "2017-01-01T00:00:00Z"),
+					Modified: parseTime(t, "2017-01-01T00:00:00Z"),
+					Cards:    fb.NewCardCollection(),
+				},
+			},
+		},
+		{
+			name: "scan failure",
+			repo: &Repo{
+				user: "bob",
+				local: &mockClient{
+					db: &mockAllDocer{
+						rows: &mockRows{
+							rows: []string{`invalid json`},
+						},
+					},
+				},
+			},
+			err: "invalid character 'i' looking for beginning of value",
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			result, err := getDecksFromBundle(context.Background(), test.repo, test.bundleID)
+			testy.Error(t, test.err, err)
+			if d := diff.Interface(test.expected, result); d != nil {
+				t.Error(d)
+			}
+		})
+	}
+}
