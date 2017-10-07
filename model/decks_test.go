@@ -311,7 +311,30 @@ func TestDeckReducedStats(t *testing.T) {
 					SuspendedCards: 5,
 				},
 			},
-		}}
+		},
+		{
+			name: "invalid json value",
+			db: &mockQuerier{
+				rows: []*mockRows{{
+					rows:   []string{""},
+					values: []string{"invalid json"},
+					keys:   []string{`["new","deck-Brm5eFOpF0553VTksh7hlySt6M8"]`},
+				}},
+			},
+			err: "invalid character 'i' looking for beginning of value",
+		},
+		{
+			name: "invalid json key",
+			db: &mockQuerier{
+				rows: []*mockRows{{
+					rows:   []string{""},
+					values: []string{"[10,10]"},
+					keys:   []string{`invalid json`},
+				}},
+			},
+			err: "invalid character 'i' looking for beginning of value",
+		},
+	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			result, err := deckReducedStats(context.Background(), test.db)
