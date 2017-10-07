@@ -196,7 +196,6 @@ func queryView(ctx context.Context, db querier, state, deck string, limit, offse
 	query := map[string]interface{}{
 		"limit":    limit + limitPadding,
 		"skip":     offset,
-		"sort":     map[string]string{"due": "desc", "created": "asc"},
 		"reduce":   false,
 		"startkey": []interface{}{state},
 		"endkey":   []interface{}{state, map[string]interface{}{}},
