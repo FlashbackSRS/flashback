@@ -170,20 +170,17 @@ func getCardsFromView(ctx context.Context, db querier, view, deck string, limit 
 	cards := make([]*cardSchedule, 0, limit)
 	offset := 0
 	for i := 0; len(cards) < limit && i < 100; i++ {
-		result, readRows, totalRows, err := queryView(ctx, db, view, deck, limit, offset)
+		result, readRows, err := queryView(ctx, db, view, deck, limit, offset)
 		if err != nil {
 			return nil, err
 		}
 		if len(result) > 0 {
 			cards = append(cards, result...)
 		}
-		if len(cards) == limit {
+		if len(cards) == limit || readRows < limit {
 			break
 		}
 		offset = offset + readRows
-		if totalRows <= offset {
-			break
-		}
 	}
 	return cards, nil
 }
@@ -193,7 +190,7 @@ const (
 	mainView = "cards"
 )
 
-func queryView(ctx context.Context, db querier, state, deck string, limit, offset int) (cards []*cardSchedule, readRows, totalRows int, err error) {
+func queryView(ctx context.Context, db querier, state, deck string, limit, offset int) (cards []*cardSchedule, readRows int, err error) {
 	defer profile("queryView: " + state)()
 	log.Debugf("Trying to fetch %d (%d) %s cards\n", limit, offset, state)
 	query := map[string]interface{}{
@@ -210,7 +207,7 @@ func queryView(ctx context.Context, db querier, state, deck string, limit, offse
 	}
 	rows, err := db.Query(context.TODO(), mainDDoc, mainView, query)
 	if err != nil {
-		return nil, 0, 0, errors.Wrap(err, "query failed")
+		return nil, 0, errors.Wrap(err, "query failed")
 	}
 	defer func() { _ = rows.Close() }()
 	cards = make([]*cardSchedule, 0, limit)
@@ -220,28 +217,28 @@ func queryView(ctx context.Context, db querier, state, deck string, limit, offse
 		count++
 		card := &cardSchedule{}
 		if e := rows.ScanValue(card); e != nil {
-			return nil, count, 0, errors.Wrap(e, "ScanValue")
+			return nil, count, errors.Wrap(e, "ScanValue")
 		}
 		if card.BuriedUntil.After(fb.Due(now())) {
 			continue
 		}
 		var key []string
 		if e := rows.ScanKey(&key); e != nil {
-			return nil, count, 0, errors.Wrap(e, "ScanKey")
+			return nil, count, errors.Wrap(e, "ScanKey")
 		}
 		due, err := dueFromKey(key)
 		if err != nil {
-			return nil, count, 0, errors.Wrap(err, "due time")
+			return nil, count, errors.Wrap(err, "due time")
 		}
 		card.Due = due
 		card.ID = rows.ID()
 		cards = append(cards, card)
 		if len(cards) == limit {
 			log.Debugf("Got %d cards, early exiting", len(cards))
-			return cards, count, int(rows.TotalRows()), nil
+			return cards, count, nil
 		}
 	}
-	return cards, count, int(rows.TotalRows()), nil
+	return cards, count, nil
 }
 
 func dueFromKey(key []string) (fb.Due, error) {

@@ -135,7 +135,7 @@ func TestQueryView(t *testing.T) {
 		view, deck    string
 		limit, offset int
 		expected      []*cardSchedule
-		read, total   int
+		read          int
 		err           string
 	}{
 		{
@@ -184,7 +184,6 @@ func TestQueryView(t *testing.T) {
 			view:     "test",
 			expected: []*cardSchedule{},
 			read:     1,
-			total:    1,
 		},
 		{
 			name: "limit reached",
@@ -200,8 +199,7 @@ func TestQueryView(t *testing.T) {
 			expected: []*cardSchedule{
 				{ID: "card-krsxg5baij2w4zdmmu.VGVzdCBOb3Rl.1", Due: parseDue(t, "2019-01-01")},
 			},
-			read:  2,
-			total: 3,
+			read: 2,
 		},
 		{
 			name: "specific deck",
@@ -217,12 +215,11 @@ func TestQueryView(t *testing.T) {
 			deck:     "deck-foo",
 			expected: []*cardSchedule{},
 			read:     1,
-			total:    1,
 		},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			cards, read, total, err := queryView(context.Background(), test.db, test.view, test.deck, test.limit, test.offset)
+			cards, read, err := queryView(context.Background(), test.db, test.view, test.deck, test.limit, test.offset)
 			var errMsg string
 			if err != nil {
 				errMsg = err.Error()
@@ -236,8 +233,8 @@ func TestQueryView(t *testing.T) {
 			if d := diff.Interface(test.expected, cards); d != nil {
 				t.Error(d)
 			}
-			if read != test.read || total != test.total {
-				t.Errorf("Unexpected counts: read = %d, total = %d", read, total)
+			if read != test.read {
+				t.Errorf("Unexpected counts: read = %d", read)
 			}
 		})
 	}
