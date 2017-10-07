@@ -37,10 +37,14 @@ func (r *Repo) DeckList(ctx context.Context) ([]*Deck, error) {
 
 	ts := now()
 	for _, deck := range decks {
+		var e error
+		deck.Name, e = deckName(ctx, udb, deck.ID)
+		if e != nil {
+			return nil, e
+		}
 		if deck.MatureCards+deck.LearningCards == 0 {
 			continue
 		}
-		var e error
 		deck.DueCards, e = dueCount(ctx, udb, deck.ID, ts)
 		if e != nil {
 			return nil, e
@@ -50,7 +54,6 @@ func (r *Repo) DeckList(ctx context.Context) ([]*Deck, error) {
 		Name: "All",
 	}
 	for _, deck := range decks {
-		deck.Name = deck.ID
 		allDeck.TotalCards += deck.TotalCards
 		allDeck.DueCards += deck.DueCards
 		allDeck.LearningCards += deck.LearningCards

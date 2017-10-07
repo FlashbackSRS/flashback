@@ -39,6 +39,7 @@ func TestDeckList(t *testing.T) {
 				user: "bob",
 				local: &mockClient{
 					db: &mockQuerier{
+						kivikDB: &mockGetter{row: mockRow(`{}`)},
 						options: []kivik.Options{
 							{"group_level": 2},
 							{"reduce": false},
@@ -59,11 +60,33 @@ func TestDeckList(t *testing.T) {
 			err: "count error",
 		},
 		{
+			name: "name error",
+			repo: &Repo{
+				user: "bob",
+				local: &mockClient{
+					db: &mockQuerier{
+						kivikDB: &mockGetter{err: errors.New("get error")},
+						rows: []*mockRows{{
+							rows:   []string{""},
+							values: []string{"[234,6]"},
+							keys:   []string{`["new","deck-Brm5eFOpF0553VTksh7hlySt6M8"]`},
+						}},
+					},
+				},
+			},
+			err: "get error",
+		},
+		{
 			name: "success",
 			repo: &Repo{
 				user: "bob",
 				local: &mockClient{
 					db: &mockQuerier{
+						kivikDB: &mockMultiGetter{rows: map[string]kivikRow{
+							"deck-Brm5eFOpF0553VTksh7hlySt6M8": mockRow(`{"name":"Test Deck"}`),
+							"deck-foo":                         mockRow(`{"name":"Foo"}`),
+							"deck-bar":                         mockRow(`{"name":"Bar"}`),
+						}},
 						options: []kivik.Options{
 							{"group_level": 2},
 							{"startkey": []interface{}{"old", "deck-Brm5eFOpF0553VTksh7hlySt6M8"}, "reduce": false},
@@ -104,23 +127,13 @@ func TestDeckList(t *testing.T) {
 					SuspendedCards: 57,
 				},
 				{
-					Name:           "deck-Brm5eFOpF0553VTksh7hlySt6M8",
-					ID:             "deck-Brm5eFOpF0553VTksh7hlySt6M8",
-					TotalCards:     2097,
-					DueCards:       4,
-					LearningCards:  56,
-					MatureCards:    1755,
-					NewCards:       234,
-					SuspendedCards: 52,
-				},
-				{
-					Name:       "deck-bar",
+					Name:       "Bar",
 					ID:         "deck-bar",
 					TotalCards: 50,
 					NewCards:   50,
 				},
 				{
-					Name:           "deck-foo",
+					Name:           "Foo",
 					ID:             "deck-foo",
 					TotalCards:     205,
 					DueCards:       2,
@@ -128,6 +141,16 @@ func TestDeckList(t *testing.T) {
 					MatureCards:    80,
 					NewCards:       100,
 					SuspendedCards: 5,
+				},
+				{
+					Name:           "Test Deck",
+					ID:             "deck-Brm5eFOpF0553VTksh7hlySt6M8",
+					TotalCards:     2097,
+					DueCards:       4,
+					LearningCards:  56,
+					MatureCards:    1755,
+					NewCards:       234,
+					SuspendedCards: 52,
 				},
 			},
 		},
