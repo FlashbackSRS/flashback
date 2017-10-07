@@ -88,11 +88,11 @@ func (r *Repo) upgradeSchema(ctx context.Context) (bool, error) {
 	cache := newCardDeckCache(r.local)
 	for _, class := range []string{"new", "old", "suspended"} {
 		go func(class string) {
-			updated, err := upgradeSchemaFromView(ctx, db, cache, class)
+			updated, e := upgradeSchemaFromView(ctx, db, cache, class)
 			if updated {
 				atomic.AddInt32(upd, 1)
 			}
-			errs <- errors.Wrapf(err, "%s failed", class)
+			errs <- errors.Wrapf(e, "%s failed", class)
 		}(class)
 	}
 	err = nil
