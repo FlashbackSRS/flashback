@@ -70,6 +70,12 @@ func (r *Repo) doSync(ctx context.Context, remoteUserDBName, localUserDBName str
 	return errors.Wrap(r.updateSyncTime(ctx), "fialed to store sync timestamp")
 }
 
+type upgradeFunc func(context.Context, *Repo) (bool, error)
+
+var upgrades = []upgradeFunc{
+	addDeckToCards,
+}
+
 // upgradeSchema updates the local schema, if necessary, and returns true if
 // any updates were made.
 //
@@ -77,6 +83,18 @@ func (r *Repo) doSync(ctx context.Context, remoteUserDBName, localUserDBName str
 // re-run. This is to reduce the chance of a race condition with multiple
 // clients doing a simultaneous update.
 func (r *Repo) upgradeSchema(ctx context.Context) (bool, error) {
+	var updated bool
+	for _, upgrade := range upgrades {
+		u, err := upgrade(ctx, r)
+		updated = updated || u
+		if err != nil {
+			return updated, err
+		}
+	}
+	return updated, nil
+}
+
+func addDeckToCards(ctx context.Context, r *Repo) (bool, error) {
 	defer profile("upgrade")()
 	db, err := r.userDB(ctx)
 	if err != nil {
