@@ -225,7 +225,7 @@ func upgradeSchemaFromView(ctx context.Context, db kivikDB, cache *cardDeckCache
 			return count != 0, errors.Wrap(err, "put")
 		}
 	}
-	log.Debugf("%d of %d %s cards upgraded\n", count, rows.TotalRows(), class)
+	log.Debugf("%d %s cards upgraded\n", count, class)
 	return count != 0, errors.Wrap(rows.Err(), "rows")
 }
 
