@@ -9,6 +9,7 @@ import (
 
 	"github.com/flimzy/diff"
 	"github.com/flimzy/kivik"
+	"github.com/flimzy/testy"
 )
 
 func TestDeckList(t *testing.T) {
@@ -34,38 +35,14 @@ func TestDeckList(t *testing.T) {
 			err: "foo error",
 		},
 		{
-			name: "dueCount fail",
+			name: "fleshen error",
 			repo: &Repo{
 				user: "bob",
 				local: &mockClient{
 					db: &mockQuerier{
-						kivikDB: &mockGetter{row: mockRow(`{}`)},
-						options: []kivik.Options{
-							{"group_level": 2},
-							{"reduce": false},
-						},
-						rows: []*mockRows{
-							{
-								rows:   []string{""},
-								values: []string{"[234,6]"},
-								keys: []string{
-									`["old","deck-Brm5eFOpF0553VTksh7hlySt6M8"]`,
-								},
-							},
-							{err: errors.New("count error")},
-						},
-					},
-				},
-			},
-			err: "count error",
-		},
-		{
-			name: "name error",
-			repo: &Repo{
-				user: "bob",
-				local: &mockClient{
-					db: &mockQuerier{
-						kivikDB: &mockGetter{err: errors.New("get error")},
+						kivikDB: &mockMultiGetter{rows: map[string]kivikRow{
+							"deck-Brm5eFOpF0553VTksh7hlySt6M8": mockRow(`invalid json`),
+						}},
 						rows: []*mockRows{{
 							rows:   []string{""},
 							values: []string{"[234,6]"},
@@ -74,7 +51,7 @@ func TestDeckList(t *testing.T) {
 					},
 				},
 			},
-			err: "get error",
+			err: "invalid character 'i' looking for beginning of value",
 		},
 		{
 			name: "success",
@@ -169,6 +146,77 @@ func TestDeckList(t *testing.T) {
 				return
 			}
 			if d := diff.Interface(test.expected, result); d != nil {
+				t.Error(d)
+			}
+		})
+	}
+}
+
+func TestFleshenDecks(t *testing.T) {
+	tests := []struct {
+		name     string
+		db       kivikDB
+		input    []*Deck
+		err      string
+		expected []*Deck
+	}{
+		{
+			name:  "name get error",
+			db:    &mockGetter{err: errors.New("get error")},
+			input: []*Deck{{ID: "deck-foo"}},
+			err:   "get error",
+		},
+		{
+			name: "dueCount error",
+			db: &mockQuerier{
+				kivikDB: &mockGetter{row: mockRow(`{}`)},
+				err:     errors.New("query error"),
+			},
+			input: []*Deck{{ID: "deck-foo", MatureCards: 10}},
+			err:   "query error",
+		},
+		{
+			name: "success",
+			db: &mockQuerier{
+				kivikDB: &mockMultiGetter{
+					rows: map[string]kivikRow{
+						"deck-foo": mockRow(`{"name":"Foo"}`),
+						"deck-bar": mockRow(`{"name":"Bar"}`),
+						"deck-baz": mockRow(`{"name":"Baz"}`),
+					},
+				},
+				options: []kivik.Options{
+					{"startkey": []interface{}{"old", "deck-bar"}},
+					{"startkey": []interface{}{"old", "deck-baz"}},
+				},
+				rows: []*mockRows{
+					{
+						rows:   []string{""},
+						values: []string{`{}`},
+					},
+					{
+						rows:   []string{"", "", ""},
+						values: []string{`{}`, `{}`, `{}`},
+					},
+				},
+			},
+			input: []*Deck{
+				{ID: "deck-foo"},
+				{ID: "deck-bar", LearningCards: 10},
+				{ID: "deck-baz", MatureCards: 10},
+			},
+			expected: []*Deck{
+				{ID: "deck-foo", Name: "Foo"},
+				{ID: "deck-bar", Name: "Bar", LearningCards: 10, DueCards: 1},
+				{ID: "deck-baz", Name: "Baz", MatureCards: 10, DueCards: 3},
+			},
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			err := fleshenDecks(context.Background(), test.db, test.input)
+			testy.Error(t, test.err, err)
+			if d := diff.Interface(test.expected, test.input); d != nil {
 				t.Error(d)
 			}
 		})

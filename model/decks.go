@@ -35,20 +35,8 @@ func (r *Repo) DeckList(ctx context.Context) ([]*Deck, error) {
 		return nil, err
 	}
 
-	ts := now()
-	for _, deck := range decks {
-		var e error
-		deck.Name, e = deckName(ctx, udb, deck.ID)
-		if e != nil {
-			return nil, e
-		}
-		if deck.MatureCards+deck.LearningCards == 0 {
-			continue
-		}
-		deck.DueCards, e = dueCount(ctx, udb, deck.ID, ts)
-		if e != nil {
-			return nil, e
-		}
+	if err := fleshenDecks(ctx, udb, decks); err != nil {
+		return nil, err
 	}
 	allDeck := &Deck{
 		Name: "All",
@@ -65,6 +53,25 @@ func (r *Repo) DeckList(ctx context.Context) ([]*Deck, error) {
 		return decks[i].Name < decks[j].Name
 	})
 	return append([]*Deck{allDeck}, decks...), nil
+}
+
+func fleshenDecks(ctx context.Context, db kivikDB, decks []*Deck) error {
+	ts := now()
+	for _, deck := range decks {
+		var e error
+		deck.Name, e = deckName(ctx, db, deck.ID)
+		if e != nil {
+			return e
+		}
+		if deck.MatureCards+deck.LearningCards == 0 {
+			continue
+		}
+		deck.DueCards, e = dueCount(ctx, db, deck.ID, ts)
+		if e != nil {
+			return e
+		}
+	}
+	return nil
 }
 
 func dueCount(ctx context.Context, db querier, deckID string, ts time.Time) (int, error) {
