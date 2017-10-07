@@ -626,14 +626,6 @@ func TestStoreDecksInUserDB(t *testing.T) {
 			repo: &Repo{},
 			err:  "user db: not logged in",
 		},
-		// {
-		// 	name: "no bundles",
-		// 	repo: &Repo{
-		// 		user:  "bob",
-		// 		local: &mockClient{db: &mockAllDocer{}},
-		// 	},
-		// 	expected: false,
-		// },
 		{
 			name: "missing bundle",
 			repo: &Repo{
@@ -652,7 +644,7 @@ func TestStoreDecksInUserDB(t *testing.T) {
 			err: "mock db not found",
 		},
 		{
-			name: "Alldocs failure",
+			name: "get bundle IDs failure",
 			repo: &Repo{
 				user: "bob",
 				local: &mockClient{
@@ -664,18 +656,27 @@ func TestStoreDecksInUserDB(t *testing.T) {
 			err: "alldocs failed",
 		},
 		{
-			name: "rows failure",
+			name: "bulk failure",
 			repo: &Repo{
 				user: "bob",
 				local: &mockClient{
-					db: &mockAllDocer{
-						rows: &mockRows{
-							err: errors.New("rows error"),
+					dbs: map[string]kivikDB{
+						"user-bob": &mockAllDocer{
+							rows: &mockRows{
+								rows: []string{""},
+								keys: []string{"bundle-foo"},
+							},
+							kivikDB: &mockBulkDocer{err: errors.New("bulkdocs error")},
+						},
+						"bundle-foo": &mockAllDocer{
+							rows: &mockRows{
+								rows: []string{`{"_id":"deck-foo", "_rev":"1-12345", "name":"Foo", "created":"2017-01-01T00:00:00Z", "modified":"2017-01-01T00:00:00Z", "cards":[]}`},
+							},
 						},
 					},
 				},
 			},
-			err: "rows error",
+			err: "bulkdocs error",
 		},
 	}
 	for _, test := range tests {
@@ -787,8 +788,8 @@ func TestGetDecksFromBundle(t *testing.T) {
 					db: &mockAllDocer{
 						rows: &mockRows{
 							rows: []string{
-								`{"_id":"deck-foo", "name":"Foo", "created":"2017-01-01T00:00:00Z", "modified":"2017-01-01T00:00:00Z", "cards":[]}`,
-								`{"_id":"deck-bar", "name":"Bar", "created":"2017-01-01T00:00:00Z", "modified":"2017-01-01T00:00:00Z", "cards":[]}`,
+								`{"_id":"deck-foo", "_rev":"1-12345", "name":"Foo", "created":"2017-01-01T00:00:00Z", "modified":"2017-01-01T00:00:00Z", "cards":[]}`,
+								`{"_id":"deck-bar", "_rev":"1-12345", "name":"Bar", "created":"2017-01-01T00:00:00Z", "modified":"2017-01-01T00:00:00Z", "cards":[]}`,
 							},
 						},
 					},

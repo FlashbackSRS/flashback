@@ -129,7 +129,7 @@ func importBundleDocs(ctx context.Context, db kivikDB, pkg *fb.Package, prog *pr
 		if batchSize > len(docs) {
 			batchSize = len(docs)
 		}
-		if err := bulkInsert(ctx, db, docs[0:batchSize]...); err != nil {
+		if _, err := bulkInsert(ctx, db, docs[0:batchSize]...); err != nil {
 			return err
 		}
 		prog.Increment(uint64(batchSize))
@@ -156,7 +156,7 @@ func importUserDocs(ctx context.Context, db kivikDB, pkg *fb.Package, prog *prog
 		if batchSize > len(docs) {
 			batchSize = len(docs)
 		}
-		if err := bulkInsert(ctx, db, docs[0:batchSize]...); err != nil {
+		if _, err := bulkInsert(ctx, db, docs[0:batchSize]...); err != nil {
 			return err
 		}
 		prog.Increment(uint64(batchSize))
@@ -166,23 +166,28 @@ func importUserDocs(ctx context.Context, db kivikDB, pkg *fb.Package, prog *prog
 	return nil
 }
 
-func bulkInsert(ctx context.Context, db getPutBulkDocer, docs ...FlashbackDoc) error {
+func bulkInsert(ctx context.Context, db getPutBulkDocer, docs ...FlashbackDoc) (updated bool, err error) {
 	results, err := db.BulkDocs(ctx, docs)
 	if err != nil {
-		return err
+		return false, err
 	}
 	var errs *multierror.Error
 	for i := 0; results.Next(); i++ {
 		if err := results.UpdateErr(); err != nil {
 			if kivik.StatusCode(err) == kivik.StatusConflict {
-				if e := mergeDoc(ctx, db, docs[i]); e != nil {
+				if changed, e := mergeDoc(ctx, db, docs[i]); e != nil {
 					err = e
 				} else {
+					if changed {
+						updated = true
+					}
 					continue
 				}
 			}
 			errs = multierror.Append(errs, errors.Wrapf(err, "failed to save doc %s", results.ID()))
+		} else {
+			updated = true
 		}
 	}
-	return errs.ErrorOrNil()
+	return updated, errs.ErrorOrNil()
 }

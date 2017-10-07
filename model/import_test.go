@@ -11,6 +11,7 @@ import (
 	fb "github.com/FlashbackSRS/flashback-model"
 	"github.com/flimzy/diff"
 	"github.com/flimzy/kivik"
+	"github.com/flimzy/testy"
 )
 
 var sampleImportData = `{
@@ -419,6 +420,7 @@ func TestBulkInsert(t *testing.T) {
 		name     string
 		db       getPutBulkDocer
 		docs     []FlashbackDoc
+		updated  bool
 		expected []map[string]interface{}
 		err      string
 	}
@@ -438,6 +440,7 @@ func TestBulkInsert(t *testing.T) {
 				&testDoc{ID: "abc", Value: "foo"},
 				&testDoc{ID: "def", Value: "bar"},
 			},
+			updated: true,
 			expected: []map[string]interface{}{
 				{"_id": "abc", "_rev": "1", "value": "foo", "imported_time": time.Time{}, "modified_time": time.Time{}},
 				{"_id": "def", "_rev": "1", "value": "bar", "imported_time": time.Time{}, "modified_time": time.Time{}},
@@ -482,9 +485,33 @@ func TestBulkInsert(t *testing.T) {
 				&testDoc{ID: "abc", Value: "foo", ITime: now, doMerge: true},
 				&testDoc{ID: "def", Value: "bar", ITime: now},
 			},
+			updated: true,
 			expected: []map[string]interface{}{
 				{"_id": "abc", "_rev": "2", "value": "new value", "imported_time": now, "modified_time": time.Time{}},
 				{"_id": "def", "_rev": "1", "value": "bar", "imported_time": now, "modified_time": time.Time{}},
+			},
+		},
+		{
+			name: "no change",
+			db: func() getPutBulkDocer {
+				db := testDB(t)
+				doc := testDoc{
+					ID:    "abc",
+					ITime: now,
+					MTime: now,
+					Value: "foo",
+				}
+				if _, err := db.Put(context.Background(), "abc", doc); err != nil {
+					t.Fatal(err)
+				}
+				return db
+			}(),
+			docs: []FlashbackDoc{
+				&testDoc{ID: "abc", Value: "foo", ITime: now, MTime: now},
+			},
+			updated: false,
+			expected: []map[string]interface{}{
+				{"_id": "abc", "_rev": "1", "value": "foo", "imported_time": now, "modified_time": now},
 			},
 		},
 	}
@@ -494,12 +521,10 @@ func TestBulkInsert(t *testing.T) {
 			if db == nil {
 				db = testDB(t)
 			}
-			var msg string
-			if err := bulkInsert(context.Background(), db, test.docs...); err != nil {
-				msg = err.Error()
-			}
-			if msg != test.err {
-				t.Errorf("Unexpected error: %s", msg)
+			updated, err := bulkInsert(context.Background(), db, test.docs...)
+			testy.Error(t, test.err, err)
+			if updated != test.updated {
+				t.Errorf("Unexpected updated result: %v", updated)
 			}
 			for i, expected := range test.expected {
 				row, err := db.Get(context.Background(), expected["_id"].(string))

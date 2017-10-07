@@ -84,6 +84,7 @@ func (r *mockRows) ScanKey(d interface{}) error   { return r.scan(d, r.keys) }
 func (r *mockRows) Key() string                   { return r.keys[r.i-1] }
 
 type mockBulkDocer struct {
+	kivikDB
 	results kivikBulkResults
 	err     error
 }

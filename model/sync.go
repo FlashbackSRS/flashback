@@ -106,14 +106,17 @@ func storeDecksInUserDB(ctx context.Context, r *Repo) (bool, error) {
 		return false, err
 	}
 
+	allDecks := make([]FlashbackDoc, 0)
 	for _, bundleID := range bundleIDs {
-		_, err := r.newDB(ctx, bundleID)
+		decks, err := getDecksFromBundle(ctx, r, bundleID)
 		if err != nil {
 			return false, err
 		}
+		for _, deck := range decks {
+			allDecks = append(allDecks, deck)
+		}
 	}
-
-	return false, nil
+	return bulkInsert(ctx, db, allDecks...)
 }
 
 func getBundleIDs(ctx context.Context, db kivikDB) ([]string, error) {
@@ -133,6 +136,8 @@ func getBundleIDs(ctx context.Context, db kivikDB) ([]string, error) {
 	return bundles, rows.Err()
 }
 
+// getDecksFromBundle returns all decks in the specified bundle. The deck
+// revisions are cleared before returning.
 func getDecksFromBundle(ctx context.Context, r *Repo, bundleID string) ([]*fb.Deck, error) {
 	db, err := r.newDB(ctx, bundleID)
 	if err != nil {
@@ -156,6 +161,7 @@ func getDecksFromBundle(ctx context.Context, r *Repo, bundleID string) ([]*fb.De
 		if err := rows.ScanDoc(&deck); err != nil {
 			return nil, err
 		}
+		deck.Rev = ""
 		decks = append(decks, &deck)
 	}
 
