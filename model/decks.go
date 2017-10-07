@@ -56,22 +56,47 @@ func (r *Repo) DeckList(ctx context.Context) ([]*Deck, error) {
 }
 
 func fleshenDecks(ctx context.Context, db kivikDB, decks []*Deck) error {
+	sem := make(chan struct{}, 3) // Run at most 3 simultaneous fetches
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+	errCh := make(chan error)
+	var err error
+	go func() {
+		for e := range errCh {
+			if err == nil {
+				cancel()
+				err = e
+			}
+		}
+	}()
 	ts := now()
 	for _, deck := range decks {
-		var e error
-		deck.Name, e = deckName(ctx, db, deck.ID)
-		if e != nil {
-			return e
-		}
+		sem <- struct{}{}
+		go func(deck *Deck) {
+			var e error
+			deck.Name, e = deckName(ctx, db, deck.ID)
+			if e != nil {
+				errCh <- e
+			}
+			<-sem
+		}(deck)
 		if deck.MatureCards+deck.LearningCards == 0 {
 			continue
 		}
-		deck.DueCards, e = dueCount(ctx, db, deck.ID, ts)
-		if e != nil {
-			return e
-		}
+		sem <- struct{}{}
+		go func(deck *Deck) {
+			var e error
+			deck.DueCards, e = dueCount(ctx, db, deck.ID, ts)
+			if e != nil {
+				errCh <- e
+			}
+			<-sem
+		}(deck)
 	}
-	return nil
+	for i := 0; i < cap(sem); i++ {
+		sem <- struct{}{}
+	}
+	return err
 }
 
 func dueCount(ctx context.Context, db querier, deckID string, ts time.Time) (int, error) {
