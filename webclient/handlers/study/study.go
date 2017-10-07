@@ -31,13 +31,13 @@ var currentCard *cardState
 
 // BeforeTransition prepares the page to study
 func BeforeTransition(repo *model.Repo) jqeventrouter.HandlerFunc {
-	return func(_ *jquery.Event, _ *js.Object, _ url.Values) bool {
+	return func(_ *jquery.Event, _ *js.Object, params url.Values) bool {
 		if _, err := repo.CurrentUser(); err != nil {
 			log.Printf("No user logged in: %s\n", err)
 			return false
 		}
 		go func() {
-			if err := ShowCard(repo); err != nil {
+			if err := ShowCard(repo, params.Get("deck")); err != nil {
 				log.Printf("Error showing card: %v", err)
 			}
 		}()
@@ -46,10 +46,10 @@ func BeforeTransition(repo *model.Repo) jqeventrouter.HandlerFunc {
 	}
 }
 
-func ShowCard(repo *model.Repo) error {
+func ShowCard(repo *model.Repo, deck string) error {
 	if currentCard == nil {
 		log.Debug("Fetching card\n")
-		card, err := repo.GetCardToStudy(context.TODO(), "")
+		card, err := repo.GetCardToStudy(context.TODO(), deck)
 		if err != nil {
 			return errors.Wrap(err, "get card to study")
 		}
