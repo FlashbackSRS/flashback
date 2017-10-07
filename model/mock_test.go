@@ -81,6 +81,7 @@ func (r *mockRows) scan(d interface{}, src []string) error {
 func (r *mockRows) ScanDoc(d interface{}) error   { return r.scan(d, r.rows) }
 func (r *mockRows) ScanValue(d interface{}) error { return r.scan(d, r.values) }
 func (r *mockRows) ScanKey(d interface{}) error   { return r.scan(d, r.keys) }
+func (r *mockRows) Key() string                   { return r.keys[r.i-1] }
 
 type mockBulkDocer struct {
 	results kivikBulkResults
@@ -119,14 +120,24 @@ func (r *mockBulkResults) UpdateErr() error { return r.errs[r.i-1] }
 
 type mockClient struct {
 	kivikClient
-	db  kivikDB
-	err error
+	dbs  map[string]kivikDB
+	errs map[string]error
+	db   kivikDB
+	err  error
 }
 
 var _ kivikClient = &mockClient{}
 
-func (c *mockClient) DB(_ context.Context, _ string, _ ...kivik.Options) (kivikDB, error) {
-	return c.db, c.err
+func (c *mockClient) DB(_ context.Context, dbName string, _ ...kivik.Options) (kivikDB, error) {
+	if c.db != nil || c.err != nil {
+		return c.db, c.err
+	}
+	db, _ := c.dbs[dbName]
+	err, _ := c.errs[dbName]
+	if db == nil && err == nil {
+		return nil, errors.Status(kivik.StatusNotFound, "mock db not found")
+	}
+	return db, err
 }
 
 type mockQueryGetter struct {

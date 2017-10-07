@@ -74,6 +74,7 @@ type upgradeFunc func(context.Context, *Repo) (bool, error)
 
 var upgrades = []upgradeFunc{
 	addDeckToCards,
+	storeDecksInUserDB,
 }
 
 // upgradeSchema updates the local schema, if necessary, and returns true if
@@ -92,6 +93,42 @@ func (r *Repo) upgradeSchema(ctx context.Context) (bool, error) {
 		}
 	}
 	return updated, nil
+}
+
+func storeDecksInUserDB(ctx context.Context, r *Repo) (bool, error) {
+	db, err := r.userDB(ctx)
+	if err != nil {
+		return false, errors.Wrap(err, "user db")
+	}
+
+	bundleIDs, err := getBundleIDs(ctx, db)
+	if err != nil {
+		return false, err
+	}
+
+	for _, bundleID := range bundleIDs {
+		_, err := r.newDB(ctx, bundleID)
+		if err != nil {
+			return false, err
+		}
+	}
+
+	return false, nil
+}
+
+func getBundleIDs(ctx context.Context, db kivikDB) ([]string, error) {
+	rows, err := db.AllDocs(ctx, kivik.Options{
+		"startkey": "bundle-",
+		"endkey":   "bundle-" + kivik.EndKeySuffix,
+	})
+	if err != nil {
+		return nil, err
+	}
+	var bundles []string
+	for rows.Next() {
+		bundles = append(bundles, rows.Key())
+	}
+	return bundles, rows.Err()
 }
 
 func addDeckToCards(ctx context.Context, r *Repo) (bool, error) {

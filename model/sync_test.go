@@ -9,6 +9,7 @@ import (
 	fb "github.com/FlashbackSRS/flashback-model"
 	"github.com/flimzy/diff"
 	"github.com/flimzy/kivik"
+	"github.com/flimzy/testy"
 )
 
 func TestDbDSN(t *testing.T) {
@@ -607,6 +608,132 @@ func TestCacheCardDeck(t *testing.T) {
 			}
 			if result != test.expected {
 				t.Errorf("Unexpected result: %s", result)
+			}
+		})
+	}
+}
+
+func TestStoreDecksInUserDB(t *testing.T) {
+	tests := []struct {
+		name     string
+		repo     *Repo
+		expected bool
+		err      string
+		verify   func(*Repo) error
+	}{
+		{
+			name: "not logged in",
+			repo: &Repo{},
+			err:  "user db: not logged in",
+		},
+		// {
+		// 	name: "no bundles",
+		// 	repo: &Repo{
+		// 		user:  "bob",
+		// 		local: &mockClient{db: &mockAllDocer{}},
+		// 	},
+		// 	expected: false,
+		// },
+		{
+			name: "missing bundle",
+			repo: &Repo{
+				user: "bob",
+				local: &mockClient{
+					dbs: map[string]kivikDB{
+						"user-bob": &mockAllDocer{
+							rows: &mockRows{
+								rows: []string{""},
+								keys: []string{"bundle-foo"},
+							},
+						},
+					},
+				},
+			},
+			err: "mock db not found",
+		},
+		{
+			name: "Alldocs failure",
+			repo: &Repo{
+				user: "bob",
+				local: &mockClient{
+					db: &mockAllDocer{
+						err: errors.New("alldocs failed"),
+					},
+				},
+			},
+			err: "alldocs failed",
+		},
+		{
+			name: "rows failure",
+			repo: &Repo{
+				user: "bob",
+				local: &mockClient{
+					db: &mockAllDocer{
+						rows: &mockRows{
+							err: errors.New("rows error"),
+						},
+					},
+				},
+			},
+			err: "rows error",
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			result, err := storeDecksInUserDB(context.Background(), test.repo)
+			testy.Error(t, test.err, err)
+			if result != test.expected {
+				t.Errorf("Unexpected result: %t", result)
+			}
+			if test.verify != nil {
+				if err := test.verify(test.repo); err != nil {
+					t.Errorf("Verification failed: %s", err)
+				}
+			}
+		})
+	}
+}
+
+func TestGetBundleIDs(t *testing.T) {
+	tests := []struct {
+		name     string
+		db       kivikDB
+		expected []string
+		err      string
+	}{
+		{
+			name: "Alldocs failure",
+			db: &mockAllDocer{
+				err: errors.New("alldocs failed"),
+			},
+			err: "alldocs failed",
+		},
+		{
+			name: "rows failure",
+			db: &mockAllDocer{
+				rows: &mockRows{
+					err: errors.New("rows error"),
+				},
+			},
+			err: "rows error",
+		},
+		{
+			name: "two bundles",
+			db: &mockAllDocer{
+				rows: &mockRows{
+					rows: []string{"", ""},
+					keys: []string{"bundle-foo", "bundle-bar"},
+				},
+			},
+			expected: []string{"bundle-foo", "bundle-bar"},
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			result, err := getBundleIDs(context.Background(), test.db)
+			testy.Error(t, test.err, err)
+			if d := diff.Interface(test.expected, result); d != nil {
+				t.Error(d)
 			}
 		})
 	}
