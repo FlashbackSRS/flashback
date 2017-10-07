@@ -139,13 +139,16 @@ func importBundleDocs(ctx context.Context, db kivikDB, pkg *fb.Package, prog *pr
 }
 
 func importUserDocs(ctx context.Context, db kivikDB, pkg *fb.Package, prog *progress.Component) error {
-	docCount := len(pkg.Cards)
+	docCount := len(pkg.Cards) + len(pkg.Decks)
 	prog.Total(uint64(docCount*2 + 1))
 	prog.Increment(uint64(docCount)) // To account for the reading delay
 	docs := make([]FlashbackDoc, 0, docCount)
 	prog.Increment(1)
 	for _, card := range pkg.Cards {
 		docs = append(docs, card)
+	}
+	for _, deck := range pkg.Decks {
+		docs = append(docs, deck)
 	}
 
 	for len(docs) > 0 {

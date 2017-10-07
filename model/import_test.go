@@ -565,8 +565,8 @@ func TestProgress(t *testing.T) {
 		{},
 		{},
 		{},
-		{14, 11, float64(11) / 14 * 100},
-		{14, 14, 100},
+		{16, 11, float64(11) / 14 * 100},
+		{16, 16, 100},
 	}
 	var failures []string
 	if len(results) != len(expected) {
