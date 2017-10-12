@@ -1,8 +1,12 @@
 hash: ebe32c0112fa3be10d2569a21455c99824d6f2a25fbd6c0593e579eaa50315a7
-updated: 2017-10-07T14:19:25.179941686+02:00
+updated: 2017-10-12T12:02:40.267622418+02:00
 imports:
 - name: github.com/andybalholm/cascadia
   version: 349dd0209470eabd9514242c688c403c0926d266
+- name: github.com/davecgh/go-spew
+  version: 346938d642f2ec3594ed81d874461961cd0faa76
+  subpackages:
+  - spew
 - name: github.com/FlashbackSRS/flashback-model
   version: c9cf5ebb3b69093305b10a0e391909e48ce65853
 - name: github.com/flimzy/goweb
@@ -13,7 +17,7 @@ imports:
 - name: github.com/flimzy/jqeventrouter
   version: 457b14bf10290699ba4c042d0168d4fbb45eb823
 - name: github.com/flimzy/kivik
-  version: b4c3dadf09df676d9a87f0f78375e7a35f39fc7e
+  version: ace441aeb9cbf092f3bef024343a732ae700682f
   subpackages:
   - collate
   - driver
@@ -23,7 +27,7 @@ imports:
 - name: github.com/flimzy/log
   version: 775874b5dd4b1bc0e9cffd55962a44b5ee7f3cd4
 - name: github.com/go-kivik/couchdb
-  version: ff6b8496983233487cb88f2e33712b0bda6b21f8
+  version: 46b88f5eefafbf4d3e11e7a61f6e1893d1bf2d9f
   subpackages:
   - chttp
 - name: github.com/go-kivik/mango
@@ -31,7 +35,7 @@ imports:
 - name: github.com/go-kivik/memorydb
   version: bc9fe85f9dfc729f7889fada4c034aec65e70fe9
 - name: github.com/go-kivik/pouchdb
-  version: 1e0e2e004f98cd6a721ee7285e888ed7ec499f2e
+  version: 97c6f4422ef82b76e9e8e07d0d482684bd42461b
   subpackages:
   - bindings
 - name: github.com/gopherjs/jquery
@@ -43,7 +47,7 @@ imports:
 - name: github.com/hashicorp/go-multierror
   version: 83588e72410abfbe4df460eeb6f30841ae47d4c4
 - name: github.com/imdario/mergo
-  version: e3000cb3d28c72b837601cac94debd91032d19fe
+  version: 7fe0c75c13abdee74b09fcacef5ea1c6bba6a874
 - name: github.com/nicksnyder/go-i18n
   version: ca33e78c8a430e2df435b02f63a3944fa8e9ea11
   subpackages:
@@ -79,16 +83,12 @@ imports:
 - name: honnef.co/go/js/console
   version: 105276c4355828b6126d4d7d0bf8b09d02606686
 testImports:
-- name: github.com/davecgh/go-spew
-  version: 346938d642f2ec3594ed81d874461961cd0faa76
-  subpackages:
-  - spew
 - name: github.com/flimzy/diff
   version: cbbf57022d4b1c8923c8dd293fce1c2fd8945227
 - name: github.com/flimzy/testy
-  version: 315542b378ce88213b15365c97eb657d987590d1
+  version: 2457b061b2d011fb037d00e72c3d932d45814051
 - name: github.com/go-chi/chi
-  version: 04ec7fc4179604b2390947258f9143eaae23b596
+  version: f7c66f685bcab06bcce78ac212c5f3553c063d19
 - name: github.com/pmezard/go-difflib
   version: 792786c7400a136282c1664665ae0a8db921c6c2
   subpackages:
