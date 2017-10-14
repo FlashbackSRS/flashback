@@ -34,6 +34,7 @@ func CheckAuth(prefix string, repo *model.Repo) func(jqeventrouter.Handler) jqev
 					redir = "callback.html"
 				}
 				log.Printf("Redirecting unauthenticated user to %s\n", redir)
+				log.Debug("TODO: Do I need ui.Set *and* trigger before change here?")
 				ui.Set("toPage", redir)
 				event.StopImmediatePropagation()
 				jquery.NewJQuery(":mobile-pagecontainer").Trigger("pagecontainerbeforechange", ui)
