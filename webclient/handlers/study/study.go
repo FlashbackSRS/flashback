@@ -28,16 +28,29 @@ type cardState struct {
 }
 
 var currentCard *cardState
+var currentDeck string
+
+// BeforeChange sets the deck if necessary
+func BeforeChange() jqeventrouter.HandlerFunc {
+	return func(_ *jquery.Event, _ *js.Object, params url.Values) bool {
+		if len(params) == 0 {
+			return true
+		}
+		currentDeck = params.Get("deck")
+		js.Global.Get("jQuery").Get("mobile").Call("changePage", "study.html")
+		return false
+	}
+}
 
 // BeforeTransition prepares the page to study
 func BeforeTransition(repo *model.Repo) jqeventrouter.HandlerFunc {
-	return func(_ *jquery.Event, _ *js.Object, params url.Values) bool {
+	return func(event *jquery.Event, ui *js.Object, params url.Values) bool {
 		if _, err := repo.CurrentUser(); err != nil {
 			log.Printf("No user logged in: %s\n", err)
 			return false
 		}
 		go func() {
-			if err := ShowCard(repo, params.Get("deck")); err != nil {
+			if err := ShowCard(repo, currentDeck); err != nil {
 				log.Printf("Error showing card: %v", err)
 			}
 		}()
