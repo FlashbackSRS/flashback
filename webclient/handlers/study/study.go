@@ -79,8 +79,10 @@ func ShowCard(repo *model.Repo, deck string) error {
 		return errors.Wrap(err, "failed to register iframe")
 	}
 
+	container := jQuery(":mobile-pagecontainer")
+
 	log.Debug("Setting up the buttons\n")
-	buttons := jQuery(":mobile-pagecontainer").Find("#answer-buttons").Find(`[data-role="button"]`)
+	buttons := container.Find("#answer-buttons").Find(`[data-role="button"]`)
 	buttons.RemoveClass("ui-btn-active")
 	clickFunc := func(e *js.Object) {
 		go func() { // DB updates block
@@ -111,8 +113,6 @@ func ShowCard(repo *model.Repo, deck string) error {
 			button.Call("button", "disable")
 		}
 	}
-
-	container := jQuery(":mobile-pagecontainer")
 
 	oldIframes := jQuery("#cardframe", container).Find("iframe").Underlying()
 	for i := 0; i < oldIframes.Length(); i++ {
