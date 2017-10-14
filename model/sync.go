@@ -243,7 +243,10 @@ func newCardDeckCache(client kivikClient) *cardDeckCache {
 	}
 }
 
-const orphanedCardDeck = "x"
+const (
+	orphanedCardDeckID   = "x"
+	orphanedCardDeckName = "[No Deck]"
+)
 
 func (c *cardDeckCache) cardDeck(ctx context.Context, card *fb.Card) (string, error) {
 	bundleID := card.BundleID()
@@ -255,7 +258,7 @@ func (c *cardDeckCache) cardDeck(ctx context.Context, card *fb.Card) (string, er
 	if deckID, ok := c.cache[card.ID]; ok {
 		return deckID, nil
 	}
-	return orphanedCardDeck, nil
+	return orphanedCardDeckID, nil
 }
 
 func (c *cardDeckCache) readBundle(ctx context.Context, bundleID string) error {

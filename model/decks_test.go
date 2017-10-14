@@ -480,6 +480,11 @@ func TestDeckName(t *testing.T) {
 			db:       &mockQueryGetter{row: mockRow(`{"name":"foo deck","unused":"field"}`)},
 			expected: "foo deck",
 		},
+		{
+			name:     "orphan deck",
+			deckID:   orphanedCardDeckID,
+			expected: orphanedCardDeckName,
+		},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
