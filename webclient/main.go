@@ -112,31 +112,34 @@ func RouterInit(prefix, baseURL string, repo *model.Repo, langSet *l10n.Set, pro
 	log.Debug("Initializing router\n")
 
 	// beforechange -- Just check auth
-	beforeChange := jqeventrouter.NullHandler()
-	checkAuth := auth.CheckAuth(prefix, repo)
-	jqeventrouter.Listen("pagecontainerbeforechange", general.JQMRouteOnce(general.CleanFacebookURI(checkAuth(beforeChange))))
+	beforeChange := jqeventrouter.NewEventMux()
+	beforeChange.SetUriFunc(getJqmURI)
 
 	// beforetransition
 	beforeTransition := jqeventrouter.NewEventMux()
-	beforeTransition.SetUriFunc(getJqmUri)
+	beforeTransition.SetUriFunc(getJqmURI)
 
 	beforeTransition.HandleFunc(prefix+"/index.html", index.BeforeTransition(repo))
 	beforeTransition.HandleFunc(prefix+"/login.html", loginhandler.BeforeTransition(repo, providers))
 	beforeTransition.HandleFunc(prefix+"/callback.html", loginhandler.BTCallback(repo, providers))
 	beforeTransition.HandleFunc(prefix+"/logout.html", logouthandler.BeforeTransition(repo))
 	beforeTransition.HandleFunc(prefix+"/import.html", importhandler.BeforeTransition(repo))
+	beforeChange.HandleFunc(prefix+"/study.html", studyhandler.BeforeChange())
 	beforeTransition.HandleFunc(prefix+"/study.html", studyhandler.BeforeTransition(repo))
-	jqeventrouter.Listen("pagecontainerbeforetransition", beforeTransition)
 
 	// beforeshow
 	beforeShow := jqeventrouter.NullHandler()
 	setupSyncButton := synchandler.SetupSyncButton(repo)
+
+	checkAuth := auth.CheckAuth(prefix, repo)
+	jqeventrouter.Listen("pagecontainerbeforechange", general.JQMRouteOnce(general.CleanFacebookURI(checkAuth(beforeChange))))
+	jqeventrouter.Listen("pagecontainerbeforetransition", beforeTransition)
 	jqeventrouter.Listen("pagecontainerbeforeshow", l10n_handler.LocalizePage(langSet, setupSyncButton(beforeShow)))
 	log.Debug("Router init complete\n")
 }
 
-func getJqmUri(_ *jquery.Event, ui *js.Object) string {
-	return util.JqmTargetUri(ui)
+func getJqmURI(_ *jquery.Event, ui *js.Object) string {
+	return util.JqmTargetURI(ui).String()
 }
 
 // MobileInit is run after jQuery Mobile's 'mobileinit' event has fired

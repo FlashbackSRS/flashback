@@ -14,10 +14,12 @@ import (
 )
 
 func init() {
-	memPouch := js.Global.Get("PouchDB").Call("defaults", map[string]interface{}{
-		"db": js.Global.Call("require", "memdown"),
-	})
-	js.Global.Set("PouchDB", memPouch)
+	if pouchDB := js.Global.Get("PouchDB"); pouchDB != js.Undefined {
+		memPouch := js.Global.Get("PouchDB").Call("defaults", map[string]interface{}{
+			"db": js.Global.Call("require", "memdown"),
+		})
+		js.Global.Set("PouchDB", memPouch)
+	}
 }
 
 // RegisterPouchDBSuites registers the PouchDB test suites.
@@ -41,6 +43,27 @@ func RegisterPouchDBSuites() {
 
 		"Find/Admin.databases":                []string{},
 		"Find/RW/group/Admin/Warning.warning": "no matching index found, create an index to optimize query time",
+
+		"Explain.databases": []string{},
+		"Explain.plan": &kivik.QueryPlan{
+			Index: map[string]interface{}{
+				"ddoc": nil,
+				"name": "_all_docs",
+				"type": "special",
+				"def":  map[string]interface{}{"fields": []interface{}{map[string]string{"_id": "asc"}}},
+			},
+			Selector: map[string]interface{}{"_id": map[string]interface{}{"$gt": nil}},
+			Options: map[string]interface{}{
+				"bookmark":  "nil",
+				"conflicts": false,
+				"r":         []int{49},
+				"sort":      map[string]interface{}{},
+				"use_index": []interface{}{},
+			},
+			Range: map[string]interface{}{
+				"start_key": nil,
+			},
+		},
 
 		"Query/RW/group/Admin/WithDocs/UpdateSeq.skip": true,
 
@@ -133,6 +156,7 @@ func RegisterPouchDBSuites() {
 		"AllDocs/RW/group/NoAuth/WithoutDocs/UpdateSeq.skip": true,
 
 		"Find.skip":        true, // Find doesn't work with CouchDB 1.6, which we use for these tests
+		"Explain.skip":     true, // Find does't work with CouchDB 1.6, which we use for these tests
 		"CreateIndex.skip": true, // Find doesn't work with CouchDB 1.6, which we use for these tests
 		"GetIndexes.skip":  true, // Find doesn't work with CouchDB 1.6, which we use for these tests
 		"DeleteIndex.skip": true, // Find doesn't work with CouchDB 1.6, which we use for these tests
