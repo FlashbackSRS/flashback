@@ -204,7 +204,7 @@ func queryView(ctx context.Context, db querier, state, deck string, limit, offse
 		query["startkey"] = []interface{}{state, deck}
 		query["endkey"] = []interface{}{state, deck, map[string]interface{}{}}
 	}
-	rows, err := db.Query(context.TODO(), mainDDoc, mainView, query)
+	rows, err := db.Query(ctx, mainDDoc, mainView, query)
 	if err != nil {
 		return nil, 0, errors.Wrap(err, "query failed")
 	}
