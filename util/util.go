@@ -7,8 +7,8 @@ import (
 	"github.com/gopherjs/gopherjs/js"
 )
 
-// JqmTargetUri determines the target URI based on a jQuery Mobile event 'ui' object
-func JqmTargetUri(ui *js.Object) string {
+// JqmTargetURI determines the target URI based on a jQuery Mobile event 'ui' object
+func JqmTargetURI(ui *js.Object) *url.URL {
 	rawURL := ui.Get("toPage").String()
 	if rawURL == "[object Object]" {
 		rawURL = ui.Get("toPage").Call("jqmData", "url").String()
@@ -18,7 +18,7 @@ func JqmTargetUri(ui *js.Object) string {
 	pageURL.Host = ""
 	pageURL.User = nil
 	pageURL.Scheme = ""
-	return pageURL.String()
+	return pageURL
 }
 
 /*

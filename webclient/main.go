@@ -136,7 +136,7 @@ func RouterInit(prefix, baseURL string, repo *model.Repo, langSet *l10n.Set, pro
 }
 
 func getJqmUri(_ *jquery.Event, ui *js.Object) string {
-	return util.JqmTargetUri(ui)
+	return util.JqmTargetURI(ui).String()
 }
 
 // MobileInit is run after jQuery Mobile's 'mobileinit' event has fired
