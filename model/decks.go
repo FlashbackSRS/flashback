@@ -40,20 +40,23 @@ func (r *Repo) DeckList(ctx context.Context) ([]*Deck, error) {
 		return nil, err
 	}
 
-	sort.Slice(decks, func(i, j int) bool {
-		return decks[i].ID < decks[j].ID
-	})
-
-	allDeck, decks := decks[0], decks[1:]
-	allDeck.Name = allDeckName
 	if err := fleshenDecks(ctx, udb, decks); err != nil {
 		return nil, err
 	}
 	sort.Slice(decks, func(i, j int) bool {
 		return decks[i].Name < decks[j].Name
 	})
+	allDeck := &Deck{
+		ID:   allDeckID,
+		Name: allDeckName,
+	}
 	for _, deck := range decks {
+		allDeck.TotalCards += deck.TotalCards
 		allDeck.DueCards += deck.DueCards
+		allDeck.LearningCards += deck.LearningCards
+		allDeck.MatureCards += deck.MatureCards
+		allDeck.NewCards += deck.NewCards
+		allDeck.SuspendedCards += deck.SuspendedCards
 	}
 	return append([]*Deck{allDeck}, decks...), nil
 }
@@ -141,10 +144,14 @@ func deckReducedStats(ctx context.Context, db querier) ([]*Deck, error) {
 	var values []int
 	deckMap := make(map[string]*Deck)
 	for rows.Next() {
-		if e := rows.ScanValue(&values); e != nil {
+		if e := rows.ScanKey(&key); e != nil {
 			return nil, e
 		}
-		if e := rows.ScanKey(&key); e != nil {
+		if key[1] == allDeckID {
+			// Skip the aggregate 'all' deck; it's calculated later
+			continue
+		}
+		if e := rows.ScanValue(&values); e != nil {
 			return nil, e
 		}
 		deck, ok := deckMap[key[1]]
