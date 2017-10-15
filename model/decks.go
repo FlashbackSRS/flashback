@@ -40,6 +40,10 @@ func (r *Repo) DeckList(ctx context.Context) ([]*Deck, error) {
 		return nil, err
 	}
 
+	sort.Slice(decks, func(i, j int) bool {
+		return decks[i].ID < decks[j].ID
+	})
+
 	allDeck, decks := decks[0], decks[1:]
 	allDeck.Name = allDeckName
 	if err := fleshenDecks(ctx, udb, decks); err != nil {
