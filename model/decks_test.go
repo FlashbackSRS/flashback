@@ -52,9 +52,12 @@ func TestDeckList(t *testing.T) {
 							UserDDocID:                         mockRow(fmt.Sprintf(`{"version":%d}`, UserDDocVersion)),
 						}},
 						rows: []*mockRows{{
-							rows:   []string{""},
-							values: []string{"[234,6]"},
-							keys:   []string{`["new","deck-Brm5eFOpF0553VTksh7hlySt6M8"]`},
+							rows:   []string{"", ""},
+							values: []string{"[234,6]", "[234,6]"},
+							keys: []string{
+								`["new",""]`,
+								`["new","deck-Brm5eFOpF0553VTksh7hlySt6M8"]`,
+							},
 						}},
 					},
 				},
@@ -145,6 +148,18 @@ func TestDeckList(t *testing.T) {
 					SuspendedCards: 52,
 				},
 			},
+		},
+		{
+			name: "wrong DDoc version",
+			repo: &Repo{
+				user: "bob",
+				local: &mockClient{
+					db: &mockMultiGetter{rows: map[string]kivikRow{
+						UserDDocID: mockRow(fmt.Sprintf(`{"version":%d}`, 0)),
+					}},
+				},
+			},
+			err: "current ddoc not found",
 		},
 	}
 	for _, test := range tests {
@@ -502,11 +517,6 @@ func TestDeckName(t *testing.T) {
 			name:     "orphan deck",
 			deckID:   orphanedCardDeckID,
 			expected: orphanedCardDeckName,
-		},
-		{
-			name:     "all deck",
-			deckID:   allDeckID,
-			expected: allDeckName,
 		},
 	}
 	for _, test := range tests {

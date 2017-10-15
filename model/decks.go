@@ -31,8 +31,8 @@ func (r *Repo) DeckList(ctx context.Context) ([]*Deck, error) {
 	if err != nil {
 		return nil, err
 	}
-	if err := checkDDocVersion(ctx, udb); err != nil {
-		return nil, err
+	if e := checkDDocVersion(ctx, udb); e != nil {
+		return nil, e
 	}
 
 	decks, err := deckReducedStats(ctx, udb)
@@ -43,10 +43,22 @@ func (r *Repo) DeckList(ctx context.Context) ([]*Deck, error) {
 	if err := fleshenDecks(ctx, udb, decks); err != nil {
 		return nil, err
 	}
-	sort.Slice(decks[0:], func(i, j int) bool {
+	sort.Slice(decks, func(i, j int) bool {
 		return decks[i].Name < decks[j].Name
 	})
-	return decks, nil
+	allDeck := &Deck{
+		ID:   allDeckID,
+		Name: allDeckName,
+	}
+	for _, deck := range decks {
+		allDeck.TotalCards += deck.TotalCards
+		allDeck.DueCards += deck.DueCards
+		allDeck.LearningCards += deck.LearningCards
+		allDeck.MatureCards += deck.MatureCards
+		allDeck.NewCards += deck.NewCards
+		allDeck.SuspendedCards += deck.SuspendedCards
+	}
+	return append([]*Deck{allDeck}, decks...), nil
 }
 
 func fleshenDecks(ctx context.Context, db kivikDB, decks []*Deck) error {
@@ -132,10 +144,14 @@ func deckReducedStats(ctx context.Context, db querier) ([]*Deck, error) {
 	var values []int
 	deckMap := make(map[string]*Deck)
 	for rows.Next() {
-		if e := rows.ScanValue(&values); e != nil {
+		if e := rows.ScanKey(&key); e != nil {
 			return nil, e
 		}
-		if e := rows.ScanKey(&key); e != nil {
+		if key[1] == allDeckID {
+			// Skip the aggregate 'all' deck; it's calculated later
+			continue
+		}
+		if e := rows.ScanValue(&values); e != nil {
 			return nil, e
 		}
 		deck, ok := deckMap[key[1]]
@@ -173,11 +189,8 @@ const (
 )
 
 func deckName(ctx context.Context, db getter, deckID string) (string, error) {
-	switch deckID {
-	case orphanedCardDeckID:
+	if deckID == orphanedCardDeckID {
 		return orphanedCardDeckName, nil
-	case allDeckID:
-		return allDeckName, nil
 	}
 	row, err := db.Get(ctx, deckID)
 	if err != nil {
