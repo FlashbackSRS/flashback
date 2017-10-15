@@ -171,9 +171,19 @@ func deckReducedStats(ctx context.Context, db querier) ([]*Deck, error) {
 	return decks, nil
 }
 
+const (
+	orphanedCardDeckID   = "x"
+	orphanedCardDeckName = "[No Deck]"
+	allDeckID            = ""
+	allDeckName          = "All"
+)
+
 func deckName(ctx context.Context, db getter, deckID string) (string, error) {
-	if deckID == orphanedCardDeckID {
+	switch deckID {
+	case orphanedCardDeckID:
 		return orphanedCardDeckName, nil
+	case allDeckID:
+		return allDeckName, nil
 	}
 	row, err := db.Get(ctx, deckID)
 	if err != nil {

@@ -466,24 +466,32 @@ func TestDeckName(t *testing.T) {
 		err      string
 	}{
 		{
-			name: "get error",
-			db:   &mockQueryGetter{err: errors.New("error getting")},
-			err:  "error getting",
+			name:   "get error",
+			db:     &mockQueryGetter{err: errors.New("error getting")},
+			deckID: "deck-foo",
+			err:    "error getting",
 		},
 		{
-			name: "bad json",
-			db:   &mockQueryGetter{row: mockRow("invalid json")},
-			err:  "invalid character 'i' looking for beginning of value",
+			name:   "bad json",
+			db:     &mockQueryGetter{row: mockRow("invalid json")},
+			deckID: "deck-foo",
+			err:    "invalid character 'i' looking for beginning of value",
 		},
 		{
 			name:     "success",
 			db:       &mockQueryGetter{row: mockRow(`{"name":"foo deck","unused":"field"}`)},
+			deckID:   "deck-foo",
 			expected: "foo deck",
 		},
 		{
 			name:     "orphan deck",
 			deckID:   orphanedCardDeckID,
 			expected: orphanedCardDeckName,
+		},
+		{
+			name:     "all deck",
+			deckID:   allDeckID,
+			expected: allDeckName,
 		},
 	}
 	for _, test := range tests {
