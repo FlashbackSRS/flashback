@@ -77,16 +77,21 @@ func TestDeckList(t *testing.T) {
 							{"group_level": 2},
 							{"startkey": []interface{}{"old", "deck-Brm5eFOpF0553VTksh7hlySt6M8"}, "reduce": false},
 							{"startkey": []interface{}{"old", "deck-foo"}, "reduce": false},
+							{"startkey": []interface{}{"old", ""}, "reduce": false},
 						},
 						rows: []*mockRows{
 							{
-								rows: []string{"", "", "", "", "", "", ""},
+								rows: []string{"", "", "", "", "", "", "", "", "", ""},
 								values: []string{
+									"[384,6]", "[1911,76]", "[57,10]",
 									"[234,6]", "[1811,56]", "[52,9]",
 									"[100,0]", "[100,20]", "[5,1]",
 									"[50,0]",
 								},
 								keys: []string{
+									`["new",""]`,
+									`["old",""]`,
+									`["suspended",""]`,
 									`["new","deck-Brm5eFOpF0553VTksh7hlySt6M8"]`,
 									`["old","deck-Brm5eFOpF0553VTksh7hlySt6M8"]`,
 									`["suspended","deck-Brm5eFOpF0553VTksh7hlySt6M8"]`,
@@ -98,6 +103,7 @@ func TestDeckList(t *testing.T) {
 							},
 							{rows: []string{"", "", "", ""}, values: []string{"{}", "{}", "{}", "{}"}},
 							{rows: []string{"", ""}, values: []string{"{}", "{}"}},
+							{rows: []string{"", "", "", "", "", ""}, values: []string{"{}", "{}", "{}", "{}", "{}", "{}"}},
 						},
 					},
 				},
