@@ -31,8 +31,8 @@ func (r *Repo) DeckList(ctx context.Context) ([]*Deck, error) {
 	if err != nil {
 		return nil, err
 	}
-	if err := checkDDocVersion(ctx, udb); err != nil {
-		return nil, err
+	if e := checkDDocVersion(ctx, udb); e != nil {
+		return nil, e
 	}
 
 	decks, err := deckReducedStats(ctx, udb)
