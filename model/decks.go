@@ -40,13 +40,18 @@ func (r *Repo) DeckList(ctx context.Context) ([]*Deck, error) {
 		return nil, err
 	}
 
+	allDeck, decks := decks[0], decks[1:]
+	allDeck.Name = allDeckName
 	if err := fleshenDecks(ctx, udb, decks); err != nil {
 		return nil, err
 	}
-	sort.Slice(decks[0:], func(i, j int) bool {
+	sort.Slice(decks, func(i, j int) bool {
 		return decks[i].Name < decks[j].Name
 	})
-	return decks, nil
+	for _, deck := range decks {
+		allDeck.DueCards += deck.DueCards
+	}
+	return append([]*Deck{allDeck}, decks...), nil
 }
 
 func fleshenDecks(ctx context.Context, db kivikDB, decks []*Deck) error {
@@ -173,11 +178,8 @@ const (
 )
 
 func deckName(ctx context.Context, db getter, deckID string) (string, error) {
-	switch deckID {
-	case orphanedCardDeckID:
+	if deckID == orphanedCardDeckID {
 		return orphanedCardDeckName, nil
-	case allDeckID:
-		return allDeckName, nil
 	}
 	row, err := db.Get(ctx, deckID)
 	if err != nil {
