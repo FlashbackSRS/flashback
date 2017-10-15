@@ -29,26 +29,11 @@
 </head>
 <body>
 
-    <div data-role="panel" data-theme="a" id="menu">
-        <ul data-role="listview" data-theme="a" class="nav">
-            <li><h1 data-lt="logged_in_as">Logged in</h1></li>
-            <li><a href="study.html" data-lt="menu_study">Study</a></li>
-            <li><a href="stats.html" data-lt="menu_statistics">Statistics</a></li>
-            <li><a href="import.html" data-lt="menu_import">Import from Anki</a></li>
-            <li><a href="config.html" data-lt="menu_configure">Configure</a></li>
-            <li><a href="about.html" data-lt="menu_about">About</a></li>
-            <li><a href="logout.html" data-lt="menu_logout">Log Out / Switch User</a></li>
-            <li><a href="debug.html" data-lt="menu_debug">Debug info</a></li>
-        </ul>
-    </div><!-- /panel -->
-
     <div data-role="page" class="ui-responsive-panel">
         <div data-role="header" data-id="header" data-position="fixed">
-            <a href="#menu" data-icon="bars" data-iconpos="notext" data-lt="menu_button">Menu</a>
+            <a data="homebutton" data-icon="home" data-role="button" data-lt="home_button" href="index.html">Home</a>
             <h1 data-lt="flashback_title">Flashback</h1>
-            <div data-type="horizontal" data-role="controlgroup" class="ui-btn-right">
-                <a data-id="syncbutton" data-icon="refresh" data-role="button" data-lt="sync_button">Sync</a>
-            </div>
+            <a data-id="syncbutton" data-icon="refresh" data-role="button" data-lt="sync_button">Sync</a>
         </div><!-- /header -->
 
         <div data-role="content">
