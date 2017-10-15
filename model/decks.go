@@ -7,8 +7,10 @@ import (
 	"time"
 
 	"github.com/flimzy/kivik"
+	"github.com/flimzy/kivik/errors"
 
 	fb "github.com/FlashbackSRS/flashback-model"
+	"github.com/flimzy/flashback-server2/models/users"
 )
 
 // Deck represents a single deck.
@@ -30,6 +32,10 @@ func (r *Repo) DeckList(ctx context.Context) ([]*Deck, error) {
 	if err != nil {
 		return nil, err
 	}
+	if err := checkDDocVersion(ctx, udb); err != nil {
+		return nil, err
+	}
+
 	decks, err := deckReducedStats(ctx, udb)
 	if err != nil {
 		return nil, err
@@ -38,21 +44,10 @@ func (r *Repo) DeckList(ctx context.Context) ([]*Deck, error) {
 	if err := fleshenDecks(ctx, udb, decks); err != nil {
 		return nil, err
 	}
-	allDeck := &Deck{
-		Name: "All",
-	}
-	for _, deck := range decks {
-		allDeck.TotalCards += deck.TotalCards
-		allDeck.DueCards += deck.DueCards
-		allDeck.LearningCards += deck.LearningCards
-		allDeck.MatureCards += deck.MatureCards
-		allDeck.SuspendedCards += deck.SuspendedCards
-		allDeck.NewCards += deck.NewCards
-	}
-	sort.Slice(decks, func(i, j int) bool {
+	sort.Slice(decks[0:], func(i, j int) bool {
 		return decks[i].Name < decks[j].Name
 	})
-	return append([]*Deck{allDeck}, decks...), nil
+	return decks, nil
 }
 
 func fleshenDecks(ctx context.Context, db kivikDB, decks []*Deck) error {
@@ -194,4 +189,21 @@ func deckName(ctx context.Context, db getter, deckID string) (string, error) {
 	}
 	e := row.ScanDoc(&doc)
 	return doc.Name, e
+}
+
+func checkDDocVersion(ctx context.Context, db kivikDB) error {
+	row, err := db.Get(ctx, users.UserDDocID)
+	if err != nil {
+		return err
+	}
+	var ddoc struct {
+		Version int `json:"version"`
+	}
+	if e := row.ScanDoc(&ddoc); e != nil {
+		return e
+	}
+	if ddoc.Version != users.UserDDocVersion {
+		return errors.Status(kivik.StatusNotFound, "current ddoc not found")
+	}
+	return nil
 }

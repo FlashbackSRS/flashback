@@ -3,11 +3,13 @@ package model
 import (
 	"context"
 	"errors"
+	"fmt"
 	"sort"
 	"testing"
 	"time"
 
 	"github.com/flimzy/diff"
+	"github.com/flimzy/flashback-server2/models/users"
 	"github.com/flimzy/kivik"
 	"github.com/flimzy/testy"
 )
@@ -29,7 +31,13 @@ func TestDeckList(t *testing.T) {
 			repo: &Repo{
 				user: "bob",
 				local: &mockClient{
-					db: &mockQuerier{err: errors.New("foo error")},
+					db: &mockQuerier{
+						kivikDB: &mockMultiGetter{rows: map[string]kivikRow{
+							"deck-Brm5eFOpF0553VTksh7hlySt6M8": mockRow(`invalid json`),
+							users.UserDDocID:                   mockRow(fmt.Sprintf(`{"version":%d}`, users.UserDDocVersion)),
+						}},
+						err: errors.New("foo error"),
+					},
 				},
 			},
 			err: "foo error",
@@ -42,6 +50,7 @@ func TestDeckList(t *testing.T) {
 					db: &mockQuerier{
 						kivikDB: &mockMultiGetter{rows: map[string]kivikRow{
 							"deck-Brm5eFOpF0553VTksh7hlySt6M8": mockRow(`invalid json`),
+							users.UserDDocID:                   mockRow(fmt.Sprintf(`{"version":%d}`, users.UserDDocVersion)),
 						}},
 						rows: []*mockRows{{
 							rows:   []string{""},
@@ -63,6 +72,7 @@ func TestDeckList(t *testing.T) {
 							"deck-Brm5eFOpF0553VTksh7hlySt6M8": mockRow(`{"name":"Test Deck"}`),
 							"deck-foo":                         mockRow(`{"name":"Foo"}`),
 							"deck-bar":                         mockRow(`{"name":"Bar"}`),
+							users.UserDDocID:                   mockRow(fmt.Sprintf(`{"version":%d}`, users.UserDDocVersion)),
 						}},
 						options: []kivik.Options{
 							{"group_level": 2},
@@ -510,6 +520,44 @@ func TestDeckName(t *testing.T) {
 			if result != test.expected {
 				t.Errorf("Unexpected result: %s", result)
 			}
+		})
+	}
+}
+
+func TestCheckDDocVersion(t *testing.T) {
+	tests := []struct {
+		name   string
+		db     kivikDB
+		status int
+		err    string
+	}{
+		{
+			name:   "get error",
+			db:     &mockGetter{err: errors.New("bad stuff")},
+			status: 500,
+			err:    "bad stuff",
+		},
+		{
+			name:   "bad json",
+			db:     &mockGetter{row: mockRow("invalid json")},
+			status: 500,
+			err:    "invalid character 'i' looking for beginning of value",
+		},
+		{
+			name:   "wrong version",
+			db:     &mockGetter{row: mockRow(`{"version":0}`)},
+			status: 404,
+			err:    "current ddoc not found",
+		},
+		{
+			name: "success",
+			db:   &mockGetter{row: mockRow(fmt.Sprintf(`{"version":%d}`, users.UserDDocVersion))},
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			err := checkDDocVersion(context.Background(), test.db)
+			testy.StatusError(t, test.err, test.status, err)
 		})
 	}
 }
