@@ -149,6 +149,18 @@ func TestDeckList(t *testing.T) {
 				},
 			},
 		},
+		{
+			name: "wrong DDoc version",
+			repo: &Repo{
+				user: "bob",
+				local: &mockClient{
+					db: &mockMultiGetter{rows: map[string]kivikRow{
+						UserDDocID: mockRow(fmt.Sprintf(`{"version":%d}`, 0)),
+					}},
+				},
+			},
+			err: "current ddoc not found",
+		},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
