@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"github.com/flimzy/diff"
-	"github.com/flimzy/flashback-server2/models/users"
 	"github.com/flimzy/kivik"
 	"github.com/flimzy/testy"
 )
@@ -34,7 +33,7 @@ func TestDeckList(t *testing.T) {
 					db: &mockQuerier{
 						kivikDB: &mockMultiGetter{rows: map[string]kivikRow{
 							"deck-Brm5eFOpF0553VTksh7hlySt6M8": mockRow(`invalid json`),
-							users.UserDDocID:                   mockRow(fmt.Sprintf(`{"version":%d}`, users.UserDDocVersion)),
+							UserDDocID:                         mockRow(fmt.Sprintf(`{"version":%d}`, UserDDocVersion)),
 						}},
 						err: errors.New("foo error"),
 					},
@@ -50,7 +49,7 @@ func TestDeckList(t *testing.T) {
 					db: &mockQuerier{
 						kivikDB: &mockMultiGetter{rows: map[string]kivikRow{
 							"deck-Brm5eFOpF0553VTksh7hlySt6M8": mockRow(`invalid json`),
-							users.UserDDocID:                   mockRow(fmt.Sprintf(`{"version":%d}`, users.UserDDocVersion)),
+							UserDDocID:                         mockRow(fmt.Sprintf(`{"version":%d}`, UserDDocVersion)),
 						}},
 						rows: []*mockRows{{
 							rows:   []string{""},
@@ -72,7 +71,7 @@ func TestDeckList(t *testing.T) {
 							"deck-Brm5eFOpF0553VTksh7hlySt6M8": mockRow(`{"name":"Test Deck"}`),
 							"deck-foo":                         mockRow(`{"name":"Foo"}`),
 							"deck-bar":                         mockRow(`{"name":"Bar"}`),
-							users.UserDDocID:                   mockRow(fmt.Sprintf(`{"version":%d}`, users.UserDDocVersion)),
+							UserDDocID:                         mockRow(fmt.Sprintf(`{"version":%d}`, UserDDocVersion)),
 						}},
 						options: []kivik.Options{
 							{"group_level": 2},
@@ -551,7 +550,7 @@ func TestCheckDDocVersion(t *testing.T) {
 		},
 		{
 			name: "success",
-			db:   &mockGetter{row: mockRow(fmt.Sprintf(`{"version":%d}`, users.UserDDocVersion))},
+			db:   &mockGetter{row: mockRow(fmt.Sprintf(`{"version":%d}`, UserDDocVersion))},
 		},
 	}
 	for _, test := range tests {

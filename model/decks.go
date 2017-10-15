@@ -10,7 +10,6 @@ import (
 	"github.com/flimzy/kivik/errors"
 
 	fb "github.com/FlashbackSRS/flashback-model"
-	"github.com/flimzy/flashback-server2/models/users"
 )
 
 // Deck represents a single deck.
@@ -191,8 +190,14 @@ func deckName(ctx context.Context, db getter, deckID string) (string, error) {
 	return doc.Name, e
 }
 
+// copied from github.com/flimzy/flashback-server2
+const (
+	UserDDocID      = "_design/index"
+	UserDDocVersion = 1
+)
+
 func checkDDocVersion(ctx context.Context, db kivikDB) error {
-	row, err := db.Get(ctx, users.UserDDocID)
+	row, err := db.Get(ctx, UserDDocID)
 	if err != nil {
 		return err
 	}
@@ -202,7 +207,7 @@ func checkDDocVersion(ctx context.Context, db kivikDB) error {
 	if e := row.ScanDoc(&ddoc); e != nil {
 		return e
 	}
-	if ddoc.Version != users.UserDDocVersion {
+	if ddoc.Version != UserDDocVersion {
 		return errors.Status(kivik.StatusNotFound, "current ddoc not found")
 	}
 	return nil
