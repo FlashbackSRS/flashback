@@ -3,6 +3,7 @@ package model
 import (
 	"context"
 	"errors"
+	"fmt"
 	"sort"
 	"testing"
 	"time"
@@ -29,7 +30,13 @@ func TestDeckList(t *testing.T) {
 			repo: &Repo{
 				user: "bob",
 				local: &mockClient{
-					db: &mockQuerier{err: errors.New("foo error")},
+					db: &mockQuerier{
+						kivikDB: &mockMultiGetter{rows: map[string]kivikRow{
+							"deck-Brm5eFOpF0553VTksh7hlySt6M8": mockRow(`invalid json`),
+							UserDDocID:                         mockRow(fmt.Sprintf(`{"version":%d}`, UserDDocVersion)),
+						}},
+						err: errors.New("foo error"),
+					},
 				},
 			},
 			err: "foo error",
@@ -42,6 +49,7 @@ func TestDeckList(t *testing.T) {
 					db: &mockQuerier{
 						kivikDB: &mockMultiGetter{rows: map[string]kivikRow{
 							"deck-Brm5eFOpF0553VTksh7hlySt6M8": mockRow(`invalid json`),
+							UserDDocID:                         mockRow(fmt.Sprintf(`{"version":%d}`, UserDDocVersion)),
 						}},
 						rows: []*mockRows{{
 							rows:   []string{""},
@@ -63,6 +71,7 @@ func TestDeckList(t *testing.T) {
 							"deck-Brm5eFOpF0553VTksh7hlySt6M8": mockRow(`{"name":"Test Deck"}`),
 							"deck-foo":                         mockRow(`{"name":"Foo"}`),
 							"deck-bar":                         mockRow(`{"name":"Bar"}`),
+							UserDDocID:                         mockRow(fmt.Sprintf(`{"version":%d}`, UserDDocVersion)),
 						}},
 						options: []kivik.Options{
 							{"group_level": 2},
@@ -466,24 +475,32 @@ func TestDeckName(t *testing.T) {
 		err      string
 	}{
 		{
-			name: "get error",
-			db:   &mockQueryGetter{err: errors.New("error getting")},
-			err:  "error getting",
+			name:   "get error",
+			db:     &mockQueryGetter{err: errors.New("error getting")},
+			deckID: "deck-foo",
+			err:    "error getting",
 		},
 		{
-			name: "bad json",
-			db:   &mockQueryGetter{row: mockRow("invalid json")},
-			err:  "invalid character 'i' looking for beginning of value",
+			name:   "bad json",
+			db:     &mockQueryGetter{row: mockRow("invalid json")},
+			deckID: "deck-foo",
+			err:    "invalid character 'i' looking for beginning of value",
 		},
 		{
 			name:     "success",
 			db:       &mockQueryGetter{row: mockRow(`{"name":"foo deck","unused":"field"}`)},
+			deckID:   "deck-foo",
 			expected: "foo deck",
 		},
 		{
 			name:     "orphan deck",
 			deckID:   orphanedCardDeckID,
 			expected: orphanedCardDeckName,
+		},
+		{
+			name:     "all deck",
+			deckID:   allDeckID,
+			expected: allDeckName,
 		},
 	}
 	for _, test := range tests {
@@ -502,6 +519,44 @@ func TestDeckName(t *testing.T) {
 			if result != test.expected {
 				t.Errorf("Unexpected result: %s", result)
 			}
+		})
+	}
+}
+
+func TestCheckDDocVersion(t *testing.T) {
+	tests := []struct {
+		name   string
+		db     kivikDB
+		status int
+		err    string
+	}{
+		{
+			name:   "get error",
+			db:     &mockGetter{err: errors.New("bad stuff")},
+			status: 500,
+			err:    "bad stuff",
+		},
+		{
+			name:   "bad json",
+			db:     &mockGetter{row: mockRow("invalid json")},
+			status: 500,
+			err:    "invalid character 'i' looking for beginning of value",
+		},
+		{
+			name:   "wrong version",
+			db:     &mockGetter{row: mockRow(`{"version":0}`)},
+			status: 404,
+			err:    "current ddoc not found",
+		},
+		{
+			name: "success",
+			db:   &mockGetter{row: mockRow(fmt.Sprintf(`{"version":%d}`, UserDDocVersion))},
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			err := checkDDocVersion(context.Background(), test.db)
+			testy.StatusError(t, test.err, test.status, err)
 		})
 	}
 }

@@ -197,12 +197,8 @@ func queryView(ctx context.Context, db querier, state, deck string, limit, offse
 		"limit":    limit + limitPadding,
 		"skip":     offset,
 		"reduce":   false,
-		"startkey": []interface{}{state},
-		"endkey":   []interface{}{state, map[string]interface{}{}},
-	}
-	if deck != "" {
-		query["startkey"] = []interface{}{state, deck}
-		query["endkey"] = []interface{}{state, deck, map[string]interface{}{}}
+		"startkey": []interface{}{state, deck},
+		"endkey":   []interface{}{state, deck, map[string]interface{}{}},
 	}
 	rows, err := db.Query(ctx, mainDDoc, mainView, query)
 	if err != nil {

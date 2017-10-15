@@ -148,8 +148,8 @@ func TestQueryView(t *testing.T) {
 			name: "invalid value JSON",
 			db: &mockQuerier{
 				options: []kivik.Options{{
-					"startkey": []interface{}{"test"},
-					"endkey":   []interface{}{"test", map[string]interface{}{}},
+					"startkey": []interface{}{"test", ""},
+					"endkey":   []interface{}{"test", "", map[string]interface{}{}},
 				}},
 				rows: []*mockRows{
 					&mockRows{rows: []string{"foo"}, values: []string{"foo"}},
@@ -189,7 +189,7 @@ func TestQueryView(t *testing.T) {
 			name: "limit reached",
 			db: &mockQuerier{
 				options: []kivik.Options{
-					{"startkey": []interface{}{"test"}},
+					{"startkey": []interface{}{"test", ""}},
 				},
 				rows: []*mockRows{
 					{rows: storedCards, values: storedCardValues, keys: storedCardKeys},
@@ -262,7 +262,7 @@ func TestGetCardsFromView(t *testing.T) {
 			name: "successful fetch",
 			db: &mockQuerier{
 				options: []kivik.Options{
-					{"startkey": []interface{}{"test"}},
+					{"startkey": []interface{}{"test", ""}},
 				},
 				rows: []*mockRows{
 					{rows: storedCards, values: storedCardValues, keys: storedCardKeys},
@@ -284,7 +284,7 @@ func TestGetCardsFromView(t *testing.T) {
 			name: "limit reached",
 			db: &mockQuerier{
 				options: []kivik.Options{
-					{"startkey": []interface{}{"test"}},
+					{"startkey": []interface{}{"test", ""}},
 				},
 				rows: []*mockRows{
 					{rows: storedCards, values: storedCardValues, keys: storedCardKeys},
@@ -513,8 +513,8 @@ func TestRepoGetCardToStudy(t *testing.T) {
 				db: &gctsDB{
 					q: &mockQuerier{
 						options: []kivik.Options{
-							{"startkey": []interface{}{"new"}},
-							{"startkey": []interface{}{"old"}},
+							{"startkey": []interface{}{"new", ""}},
+							{"startkey": []interface{}{"old", ""}},
 						},
 						rows: []*mockRows{
 							{},
@@ -531,8 +531,8 @@ func TestRepoGetCardToStudy(t *testing.T) {
 					db: &gctsDB{
 						q: &mockQuerier{
 							options: []kivik.Options{
-								{"startkey": []interface{}{"new"}},
-								{"startkey": []interface{}{"old"}},
+								{"startkey": []interface{}{"new", ""}},
+								{"startkey": []interface{}{"old", ""}},
 							},
 							rows: []*mockRows{
 								{
@@ -581,8 +581,8 @@ func TestGetCardToStudy(t *testing.T) {
 			name: "new query failure",
 			db: &mockQueryGetter{mockQuerier: &mockQuerier{
 				options: []kivik.Options{
-					{"startkey": []interface{}{"new"}},
-					{"startkey": []interface{}{"old"}},
+					{"startkey": []interface{}{"new", ""}},
+					{"startkey": []interface{}{"old", ""}},
 				},
 				rows: []*mockRows{
 					{rows: []string{"invalid json"}, values: []string{"invalid json"}},
@@ -595,8 +595,8 @@ func TestGetCardToStudy(t *testing.T) {
 			name: "old query failure",
 			db: &mockQueryGetter{mockQuerier: &mockQuerier{
 				options: []kivik.Options{
-					{"startkey": []interface{}{"new"}},
-					{"startkey": []interface{}{"old"}},
+					{"startkey": []interface{}{"new", ""}},
+					{"startkey": []interface{}{"old", ""}},
 				},
 				rows: []*mockRows{
 					{},
@@ -610,8 +610,8 @@ func TestGetCardToStudy(t *testing.T) {
 			db: &mockQueryGetter{
 				mockQuerier: &mockQuerier{
 					options: []kivik.Options{
-						{"startkey": []interface{}{"new"}},
-						{"startkey": []interface{}{"old"}},
+						{"startkey": []interface{}{"new", ""}},
+						{"startkey": []interface{}{"old", ""}},
 					},
 					rows: []*mockRows{
 						{rows: storedCards[1:2], values: storedCardValues[1:2], keys: storedCardKeys[1:2]},
