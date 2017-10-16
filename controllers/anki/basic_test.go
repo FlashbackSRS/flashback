@@ -3,10 +3,12 @@ package anki
 import (
 	"testing"
 
-	"github.com/FlashbackSRS/flashback/model"
-	"github.com/FlashbackSRS/flashback/webclient/views/studyview"
 	"github.com/flimzy/diff"
 	"github.com/flimzy/testy"
+
+	fb "github.com/FlashbackSRS/flashback-model"
+	"github.com/FlashbackSRS/flashback/model"
+	"github.com/FlashbackSRS/flashback/webclient/views/studyview"
 )
 
 func TestBasicButtons(t *testing.T) {
@@ -21,7 +23,7 @@ func TestBasicButtons(t *testing.T) {
 			name: "question",
 			face: QuestionFace,
 			expected: studyview.ButtonMap{
-				"button-r": studyview.ButtonState{Name: "Show Answer", Enabled: true},
+				"button-r": {Name: "Show Answer", Enabled: true},
 			},
 		},
 		{
@@ -31,12 +33,32 @@ func TestBasicButtons(t *testing.T) {
 		},
 		{
 			name: "answer",
+			card: &model.Card{Card: &fb.Card{}},
 			face: AnswerFace,
 			expected: studyview.ButtonMap{
 				"button-l":  {Name: "Incorrect", Enabled: true},
 				"button-cl": {Name: "Difficult", Enabled: true},
 				"button-cr": {Name: "Correct", Enabled: true},
 				"button-r":  {Name: "Easy", Enabled: true},
+			},
+		},
+		{
+			name: "incorrect typed answer",
+			card: &model.Card{
+				Card: &fb.Card{
+					Context: map[string]interface{}{
+						contextKeyTypedAnswers: map[string]answer{
+							"testField": {Text: "foo", Correct: false},
+						},
+					},
+				},
+			},
+			face: AnswerFace,
+			expected: studyview.ButtonMap{
+				"button-l":  {Name: "Incorrect", Enabled: true},
+				"button-cl": {Name: "Difficult", Enabled: false},
+				"button-cr": {Name: "Correct", Enabled: false},
+				"button-r":  {Name: "Easy", Enabled: false},
 			},
 		},
 	}

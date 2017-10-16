@@ -38,8 +38,25 @@ func (m *Basic) Buttons(card *model.Card, face int) (studyview.ButtonMap, error)
 	if !ok {
 		return nil, errors.Errorf("Invalid face %d", face)
 	}
+	if face == AnswerFace && card.Context != nil {
+		answers, _ := card.Context.(map[string]interface{})[contextKeyTypedAnswers].(map[string]answer)
+		for _, answer := range answers {
+			if !answer.Correct {
+				for _, label := range []studyview.Button{studyview.ButtonRight, studyview.ButtonCenterRight, studyview.ButtonCenterLeft} {
+					btn := buttons[label]
+					btn.Enabled = false
+					buttons[label] = btn
+				}
+				break
+			}
+		}
+	}
 	return buttons, nil
 }
+
+const (
+	contextKeyTypedAnswers = "typedAnswers"
+)
 
 // Action responds to a card action, such as a button press
 func (m *Basic) Action(card *model.Card, face *int, startTime time.Time, payload interface{}) (bool, error) {
@@ -77,7 +94,7 @@ func (m *Basic) Action(card *model.Card, face *int, startTime time.Time, payload
 				}
 			}
 			card.Context = map[string]interface{}{
-				"typedAnswers": results,
+				contextKeyTypedAnswers: results,
 			}
 			return false, nil
 		}

@@ -30,28 +30,13 @@ func init() {
 
 var buttonMaps = map[int]studyview.ButtonMap{
 	QuestionFace: studyview.ButtonMap{
-		studyview.ButtonRight: studyview.ButtonState{
-			Name:    "Show Answer",
-			Enabled: true,
-		},
+		studyview.ButtonRight: {Name: "Show Answer", Enabled: true},
 	},
 	AnswerFace: studyview.ButtonMap{
-		studyview.ButtonLeft: studyview.ButtonState{
-			Name:    "Incorrect",
-			Enabled: true,
-		},
-		studyview.ButtonCenterLeft: studyview.ButtonState{
-			Name:    "Difficult",
-			Enabled: true,
-		},
-		studyview.ButtonCenterRight: studyview.ButtonState{
-			Name:    "Correct",
-			Enabled: true,
-		},
-		studyview.ButtonRight: studyview.ButtonState{
-			Name:    "Easy",
-			Enabled: true,
-		},
+		studyview.ButtonLeft:        {Name: "Incorrect", Enabled: true},
+		studyview.ButtonCenterLeft:  {Name: "Difficult", Enabled: true},
+		studyview.ButtonCenterRight: {Name: "Correct", Enabled: true},
+		studyview.ButtonRight:       {Name: "Easy", Enabled: true},
 	},
 }
 
