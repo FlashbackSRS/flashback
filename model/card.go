@@ -59,7 +59,7 @@ func (c *Card) Buttons(face int) (studyview.ButtonMap, error) {
 	if err != nil {
 		return nil, err
 	}
-	return mc.Buttons(face)
+	return mc.Buttons(c, face)
 }
 
 type cardData struct {

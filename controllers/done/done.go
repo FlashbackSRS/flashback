@@ -29,7 +29,7 @@ func (c *Card) DocID() string {
 // for Done cards, the face value is ignored.
 func (c *Card) Buttons(_ int) (studyview.ButtonMap, error) {
 	return studyview.ButtonMap{
-		studyview.ButtonRight: studyview.ButtonState{
+		studyview.ButtonRight: {
 			Name:    "Check Again",
 			Enabled: true,
 		},

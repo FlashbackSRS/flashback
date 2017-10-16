@@ -2,6 +2,7 @@ package anki
 
 import (
 	"html/template"
+	"strconv"
 	"time"
 
 	"github.com/flimzy/log"
@@ -32,14 +33,31 @@ func (m *Basic) IframeScript() []byte {
 	return data
 }
 
+func buttonsKey(card *model.Card, face int) string {
+	if face == AnswerFace && card.Context != nil {
+		answers, _ := card.Context.(map[string]interface{})[contextKeyTypedAnswers].(map[string]answer)
+		for _, answer := range answers {
+			if !answer.Correct {
+				return buttonsKeyAnswerIncorrect
+			}
+		}
+	}
+	return strconv.Itoa(face)
+}
+
 // Buttons returns the initial button state
-func (m *Basic) Buttons(face int) (studyview.ButtonMap, error) {
-	buttons, ok := buttonMaps[face]
+func (m *Basic) Buttons(card *model.Card, face int) (studyview.ButtonMap, error) {
+	key := buttonsKey(card, face)
+	buttons, ok := buttonMaps[key]
 	if !ok {
 		return nil, errors.Errorf("Invalid face %d", face)
 	}
 	return buttons, nil
 }
+
+const (
+	contextKeyTypedAnswers = "typedAnswers"
+)
 
 // Action responds to a card action, such as a button press
 func (m *Basic) Action(card *model.Card, face *int, startTime time.Time, payload interface{}) (bool, error) {
@@ -51,7 +69,8 @@ func (m *Basic) Action(card *model.Card, face *int, startTime time.Time, payload
 	case QuestionFace:
 		// Any input is fine; the only options are the right button, or 'ENTER' in a text field.
 	case AnswerFace:
-		if _, valid := buttonMaps[*face][button]; !valid {
+		key := buttonsKey(card, *face)
+		if _, valid := buttonMaps[key][button]; !valid {
 			return false, errors.Errorf("Unexpected button press %s", button)
 		}
 	default:
@@ -77,7 +96,7 @@ func (m *Basic) Action(card *model.Card, face *int, startTime time.Time, payload
 				}
 			}
 			card.Context = map[string]interface{}{
-				"typedAnswers": results,
+				contextKeyTypedAnswers: results,
 			}
 			return false, nil
 		}
