@@ -17,7 +17,7 @@ type ModelController interface {
 	IframeScript() []byte
 	// Buttons returns the attributes for the three available answer buttons'
 	// initial state. Index 0 = left button, 1 = center, 2 = right
-	Buttons(face int) (studyview.ButtonMap, error)
+	Buttons(card *Card, face int) (studyview.ButtonMap, error)
 	// Action is called when the card submits the 'mainform' form. `query` is the
 	// deserialized content of the form submission, which should include at minimum
 	// `submit` key. If done is returned as true, the next card is selected. If

@@ -33,7 +33,7 @@ func (m *Basic) IframeScript() []byte {
 }
 
 // Buttons returns the initial button state
-func (m *Basic) Buttons(face int) (studyview.ButtonMap, error) {
+func (m *Basic) Buttons(card *model.Card, face int) (studyview.ButtonMap, error) {
 	buttons, ok := buttonMaps[face]
 	if !ok {
 		return nil, errors.Errorf("Invalid face %d", face)
