@@ -15,7 +15,7 @@ func Diff(text1, text2 string) (equal bool, diff string) {
 	text1 = strings.TrimSpace(text1)
 	text2 = strings.TrimSpace(text2)
 	if text1 == text2 {
-		return true, fmt.Sprintf("<spam class=\"good\">%s</span>", text1)
+		return true, fmt.Sprintf("<span class=\"good\">%s</span>", text1)
 	}
 	dmp := diffmatchpatch.New()
 	diffs := dmp.DiffMain(text1, text2, false)
