@@ -28,15 +28,27 @@ func init() {
 
 //go:generate go-bindata -pkg anki -nocompress -prefix files -o data.go files
 
-var buttonMaps = map[int]studyview.ButtonMap{
-	QuestionFace: studyview.ButtonMap{
+var (
+	buttonsKeyQuestion        = fmt.Sprintf("%d", QuestionFace)
+	buttonsKeyAnswer          = fmt.Sprintf("%d", AnswerFace)
+	buttonsKeyAnswerIncorrect = fmt.Sprintf("%d-wrong", QuestionFace)
+)
+
+var buttonMaps = map[string]studyview.ButtonMap{
+	buttonsKeyQuestion: studyview.ButtonMap{
 		studyview.ButtonRight: {Name: "Show Answer", Enabled: true},
 	},
-	AnswerFace: studyview.ButtonMap{
+	buttonsKeyAnswer: studyview.ButtonMap{
 		studyview.ButtonLeft:        {Name: "Incorrect", Enabled: true},
 		studyview.ButtonCenterLeft:  {Name: "Difficult", Enabled: true},
 		studyview.ButtonCenterRight: {Name: "Correct", Enabled: true},
 		studyview.ButtonRight:       {Name: "Easy", Enabled: true},
+	},
+	buttonsKeyAnswerIncorrect: studyview.ButtonMap{
+		studyview.ButtonLeft:        {Name: "Incorrect", Enabled: true},
+		studyview.ButtonCenterLeft:  {Name: "Difficult", Enabled: false},
+		studyview.ButtonCenterRight: {Name: "Correct", Enabled: false},
+		studyview.ButtonRight:       {Name: "Easy", Enabled: false},
 	},
 }
 
