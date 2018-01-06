@@ -73,3 +73,5 @@ webclient/handlers/index/data.go
 # Cordova/Android studio stuff
 .idea/
 config.xml
+
+package-lock.json
